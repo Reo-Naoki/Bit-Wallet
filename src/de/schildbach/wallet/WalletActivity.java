@@ -28,7 +28,9 @@ import java.net.URLEncoder;
 import java.net.UnknownHostException;
 
 import android.app.Activity;
+import android.app.Dialog;
 import android.content.Context;
+import android.content.Intent;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.net.Uri;
@@ -36,11 +38,16 @@ import android.os.Bundle;
 import android.os.Handler;
 import android.os.HandlerThread;
 import android.os.Process;
+import android.view.Menu;
+import android.view.MenuItem;
+import android.view.View;
+import android.view.View.OnClickListener;
 import android.widget.ImageView;
 import android.widget.TextView;
 import android.widget.Toast;
 
 import com.google.bitcoin.core.Address;
+import com.google.bitcoin.core.AddressFormatException;
 import com.google.bitcoin.core.BlockChain;
 import com.google.bitcoin.core.ECKey;
 import com.google.bitcoin.core.NetworkConnection;
@@ -74,10 +81,6 @@ public class WalletActivity extends Activity implements WalletEventListener
 		backgroundThread.start();
 		backgroundHandler = new Handler(backgroundThread.getLooper());
 
-		final Uri intentUri = getIntent().getData();
-		if (intentUri != null && "bitcoin".equals(intentUri.getScheme()))
-			Toast.makeText(this, "sending coins to " + intentUri.getSchemeSpecificPart() + " not yet implemented", Toast.LENGTH_LONG).show();
-
 		setContentView(R.layout.wallet_content);
 
 		((TextView) findViewById(R.id.bitcoin_network)).setText(Constants.TEST ? "testnet" : "prodnet");
@@ -103,21 +106,20 @@ public class WalletActivity extends Activity implements WalletEventListener
 					final InetAddress inetAddress = Constants.TEST ? InetAddress.getByName(Constants.TEST_SEED_NODE)
 							: inetAddressFromUnsignedInt(Constants.SEED_NODES[0]);
 					final NetworkConnection connection = new NetworkConnection(inetAddress, Constants.NETWORK_PARAMS);
+					final BlockChain chain = new BlockChain(Constants.NETWORK_PARAMS, wallet);
+					peer = new Peer(Constants.NETWORK_PARAMS, connection, chain);
+					peer.start();
+					peer.startBlockChainDownload();
 
 					runOnUiThread(new Runnable()
 					{
 						public void run()
 						{
-							final BlockChain chain = new BlockChain(Constants.NETWORK_PARAMS, wallet);
-							peer = new Peer(Constants.NETWORK_PARAMS, connection, chain);
-							peer.start();
-							// peer.startBlockChainDownload();
-
 							((TextView) findViewById(R.id.peer_host)).setText(inetAddress.getHostAddress());
 						}
 					});
 				}
-				catch (Exception x)
+				catch (final Exception x)
 				{
 					throw new RuntimeException(x);
 				}
@@ -140,6 +142,10 @@ public class WalletActivity extends Activity implements WalletEventListener
 				});
 			}
 		});
+
+		final Uri intentUri = getIntent().getData();
+		if (intentUri != null && "bitcoin".equals(intentUri.getScheme()))
+			openSendCoinsDialog(intentUri.getSchemeSpecificPart());
 	}
 
 	public void onCoinsReceived(final Wallet w, final Transaction tx, final BigInteger prevBalance, final BigInteger newBalance)
@@ -177,7 +183,7 @@ public class WalletActivity extends Activity implements WalletEventListener
 			peer = null;
 		}
 
-		saveWallet();
+		saveWallet(); // TODO is this still needed?
 
 		// cancel background thread
 		backgroundThread.getLooper().quit();
@@ -185,9 +191,122 @@ public class WalletActivity extends Activity implements WalletEventListener
 		super.onDestroy();
 	}
 
+	@Override
+	public boolean onCreateOptionsMenu(Menu menu)
+	{
+		super.onCreateOptionsMenu(menu);
+		getMenuInflater().inflate(R.menu.wallet_options, menu);
+		return true;
+	}
+
+	@Override
+	public boolean onOptionsItemSelected(MenuItem item)
+	{
+		switch (item.getItemId())
+		{
+			case R.id.wallet_options_send_coins:
+				openSendCoinsDialog(null);
+				return true;
+
+			case R.id.wallet_options_preferences:
+				startActivity(new Intent(this, PreferencesActivity.class));
+				return true;
+		}
+
+		return false;
+	}
+
 	private void updateGUI()
 	{
 		((TextView) findViewById(R.id.wallet_balance)).setText(Utils.bitcoinValueToFriendlyString(wallet.getBalance()));
+	}
+
+	private void openSendCoinsDialog(final String receivingAddressStr)
+	{
+		final Dialog dialog = new Dialog(this, android.R.style.Theme_Light);
+		dialog.setContentView(R.layout.send_coins_content);
+		final TextView receivingAddressView = (TextView) dialog.findViewById(R.id.send_coins_receiving_address);
+		if (receivingAddressStr != null)
+			receivingAddressView.setText(receivingAddressStr);
+		dialog.show();
+
+		dialog.findViewById(R.id.send_coins_go).setOnClickListener(new OnClickListener()
+		{
+			public void onClick(final View v)
+			{
+				try
+				{
+					final Address receivingAddress = new Address(Constants.NETWORK_PARAMS, receivingAddressView.getText().toString());
+					final BigInteger amount = Utils.toNanoCoins(((TextView) dialog.findViewById(R.id.send_coins_amount)).getText());
+					System.out.println("about to send " + amount + " (BTC " + Utils.bitcoinValueToFriendlyString(amount) + ") to " + receivingAddress);
+
+					backgroundHandler.post(new Runnable()
+					{
+						public void run()
+						{
+							try
+							{
+								final Transaction tx = wallet.sendCoins(peer, receivingAddress, amount);
+
+								if (tx != null)
+								{
+									runOnUiThread(new Runnable()
+									{
+										public void run()
+										{
+											saveWallet();
+
+											updateGUI();
+
+											dialog.dismiss();
+
+											Toast.makeText(WalletActivity.this, Utils.bitcoinValueToFriendlyString(amount) + " BTC sent!",
+													Toast.LENGTH_LONG).show();
+										}
+									});
+								}
+								else
+								{
+									runOnUiThread(new Runnable()
+									{
+										public void run()
+										{
+											Toast.makeText(WalletActivity.this, "problem sending coins!", Toast.LENGTH_LONG).show();
+											dialog.dismiss();
+										}
+									});
+								}
+							}
+							catch (final IOException x)
+							{
+								x.printStackTrace();
+
+								runOnUiThread(new Runnable()
+								{
+									public void run()
+									{
+										Toast.makeText(WalletActivity.this, "problem sending coins: " + x.getMessage(), Toast.LENGTH_LONG).show();
+										dialog.dismiss();
+									}
+								});
+							}
+						}
+					});
+				}
+				catch (final AddressFormatException x)
+				{
+					x.printStackTrace();
+				}
+			}
+		});
+
+		dialog.findViewById(R.id.send_coins_cancel).setOnClickListener(new OnClickListener()
+		{
+			public void onClick(final View v)
+			{
+				dialog.dismiss();
+			}
+		});
 	}
 
 	private void loadWallet()

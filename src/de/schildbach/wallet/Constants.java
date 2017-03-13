@@ -1,7 +1,27 @@
+/*
+ * Copyright 2010 the original author or authors.
+ * 
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ */
+
 package de.schildbach.wallet;
 
 import com.google.bitcoin.core.NetworkParameters;
 
+/**
+ * @author Andreas Schildbach
+ */
 public class Constants
 {
 	public static final boolean TEST = true;
@@ -9,7 +29,7 @@ public class Constants
 	public static final NetworkParameters NETWORK_PARAMS = TEST ? NetworkParameters.testNet() : NetworkParameters.prodNet();
 
 	// taken from official client: https://github.com/bitcoin/bitcoin/blob/master/net.cpp
-	public static final long[] SEED_NODES = { 0x1ddb1032, 0x6242ce40, 0x52d6a445, 0x2dd7a445, 0x8a53cd47, 0x73263750, 0xda23c257, 0xecd4ed57,
+	public static final long[] SEED_NODES = { /* 0x1ddb1032, */0x6242ce40, 0x52d6a445, 0x2dd7a445, 0x8a53cd47, 0x73263750, 0xda23c257, 0xecd4ed57,
 			0x0a40ec59, 0x75dce160, 0x7df76791, 0x89370bad, 0xa4f214ad, 0x767700ae, 0x638b0418, 0x868a1018, 0xcd9f332e, 0x0129653e, 0xcc92dc3e,
 			0x96671640, 0x56487e40, 0x5b66f440, 0xb1d01f41, 0xf1dc6041, 0xc1d12b42, 0x86ba1243, 0x6be4df43, 0x6d4cef43, 0xd18e0644, 0x1ab0b344,
 			0x6584a345, 0xe7c1a445, 0x58cea445, 0xc5daa445, 0x21dda445, 0x3d3b5346, 0x13e55347, 0x1080d24a, 0x8e611e4b, 0x81518e4b, 0x6c839e4b,
@@ -41,4 +61,12 @@ public class Constants
 			0x8312e6bc, 0xb916965f, 0x8aa7c858, 0xfe7effad };
 
 	public static final String TEST_SEED_NODE = "your_node";
+
+	public static final String LICENSE_URL = "http://www.gnu.org/licenses/gpl-3.0.txt";
+	public static final String SOURCE_URL = "http://code.google.com/p/bitcoin-wallet/";
+	public static final String CREDITS_BITCOINJ_URL = "http://code.google.com/p/bitcoinj/";
+	public static final String CREDITS_ICON_URL = "http://www.bitcoin.org/smf/index.php?action=profile;u=2062";
+	public static final String TWITTER_URL = "http://twitter.com/schildbach";
+	public static final String MARKET_APP_URL = "market://details?id=%s";
+	public static final String MARKET_PUBLISHER_URL = "market://search?q=pub:\"Andreas Schildbach\"";
 }
