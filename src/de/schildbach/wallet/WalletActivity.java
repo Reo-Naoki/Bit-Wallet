@@ -17,31 +17,30 @@
 
 package de.schildbach.wallet;
 
-import java.io.BufferedInputStream;
-import java.io.File;
 import java.io.IOException;
 import java.math.BigInteger;
 import java.net.InetAddress;
-import java.net.URL;
-import java.net.URLConnection;
-import java.net.URLEncoder;
 import java.net.UnknownHostException;
+import java.util.Hashtable;
 
 import android.app.Activity;
 import android.app.Dialog;
-import android.content.Context;
 import android.content.Intent;
 import android.graphics.Bitmap;
-import android.graphics.BitmapFactory;
+import android.graphics.Color;
 import android.net.Uri;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.HandlerThread;
 import android.os.Process;
+import android.text.ClipboardManager;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
 import android.view.View.OnClickListener;
+import android.view.View.OnLongClickListener;
+import android.view.Window;
+import android.webkit.WebView;
 import android.widget.ImageView;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -57,16 +56,21 @@ import com.google.bitcoin.core.TransactionInput;
 import com.google.bitcoin.core.Utils;
 import com.google.bitcoin.core.Wallet;
 import com.google.bitcoin.core.WalletEventListener;
+import com.google.zxing.BarcodeFormat;
+import com.google.zxing.EncodeHintType;
+import com.google.zxing.WriterException;
+import com.google.zxing.common.BitMatrix;
+import com.google.zxing.qrcode.QRCodeWriter;
+import com.google.zxing.qrcode.decoder.ErrorCorrectionLevel;
 
 /**
  * @author Andreas Schildbach
  */
 public class WalletActivity extends Activity implements WalletEventListener
 {
-	private static final String WALLET_FILENAME = Constants.TEST ? "wallet-test" : "wallet";
-
-	private Wallet wallet;
+	private Application application;
 	private Peer peer;
+	private Bitmap qrCodeBitmap;
 
 	private HandlerThread backgroundThread;
 	private Handler backgroundHandler;
@@ -76,26 +80,44 @@ public class WalletActivity extends Activity implements WalletEventListener
 	{
 		super.onCreate(savedInstanceState);
 
+		application = (Application) getApplication();
+
 		// background thread
 		backgroundThread = new HandlerThread("backgroundThread", Process.THREAD_PRIORITY_BACKGROUND);
 		backgroundThread.start();
 		backgroundHandler = new Handler(backgroundThread.getLooper());
 
+		final Wallet wallet = application.getWallet();
+
 		setContentView(R.layout.wallet_content);
+		final ActionBar actionBar = (ActionBar) findViewById(R.id.action_bar);
+		final TextView bitcoinAddressView = (TextView) findViewById(R.id.bitcoin_address);
+		final ImageView bitcoinAddressQrView = (ImageView) findViewById(R.id.bitcoin_address_qr);
+
+		actionBar.setIcon(R.drawable.app_icon);
+		actionBar.setPrimaryTitle(R.string.app_name);
+		actionBar.getButton().setImageResource(R.drawable.ic_menu_send);
+		actionBar.getButton().setOnClickListener(new OnClickListener()
+		{
+			public void onClick(final View v)
+			{
+				openSendCoinsDialog(null);
+			}
+		});
 
 		((TextView) findViewById(R.id.bitcoin_network)).setText(Constants.TEST ? "testnet" : "prodnet");
 
-		loadWallet();
 		wallet.addEventListener(this);
 
 		updateGUI();
 
+		System.out.println(wallet.keychain.size() + " key(s) in keychain");
 		final ECKey key = wallet.keychain.get(0);
 		final Address address = key.toAddress(Constants.NETWORK_PARAMS);
 
 		final String addressStr = address.toString();
 		System.out.println("my bitcoin address: " + addressStr + (Constants.TEST ? " (testnet!)" : ""));
-		((TextView) findViewById(R.id.bitcoin_address)).setText(splitIntoLines(addressStr, 3));
+		bitcoinAddressView.setText(splitIntoLines(addressStr, 3));
 
 		backgroundHandler.post(new Runnable()
 		{
@@ -127,17 +149,46 @@ public class WalletActivity extends Activity implements WalletEventListener
 		});
 
 		// populate qrcode representation of bitcoin address
-		backgroundHandler.post(new Runnable()
-		{
-			public void run()
-			{
-				final Bitmap qrCodeBitmap = getQRCodeBitmap("bitcoin:" + addressStr);
+		qrCodeBitmap = getQRCodeBitmap("bitcoin:" + addressStr);
+		bitcoinAddressQrView.setImageBitmap(qrCodeBitmap);
 
-				runOnUiThread(new Runnable()
+		bitcoinAddressView.setOnClickListener(new OnClickListener()
+		{
+			public void onClick(final View v)
+			{
+				ClipboardManager clipboardManager = (ClipboardManager) getSystemService(CLIPBOARD_SERVICE);
+				clipboardManager.setText(addressStr);
+				Toast.makeText(WalletActivity.this, "bitcoin address pasted to clipboard", Toast.LENGTH_SHORT).show();
+			}
+		});
+
+		bitcoinAddressView.setOnLongClickListener(new OnLongClickListener()
+		{
+			public boolean onLongClick(final View v)
+			{
+				startActivity(Intent.createChooser(
+						new Intent(Intent.ACTION_SEND).putExtra(Intent.EXTRA_TEXT, "bitcoin:" + addressStr).setType("text/plain"),
+						"Share your bitcoin address..."));
+				return false;
+			}
+		});
+
+		bitcoinAddressQrView.setOnClickListener(new OnClickListener()
+		{
+			public void onClick(final View v)
+			{
+				final Dialog dialog = new Dialog(WalletActivity.this);
+				dialog.requestWindowFeature(Window.FEATURE_NO_TITLE);
+				dialog.setContentView(R.layout.bitcoin_address_qr_dialog);
+				final ImageView imageView = (ImageView) dialog.findViewById(R.id.bitcoin_address_qr);
+				imageView.setImageBitmap(qrCodeBitmap);
+				dialog.setCanceledOnTouchOutside(true);
+				dialog.show();
+				imageView.setOnClickListener(new OnClickListener()
 				{
-					public void run()
+					public void onClick(final View v)
 					{
-						((ImageView) findViewById(R.id.bitcoin_address_qr)).setImageBitmap(qrCodeBitmap);
+						dialog.dismiss();
 					}
 				});
 			}
@@ -162,7 +213,7 @@ public class WalletActivity extends Activity implements WalletEventListener
 			{
 				public void run()
 				{
-					saveWallet();
+					application.saveWallet();
 
 					updateGUI();
 				}
@@ -177,13 +228,17 @@ public class WalletActivity extends Activity implements WalletEventListener
 	@Override
 	protected void onDestroy()
 	{
+		if (qrCodeBitmap != null)
+		{
+			qrCodeBitmap.recycle();
+			qrCodeBitmap = null;
+		}
+
 		if (peer != null)
 		{
 			peer.disconnect();
 			peer = null;
 		}
-
-		saveWallet(); // TODO is this still needed?
 
 		// cancel background thread
 		backgroundThread.getLooper().quit();
@@ -211,14 +266,32 @@ public class WalletActivity extends Activity implements WalletEventListener
 			case R.id.wallet_options_preferences:
 				startActivity(new Intent(this, PreferencesActivity.class));
 				return true;
+
+			case R.id.wallet_options_help:
+				showDialog(0);
+				return true;
 		}
 
 		return false;
 	}
 
+	@Override
+	protected Dialog onCreateDialog(final int id)
+	{
+		final WebView webView = new WebView(this);
+		webView.loadUrl("file:///android_asset/help.html");
+
+		final Dialog dialog = new Dialog(WalletActivity.this);
+		dialog.requestWindowFeature(Window.FEATURE_NO_TITLE);
+		dialog.setContentView(webView);
+		dialog.setCanceledOnTouchOutside(true);
+
+		return dialog;
+	}
+
 	private void updateGUI()
 	{
-		((TextView) findViewById(R.id.wallet_balance)).setText(Utils.bitcoinValueToFriendlyString(wallet.getBalance()));
+		((TextView) findViewById(R.id.wallet_balance)).setText(Utils.bitcoinValueToFriendlyString(application.getWallet().getBalance()));
 	}
 
 	private void openSendCoinsDialog(final String receivingAddressStr)
@@ -246,7 +319,7 @@ public class WalletActivity extends Activity implements WalletEventListener
 						{
 							try
 							{
-								final Transaction tx = wallet.sendCoins(peer, receivingAddress, amount);
+								final Transaction tx = application.getWallet().sendCoins(peer, receivingAddress, amount);
 
 								if (tx != null)
 								{
@@ -254,7 +327,7 @@ public class WalletActivity extends Activity implements WalletEventListener
 									{
 										public void run()
 										{
-											saveWallet();
+											application.saveWallet();
 
 											updateGUI();
 
@@ -309,52 +382,6 @@ public class WalletActivity extends Activity implements WalletEventListener
 		});
 	}
 
-	private void loadWallet()
-	{
-		final File file = walletFile();
-
-		try
-		{
-			wallet = Wallet.loadFromFile(file);
-			System.out.println("wallet loaded from: " + file);
-		}
-		catch (IOException x)
-		{
-			wallet = new Wallet(Constants.NETWORK_PARAMS);
-			wallet.keychain.add(new ECKey());
-
-			try
-			{
-				wallet.saveToFile(file);
-				System.out.println("wallet created: " + file);
-			}
-			catch (final IOException x2)
-			{
-				throw new Error("wallet cannot be created", x2);
-			}
-		}
-	}
-
-	private void saveWallet()
-	{
-		try
-		{
-			final File file = walletFile();
-			wallet.saveToFile(file);
-			System.out.println("wallet saved to: " + file);
-		}
-		catch (IOException x)
-		{
-			throw new RuntimeException(x);
-		}
-	}
-
-	private File walletFile()
-	{
-		return new File(Constants.TEST ? getDir("testnet", Context.MODE_WORLD_READABLE | Context.MODE_WORLD_WRITEABLE) : getFilesDir(),
-				WALLET_FILENAME);
-	}
-
 	private static InetAddress inetAddressFromUnsignedInt(final long l)
 	{
 		final byte[] bytes = { (byte) (l & 0x000000ff), (byte) ((l & 0x0000ff00) >> 8), (byte) ((l & 0x00ff0000) >> 16),
@@ -369,19 +396,36 @@ public class WalletActivity extends Activity implements WalletEventListener
 		}
 	}
 
-	private Bitmap getQRCodeBitmap(final String url)
+	public final static QRCodeWriter QR_CODE_WRITER = new QRCodeWriter();
+
+	private static Bitmap getQRCodeBitmap(final String url)
 	{
+		final int SIZE = 256;
+
 		try
 		{
-			final URLConnection connection = new URL("http://chart.apis.google.com/chart?cht=qr&chs=160x160&chld=H|0&chl="
-					+ URLEncoder.encode(url, "ISO-8859-1")).openConnection();
-			connection.connect();
-			final BufferedInputStream is = new BufferedInputStream(connection.getInputStream());
-			final Bitmap bm = BitmapFactory.decodeStream(is);
-			is.close();
-			return bm;
+			final Hashtable<EncodeHintType, Object> hints = new Hashtable<EncodeHintType, Object>();
+			hints.put(EncodeHintType.ERROR_CORRECTION, ErrorCorrectionLevel.H);
+			final BitMatrix result = QR_CODE_WRITER.encode(url, BarcodeFormat.QR_CODE, SIZE, SIZE, hints);
+
+			final int width = result.getWidth();
+			final int height = result.getHeight();
+			final int[] pixels = new int[width * height];
+
+			for (int y = 0; y < height; y++)
+			{
+				final int offset = y * width;
+				for (int x = 0; x < width; x++)
+				{
+					pixels[offset + x] = result.get(x, y) ? Color.BLACK : Color.WHITE;
+				}
+			}
+
+			final Bitmap bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888);
+			bitmap.setPixels(pixels, 0, width, 0, 0, width, height);
+			return bitmap;
 		}
-		catch (final IOException x)
+		catch (final WriterException x)
 		{
 			x.printStackTrace();
 			return null;
