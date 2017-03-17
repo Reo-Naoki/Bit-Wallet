@@ -17,11 +17,19 @@
 
 package de.schildbach.wallet;
 
+import java.io.BufferedInputStream;
 import java.io.IOException;
+import java.io.InputStreamReader;
+import java.io.Reader;
 import java.math.BigInteger;
 import java.net.InetAddress;
+import java.net.URL;
+import java.net.URLConnection;
 import java.net.UnknownHostException;
 import java.util.Hashtable;
+import java.util.concurrent.CountDownLatch;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import android.app.Activity;
 import android.app.Dialog;
@@ -66,11 +74,12 @@ import com.google.zxing.qrcode.decoder.ErrorCorrectionLevel;
 /**
  * @author Andreas Schildbach
  */
-public class WalletActivity extends Activity implements WalletEventListener
+public class WalletActivity extends Activity
 {
 	private Application application;
 	private Peer peer;
 	private Bitmap qrCodeBitmap;
+	private Float exchangeRate;
 
 	private HandlerThread backgroundThread;
 	private Handler backgroundHandler;
@@ -104,10 +113,97 @@ public class WalletActivity extends Activity implements WalletEventListener
 				openSendCoinsDialog(null);
 			}
 		});
+		actionBar.getProgressButton().setOnClickListener(new OnClickListener()
+		{
+			public void onClick(final View v)
+			{
+				if (actionBar.getProgressCount() == 0)
+				{
+					try
+					{
+						final CountDownLatch latch = peer.startBlockChainDownload();
+
+						new Thread()
+						{
+							@Override
+							public void run()
+							{
+								try
+								{
+									latch.await();
+
+									runOnUiThread(new Runnable()
+									{
+										public void run()
+										{
+											actionBar.stopProgress();
+										}
+									});
+								}
+								catch (final Exception x)
+								{
+									x.printStackTrace();
+								}
+							}
+						}.start();
+
+						actionBar.startProgress();
+					}
+					catch (final Exception x)
+					{
+						throw new RuntimeException(x);
+					}
+				}
+			}
+		});
 
 		((TextView) findViewById(R.id.bitcoin_network)).setText(Constants.TEST ? "testnet" : "prodnet");
 
-		wallet.addEventListener(this);
+		wallet.addEventListener(new WalletEventListener()
+		{
+			@Override
+			public void onCoinsReceived(final Wallet w, final Transaction tx, final BigInteger prevBalance, final BigInteger newBalance)
+			{
+				try
+				{
+					final TransactionInput input = tx.getInputs().get(0);
+					final Address from = input.getFromAddress();
+					final BigInteger value = tx.getValueSentToMe(w);
+
+					System.out.println("!!!!!!!!!!!!! got bitcoins: " + from + " " + value + " " + Thread.currentThread().getName());
+
+					runOnUiThread(new Runnable()
+					{
+						public void run()
+						{
+							application.saveWallet();
+
+							updateGUI();
+						}
+					});
+				}
+				catch (Exception x)
+				{
+					throw new RuntimeException(x);
+				}
+			}
+
+			@Override
+			public void onReorganize()
+			{
+				System.out.println("!!!! reorganize");
+
+				runOnUiThread(new Runnable()
+				{
+					public void run()
+					{
+						application.saveWallet();
+
+						updateGUI();
+					}
+				});
+			}
+		});
 
 		updateGUI();
 
@@ -115,9 +211,7 @@ public class WalletActivity extends Activity implements WalletEventListener
 		final ECKey key = wallet.keychain.get(0);
 		final Address address = key.toAddress(Constants.NETWORK_PARAMS);
 
-		final String addressStr = address.toString();
-		System.out.println("my bitcoin address: " + addressStr + (Constants.TEST ? " (testnet!)" : ""));
-		bitcoinAddressView.setText(splitIntoLines(addressStr, 3));
+		bitcoinAddressView.setText(splitIntoLines(address.toString(), 3));
 
 		backgroundHandler.post(new Runnable()
 		{
@@ -128,10 +222,9 @@ public class WalletActivity extends Activity implements WalletEventListener
 					final InetAddress inetAddress = Constants.TEST ? InetAddress.getByName(Constants.TEST_SEED_NODE)
 							: inetAddressFromUnsignedInt(Constants.SEED_NODES[0]);
 					final NetworkConnection connection = new NetworkConnection(inetAddress, Constants.NETWORK_PARAMS);
-					final BlockChain chain = new BlockChain(Constants.NETWORK_PARAMS, wallet);
+					final BlockChain chain = new BlockChain(Constants.NETWORK_PARAMS, wallet, application.getBlockStore());
 					peer = new Peer(Constants.NETWORK_PARAMS, connection, chain);
 					peer.start();
-					peer.startBlockChainDownload();
 
 					runOnUiThread(new Runnable()
 					{
@@ -148,8 +241,35 @@ public class WalletActivity extends Activity implements WalletEventListener
 			}
 		});
 
+		backgroundHandler.post(new Runnable()
+		{
+			public void run()
+			{
+				try
+				{
+					final Float newExchangeRate = getExchangeRate();
+
+					if (newExchangeRate != null)
+					{
+						runOnUiThread(new Runnable()
+						{
+							public void run()
+							{
+								exchangeRate = newExchangeRate;
+								updateGUI();
+							}
+						});
+					}
+				}
+				catch (final Exception x)
+				{
+					throw new RuntimeException(x);
+				}
+			}
+		});
+
 		// populate qrcode representation of bitcoin address
-		qrCodeBitmap = getQRCodeBitmap("bitcoin:" + addressStr);
+		qrCodeBitmap = getQRCodeBitmap("bitcoin:" + address.toString());
 		bitcoinAddressQrView.setImageBitmap(qrCodeBitmap);
 
 		bitcoinAddressView.setOnClickListener(new OnClickListener()
@@ -157,8 +277,10 @@ public class WalletActivity extends Activity implements WalletEventListener
 			public void onClick(final View v)
 			{
 				ClipboardManager clipboardManager = (ClipboardManager) getSystemService(CLIPBOARD_SERVICE);
-				clipboardManager.setText(addressStr);
+				clipboardManager.setText(address.toString());
 				Toast.makeText(WalletActivity.this, "bitcoin address pasted to clipboard", Toast.LENGTH_SHORT).show();
+
+				System.out.println("my bitcoin address: " + address + (Constants.TEST ? " (testnet!)" : ""));
 			}
 		});
 
@@ -167,7 +289,7 @@ public class WalletActivity extends Activity implements WalletEventListener
 			public boolean onLongClick(final View v)
 			{
 				startActivity(Intent.createChooser(
-						new Intent(Intent.ACTION_SEND).putExtra(Intent.EXTRA_TEXT, "bitcoin:" + addressStr).setType("text/plain"),
+						new Intent(Intent.ACTION_SEND).putExtra(Intent.EXTRA_TEXT, "bitcoin:" + address).setType("text/plain"),
 						"Share your bitcoin address..."));
 				return false;
 			}
@@ -197,32 +319,6 @@ public class WalletActivity extends Activity implements WalletEventListener
 		final Uri intentUri = getIntent().getData();
 		if (intentUri != null && "bitcoin".equals(intentUri.getScheme()))
 			openSendCoinsDialog(intentUri.getSchemeSpecificPart());
-	}
-
-	public void onCoinsReceived(final Wallet w, final Transaction tx, final BigInteger prevBalance, final BigInteger newBalance)
-	{
-		try
-		{
-			final TransactionInput input = tx.getInputs().get(0);
-			final Address from = input.getFromAddress();
-			final BigInteger value = tx.getValueSentToMe(w);
-
-			System.out.println("!!!!!!!!!!!!! got bitcoins: " + from + " " + value + " " + Thread.currentThread().getName());
-
-			runOnUiThread(new Runnable()
-			{
-				public void run()
-				{
-					application.saveWallet();
-
-					updateGUI();
-				}
-			});
-		}
-		catch (Exception x)
-		{
-			throw new RuntimeException(x);
-		}
 	}
 
 	@Override
@@ -291,7 +387,19 @@ public class WalletActivity extends Activity implements WalletEventListener
 
 	private void updateGUI()
 	{
-		((TextView) findViewById(R.id.wallet_balance)).setText(Utils.bitcoinValueToFriendlyString(application.getWallet().getBalance()));
+		final BigInteger balance = application.getWallet().getBalance();
+		((TextView) findViewById(R.id.wallet_balance)).setText(Utils.bitcoinValueToFriendlyString(balance));
+
+		final TextView walletBalanceInDollarsView = (TextView) findViewById(R.id.wallet_balance_in_dollars);
+		if (balance.equals(BigInteger.ZERO))
+		{
+			walletBalanceInDollarsView.setText(null);
+		}
+		else if (exchangeRate != null)
+		{
+			final double dollars = Utils.bitcoinValueToDouble(balance) * exchangeRate;
+			walletBalanceInDollarsView.setText(String.format("worth about US$ %.2f" + (Constants.TEST ? "\nif it were real bitcoins" : ""), dollars));
+		}
 	}
 
 	private void openSendCoinsDialog(final String receivingAddressStr)
@@ -443,5 +551,43 @@ public class WalletActivity extends Activity implements WalletEventListener
 			builder.insert(len + i * (len + 1), '\n');
 
 		return builder.toString();
+	}
+
+	private static final Pattern P_EXCHANGE_RATE = Pattern.compile("\"last\":(\\d*\\.\\d*)[^\\d]");
+
+	private static Float getExchangeRate()
+	{
+		try
+		{
+			final URLConnection connection = new URL("http://mtgox.com/code/data/ticker.php").openConnection();
+			connection.connect();
+			final Reader is = new InputStreamReader(new BufferedInputStream(connection.getInputStream()));
+			final StringBuilder content = new StringBuilder();
+			copy(is, content);
+			is.close();
+
+			final Matcher m = P_EXCHANGE_RATE.matcher(content);
+			if (m.find())
+				return Float.parseFloat(m.group(1));
+		}
+		catch (final IOException x)
+		{
+			x.printStackTrace();
+		}
+
+		return null;
+	}
+
+	private static final long copy(final Reader reader, final StringBuilder builder) throws IOException
+	{
+		final char[] buffer = new char[256];
+		long count = 0;
+		int n = 0;
+		while (-1 != (n = reader.read(buffer)))
+		{
+			builder.append(buffer, 0, n);
+			count += n;
+		}
+		return count;
 	}
 }
