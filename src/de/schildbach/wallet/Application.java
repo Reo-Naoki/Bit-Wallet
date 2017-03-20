@@ -20,13 +20,20 @@ package de.schildbach.wallet;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.math.BigInteger;
 
 import android.content.Context;
 import android.os.Debug;
+import android.os.Handler;
 
-import com.google.bitcoin.core.BlockStore;
+import com.google.bitcoin.core.BlockChain;
 import com.google.bitcoin.core.ECKey;
+import com.google.bitcoin.core.Transaction;
 import com.google.bitcoin.core.Wallet;
+import com.google.bitcoin.core.WalletEventListener;
+import com.google.bitcoin.store.BlockStore;
+import com.google.bitcoin.store.BlockStoreException;
+import com.google.bitcoin.store.BoundedOverheadBlockStore;
 
 /**
  * @author Andreas Schildbach
@@ -35,6 +42,36 @@ public class Application extends android.app.Application
 {
 	private Wallet wallet;
 	private BlockStore blockStore;
+	private BlockChain blockChain;
+
+	private final Handler handler = new Handler();
+
+	final private WalletEventListener walletEventListener = new WalletEventListener()
+	{
+		@Override
+		public void onCoinsReceived(final Wallet w, final Transaction tx, final BigInteger prevBalance, final BigInteger newBalance)
+		{
+			handler.post(new Runnable()
+			{
+				public void run()
+				{
+					saveWallet();
+				}
+			});
+		}
+
+		@Override
+		public void onReorganize()
+		{
+			handler.post(new Runnable()
+			{
+				public void run()
+				{
+					saveWallet();
+				}
+			});
+		}
+	};
 
 	@Override
 	public void onCreate()
@@ -45,7 +82,19 @@ public class Application extends android.app.Application
 
 		loadWallet();
 
-		blockStore = new FilesBlockStore(getDir("blockstore", Context.MODE_WORLD_READABLE | Context.MODE_WORLD_WRITEABLE));
+		wallet.addEventListener(walletEventListener);
+
+		try
+		{
+			blockStore = new BoundedOverheadBlockStore(Constants.NETWORK_PARAMS, new File(getDir("blockstore", Context.MODE_WORLD_READABLE
+					| Context.MODE_WORLD_WRITEABLE), "blockchain"));
+
+			blockChain = new BlockChain(Constants.NETWORK_PARAMS, wallet, blockStore);
+		}
+		catch (final BlockStoreException x)
+		{
+			throw new Error("blockstore cannot be created", x);
+		}
 	}
 
 	public Wallet getWallet()
@@ -58,14 +107,17 @@ public class Application extends android.app.Application
 		return blockStore;
 	}
 
+	public BlockChain getBlockChain()
+	{
+		return blockChain;
+	}
+
 	private void loadWallet()
 	{
-		final File file = walletFile();
-
 		try
 		{
-			wallet = Wallet.loadFromFile(file);
-			System.out.println("wallet loaded from: " + file);
+			wallet = Wallet.loadFromFileStream(openFileInput(Constants.WALLET_FILENAME));
+			System.out.println("wallet loaded from: " + getFilesDir() + "/" + Constants.WALLET_FILENAME);
 		}
 		catch (final FileNotFoundException x)
 		{
@@ -74,8 +126,8 @@ public class Application extends android.app.Application
 
 			try
 			{
-				wallet.saveToFile(file);
-				System.out.println("wallet created: " + file);
+				wallet.saveToFileStream(openFileOutput(Constants.WALLET_FILENAME, Constants.WALLET_MODE));
+				System.out.println("wallet created: " + getFilesDir() + "/" + Constants.WALLET_FILENAME);
 			}
 			catch (final IOException x2)
 			{
@@ -92,19 +144,12 @@ public class Application extends android.app.Application
 	{
 		try
 		{
-			final File file = walletFile();
-			wallet.saveToFile(file);
-			System.out.println("wallet saved to: " + file);
+			wallet.saveToFileStream(openFileOutput(Constants.WALLET_FILENAME, Constants.WALLET_MODE));
+			System.out.println("wallet saved to: " + getFilesDir() + "/" + Constants.WALLET_FILENAME);
 		}
 		catch (IOException x)
 		{
 			throw new RuntimeException(x);
 		}
-	}
-
-	private File walletFile()
-	{
-		return new File(Constants.TEST ? getDir("testnet", Context.MODE_WORLD_READABLE | Context.MODE_WORLD_WRITEABLE) : getFilesDir(),
-				Constants.WALLET_FILENAME);
 	}
 }

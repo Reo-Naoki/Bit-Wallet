@@ -21,25 +21,29 @@ import java.io.BufferedInputStream;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.Reader;
+import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.net.InetAddress;
 import java.net.URL;
 import java.net.URLConnection;
 import java.net.UnknownHostException;
 import java.util.Hashtable;
-import java.util.concurrent.CountDownLatch;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import android.app.Activity;
 import android.app.Dialog;
+import android.content.ComponentName;
+import android.content.Context;
 import android.content.Intent;
+import android.content.ServiceConnection;
 import android.graphics.Bitmap;
 import android.graphics.Color;
 import android.net.Uri;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.HandlerThread;
+import android.os.IBinder;
 import android.os.Process;
 import android.text.ClipboardManager;
 import android.view.Menu;
@@ -55,14 +59,11 @@ import android.widget.Toast;
 
 import com.google.bitcoin.core.Address;
 import com.google.bitcoin.core.AddressFormatException;
-import com.google.bitcoin.core.BlockChain;
 import com.google.bitcoin.core.ECKey;
-import com.google.bitcoin.core.NetworkConnection;
-import com.google.bitcoin.core.Peer;
 import com.google.bitcoin.core.Transaction;
-import com.google.bitcoin.core.TransactionInput;
 import com.google.bitcoin.core.Utils;
 import com.google.bitcoin.core.Wallet;
+import com.google.bitcoin.core.Wallet.BalanceType;
 import com.google.bitcoin.core.WalletEventListener;
 import com.google.zxing.BarcodeFormat;
 import com.google.zxing.EncodeHintType;
@@ -77,12 +78,55 @@ import com.google.zxing.qrcode.decoder.ErrorCorrectionLevel;
 public class WalletActivity extends Activity
 {
 	private Application application;
-	private Peer peer;
+	private Service service;
+
 	private Bitmap qrCodeBitmap;
 	private Float exchangeRate;
 
 	private HandlerThread backgroundThread;
 	private Handler backgroundHandler;
+
+	private final ServiceConnection serviceConnection = new ServiceConnection()
+	{
+		public void onServiceConnected(final ComponentName name, final IBinder binder)
+		{
+			service = ((Service.LocalBinder) binder).getService();
+			onServiceBound();
+		}
+
+		public void onServiceDisconnected(final ComponentName name)
+		{
+			service = null;
+			onServiceUnbound();
+		}
+	};
+
+	private final WalletEventListener walletEventListener = new WalletEventListener()
+	{
+		@Override
+		public void onCoinsReceived(final Wallet w, final Transaction tx, final BigInteger prevBalance, final BigInteger newBalance)
+		{
+			runOnUiThread(new Runnable()
+			{
+				public void run()
+				{
+					updateGUI();
+				}
+			});
+		}
+
+		@Override
+		public void onReorganize()
+		{
+			runOnUiThread(new Runnable()
+			{
+				public void run()
+				{
+					updateGUI();
+				}
+			});
+		}
+	};
 
 	@Override
 	protected void onCreate(final Bundle savedInstanceState)
@@ -90,6 +134,8 @@ public class WalletActivity extends Activity
 		super.onCreate(savedInstanceState);
 
 		application = (Application) getApplication();
+
+		bindService(new Intent(this, Service.class), serviceConnection, Context.BIND_AUTO_CREATE);
 
 		// background thread
 		backgroundThread = new HandlerThread("backgroundThread", Process.THREAD_PRIORITY_BACKGROUND);
@@ -105,6 +151,7 @@ public class WalletActivity extends Activity
 
 		actionBar.setIcon(R.drawable.app_icon);
 		actionBar.setPrimaryTitle(R.string.app_name);
+		actionBar.setSecondaryTitle(Constants.TEST ? "[testnet!]" : null);
 		actionBar.getButton().setImageResource(R.drawable.ic_menu_send);
 		actionBar.getButton().setOnClickListener(new OnClickListener()
 		{
@@ -113,97 +160,8 @@ public class WalletActivity extends Activity
 				openSendCoinsDialog(null);
 			}
 		});
-		actionBar.getProgressButton().setOnClickListener(new OnClickListener()
-		{
-			public void onClick(final View v)
-			{
-				if (actionBar.getProgressCount() == 0)
-				{
-					try
-					{
-						final CountDownLatch latch = peer.startBlockChainDownload();
 
-						new Thread()
-						{
-							@Override
-							public void run()
-							{
-								try
-								{
-									latch.await();
-
-									runOnUiThread(new Runnable()
-									{
-										public void run()
-										{
-											actionBar.stopProgress();
-										}
-									});
-								}
-								catch (final Exception x)
-								{
-									x.printStackTrace();
-								}
-							}
-						}.start();
-
-						actionBar.startProgress();
-					}
-					catch (final Exception x)
-					{
-						throw new RuntimeException(x);
-					}
-				}
-			}
-		});
-
-		((TextView) findViewById(R.id.bitcoin_network)).setText(Constants.TEST ? "testnet" : "prodnet");
-
-		wallet.addEventListener(new WalletEventListener()
-		{
-			@Override
-			public void onCoinsReceived(final Wallet w, final Transaction tx, final BigInteger prevBalance, final BigInteger newBalance)
-			{
-				try
-				{
-					final TransactionInput input = tx.getInputs().get(0);
-					final Address from = input.getFromAddress();
-					final BigInteger value = tx.getValueSentToMe(w);
-
-					System.out.println("!!!!!!!!!!!!! got bitcoins: " + from + " " + value + " " + Thread.currentThread().getName());
-
-					runOnUiThread(new Runnable()
-					{
-						public void run()
-						{
-							application.saveWallet();
-
-							updateGUI();
-						}
-					});
-				}
-				catch (Exception x)
-				{
-					throw new RuntimeException(x);
-				}
-			}
-
-			@Override
-			public void onReorganize()
-			{
-				System.out.println("!!!! reorganize");
-
-				runOnUiThread(new Runnable()
-				{
-					public void run()
-					{
-						application.saveWallet();
-
-						updateGUI();
-					}
-				});
-			}
-		});
+		wallet.addEventListener(walletEventListener);
 
 		updateGUI();
 
@@ -212,34 +170,6 @@ public class WalletActivity extends Activity
 		final Address address = key.toAddress(Constants.NETWORK_PARAMS);
 
 		bitcoinAddressView.setText(splitIntoLines(address.toString(), 3));
-
-		backgroundHandler.post(new Runnable()
-		{
-			public void run()
-			{
-				try
-				{
-					final InetAddress inetAddress = Constants.TEST ? InetAddress.getByName(Constants.TEST_SEED_NODE)
-							: inetAddressFromUnsignedInt(Constants.SEED_NODES[0]);
-					final NetworkConnection connection = new NetworkConnection(inetAddress, Constants.NETWORK_PARAMS);
-					final BlockChain chain = new BlockChain(Constants.NETWORK_PARAMS, wallet, application.getBlockStore());
-					peer = new Peer(Constants.NETWORK_PARAMS, connection, chain);
-					peer.start();
-
-					runOnUiThread(new Runnable()
-					{
-						public void run()
-						{
-							((TextView) findViewById(R.id.peer_host)).setText(inetAddress.getHostAddress());
-						}
-					});
-				}
-				catch (final Exception x)
-				{
-					throw new RuntimeException(x);
-				}
-			}
-		});
 
 		backgroundHandler.post(new Runnable()
 		{
@@ -321,6 +251,16 @@ public class WalletActivity extends Activity
 			openSendCoinsDialog(intentUri.getSchemeSpecificPart());
 	}
 
+	protected void onServiceBound()
+	{
+		System.out.println("service bound");
+	}
+
+	protected void onServiceUnbound()
+	{
+		System.out.println("service unbound");
+	}
+
 	@Override
 	protected void onDestroy()
 	{
@@ -330,14 +270,12 @@ public class WalletActivity extends Activity
 			qrCodeBitmap = null;
 		}
 
-		if (peer != null)
-		{
-			peer.disconnect();
-			peer = null;
-		}
-
 		// cancel background thread
 		backgroundThread.getLooper().quit();
+
+		application.getWallet().removeEventListener(walletEventListener);
+
+		unbindService(serviceConnection);
 
 		super.onDestroy();
 	}
@@ -387,7 +325,7 @@ public class WalletActivity extends Activity
 
 	private void updateGUI()
 	{
-		final BigInteger balance = application.getWallet().getBalance();
+		final BigInteger balance = application.getWallet().getBalance(BalanceType.ESTIMATED);
 		((TextView) findViewById(R.id.wallet_balance)).setText(Utils.bitcoinValueToFriendlyString(balance));
 
 		final TextView walletBalanceInDollarsView = (TextView) findViewById(R.id.wallet_balance_in_dollars);
@@ -397,8 +335,9 @@ public class WalletActivity extends Activity
 		}
 		else if (exchangeRate != null)
 		{
-			final double dollars = Utils.bitcoinValueToDouble(balance) * exchangeRate;
-			walletBalanceInDollarsView.setText(String.format("worth about US$ %.2f" + (Constants.TEST ? "\nif it were real bitcoins" : ""), dollars));
+			final BigInteger dollars = new BigDecimal(balance).multiply(new BigDecimal(exchangeRate)).toBigInteger();
+			walletBalanceInDollarsView.setText(String.format("worth about US$ %s" + (Constants.TEST ? "\nif it were real bitcoins" : ""),
+					Utils.bitcoinValueToFriendlyString(dollars)));
 		}
 	}
 
@@ -418,8 +357,7 @@ public class WalletActivity extends Activity
 				try
 				{
 					final Address receivingAddress = new Address(Constants.NETWORK_PARAMS, receivingAddressView.getText().toString());
-					final BigInteger amount = Utils.toNanoCoins(((TextView) dialog.findViewById(R.id.send_coins_amount)).getText());
-					System.out.println("about to send " + amount + " (BTC " + Utils.bitcoinValueToFriendlyString(amount) + ") to " + receivingAddress);
+					final BigInteger amount = Utils.toNanoCoins(((TextView) dialog.findViewById(R.id.send_coins_amount)).getText().toString());
 
 					backgroundHandler.post(new Runnable()
 					{
@@ -427,7 +365,7 @@ public class WalletActivity extends Activity
 						{
 							try
 							{
-								final Transaction tx = application.getWallet().sendCoins(peer, receivingAddress, amount);
+								final Transaction tx = service.sendCoins(receivingAddress, amount);
 
 								if (tx != null)
 								{
@@ -559,7 +497,7 @@ public class WalletActivity extends Activity
 	{
 		try
 		{
-			final URLConnection connection = new URL("http://mtgox.com/code/data/ticker.php").openConnection();
+			final URLConnection connection = new URL("https://mtgox.com/code/data/ticker.php").openConnection(); // https://bitmarket.eu/api/ticker
 			connection.connect();
 			final Reader is = new InputStreamReader(new BufferedInputStream(connection.getInputStream()));
 			final StringBuilder content = new StringBuilder();
