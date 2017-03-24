@@ -30,16 +30,20 @@ public class Constants
 
 	public static final String WALLET_FILENAME = TEST ? "wallet-testnet" : "wallet";
 	public static final int WALLET_MODE = TEST ? Context.MODE_WORLD_READABLE | Context.MODE_WORLD_WRITEABLE : Context.MODE_PRIVATE;
+	public static final String BLOCKCHAIN_SNAPSHOT_FILENAME = TEST ? "blockchain-snapshot-testnet" : "blockchain-snapshot";
+	public static final String BLOCKCHAIN_FILENAME = TEST ? "blockchain-testnet" : "blockchain";
 
 	public static final NetworkParameters NETWORK_PARAMS = TEST ? NetworkParameters.testNet() : NetworkParameters.prodNet();
 	public static final String PEER_DISCOVERY_IRC_CHANNEL = TEST ? "#bitcoinTEST" : "#bitcoin";
+
+	public static final int MAX_CONNECTED_PEERS = 4;
 
 	public static final String LICENSE_URL = "http://www.gnu.org/licenses/gpl-3.0.txt";
 	public static final String SOURCE_URL = "http://code.google.com/p/bitcoin-wallet/";
 	public static final String CREDITS_BITCOINJ_URL = "http://code.google.com/p/bitcoinj/";
 	public static final String CREDITS_ZXING_URL = "http://code.google.com/p/zxing/";
 	public static final String CREDITS_ICON_URL = "http://www.bitcoin.org/smf/index.php?action=profile;u=2062";
-	public static final String TWITTER_URL = "http://twitter.com/schildbach";
+	public static final String TWITTER_URL = "http://twitter.com/android_bitcoin";
 	public static final String MARKET_APP_URL = "market://details?id=%s";
 	public static final String MARKET_PUBLISHER_URL = "market://search?q=pub:\"Andreas Schildbach\"";
 }
