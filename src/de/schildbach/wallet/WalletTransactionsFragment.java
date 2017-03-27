@@ -26,6 +26,7 @@ import android.graphics.Color;
 import android.net.Uri;
 import android.os.Bundle;
 import android.os.Handler;
+import android.support.v4.app.DialogFragment;
 import android.support.v4.app.Fragment;
 import android.support.v4.app.FragmentTransaction;
 import android.view.LayoutInflater;
@@ -44,6 +45,8 @@ import com.google.bitcoin.core.Utils;
 import com.google.bitcoin.core.Wallet;
 import com.google.bitcoin.core.WalletEventListener;
 
+import de.schildbach.wallet_test.R;
+
 /**
  * @author Andreas Schildbach
  */
@@ -60,19 +63,36 @@ public class WalletTransactionsFragment extends Fragment
 	private final WalletEventListener walletEventListener = new WalletEventListener()
 	{
 		@Override
+		public void onPendingCoinsReceived(final Wallet wallet, final Transaction tx)
+		{
+			onEverything();
+		}
+
+		@Override
 		public void onCoinsReceived(final Wallet w, final Transaction tx, final BigInteger prevBalance, final BigInteger newBalance)
 		{
-			getActivity().runOnUiThread(new Runnable()
-			{
-				public void run()
-				{
-					updateView();
-				}
-			});
+			onEverything();
+		}
+
+		@Override
+		public void onCoinsSent(final Wallet wallet, final Transaction tx, final BigInteger prevBalance, final BigInteger newBalance)
+		{
+			onEverything();
 		}
 
 		@Override
 		public void onReorganize()
+		{
+			onEverything();
+		}
+
+		@Override
+		public void onDeadTransaction(final Transaction deadTx, final Transaction replacementTx)
+		{
+			onEverything();
+		}
+
+		private void onEverything()
 		{
 			getActivity().runOnUiThread(new Runnable()
 			{
@@ -161,9 +181,7 @@ public class WalletTransactionsFragment extends Fragment
 					if (prev != null)
 						ft.remove(prev);
 					ft.addToBackStack(null);
-
-					// Create and show the dialog.
-					final EditAddressBookEntryFragment newFragment = new EditAddressBookEntryFragment(getLayoutInflater(null), address.toString());
+					final DialogFragment newFragment = new EditAddressBookEntryFragment(getLayoutInflater(null), address.toString());
 					newFragment.show(ft, EditAddressBookEntryFragment.FRAGMENT_TAG);
 				}
 				catch (final ScriptException x)
@@ -175,8 +193,6 @@ public class WalletTransactionsFragment extends Fragment
 
 		wallet.addEventListener(walletEventListener);
 
-		updateView();
-
 		getActivity().getContentResolver().registerContentObserver(AddressBookProvider.CONTENT_URI, true, new ContentObserver(handler)
 		{
 			@Override
@@ -187,6 +203,14 @@ public class WalletTransactionsFragment extends Fragment
 		});
 
 		return view;
+	}
+
+	@Override
+	public void onResume()
+	{
+		super.onResume();
+
+		updateView();
 	}
 
 	@Override

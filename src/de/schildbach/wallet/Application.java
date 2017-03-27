@@ -18,53 +18,71 @@
 package de.schildbach.wallet;
 
 import java.io.BufferedInputStream;
-import java.io.File;
 import java.io.FileNotFoundException;
-import java.io.FileOutputStream;
 import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
+import java.io.InputStreamReader;
+import java.io.Reader;
 import java.math.BigInteger;
+import java.net.URL;
+import java.net.URLConnection;
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.Map;
 
-import android.content.Context;
+import org.json.JSONException;
+import org.json.JSONObject;
+
 import android.os.Handler;
 
-import com.google.bitcoin.core.BlockChain;
 import com.google.bitcoin.core.ECKey;
+import com.google.bitcoin.core.NetworkParameters;
 import com.google.bitcoin.core.Transaction;
 import com.google.bitcoin.core.Wallet;
 import com.google.bitcoin.core.WalletEventListener;
-import com.google.bitcoin.store.BlockStore;
-import com.google.bitcoin.store.BlockStoreException;
-import com.google.bitcoin.store.BoundedOverheadBlockStore;
 
 /**
  * @author Andreas Schildbach
  */
 public class Application extends android.app.Application
 {
+	private NetworkParameters networkParameters;
 	private Wallet wallet;
-	private BlockStore blockStore;
-	private BlockChain blockChain;
 
 	private final Handler handler = new Handler();
 
 	final private WalletEventListener walletEventListener = new WalletEventListener()
 	{
 		@Override
+		public void onPendingCoinsReceived(final Wallet wallet, final Transaction tx)
+		{
+			onEverything();
+		}
+
+		@Override
 		public void onCoinsReceived(final Wallet w, final Transaction tx, final BigInteger prevBalance, final BigInteger newBalance)
 		{
-			handler.post(new Runnable()
-			{
-				public void run()
-				{
-					saveWallet();
-				}
-			});
+			onEverything();
+		}
+
+		@Override
+		public void onCoinsSent(final Wallet wallet, final Transaction tx, final BigInteger prevBalance, final BigInteger newBalance)
+		{
+			onEverything();
 		}
 
 		@Override
 		public void onReorganize()
+		{
+			onEverything();
+		}
+
+		@Override
+		public void onDeadTransaction(final Transaction deadTx, final Transaction replacementTx)
+		{
+			onEverything();
+		}
+
+		private void onEverything()
 		{
 			handler.post(new Runnable()
 			{
@@ -81,48 +99,18 @@ public class Application extends android.app.Application
 	{
 		super.onCreate();
 
+		ErrorReporter.getInstance().init(this);
+
+		networkParameters = Constants.TEST ? NetworkParameters.testNet() : NetworkParameters.prodNet();
+
 		loadWallet();
 
 		wallet.addEventListener(walletEventListener);
+	}
 
-		try
-		{
-			final File file = new File(getDir("blockstore", Context.MODE_WORLD_READABLE | Context.MODE_WORLD_WRITEABLE),
-					Constants.BLOCKCHAIN_FILENAME);
-
-			if (!file.exists())
-			{
-				// copy snapshot
-				try
-				{
-					final long t = System.currentTimeMillis();
-
-					final InputStream is = new BufferedInputStream(getAssets().open(Constants.BLOCKCHAIN_SNAPSHOT_FILENAME));
-					final OutputStream os = new FileOutputStream(file);
-
-					System.out.println("copying blockchain snapshot");
-					final byte[] buf = new byte[8192];
-					int read;
-					while (-1 != (read = is.read(buf)))
-						os.write(buf, 0, read);
-					os.close();
-					is.close();
-					System.out.println("finished copying, took " + (System.currentTimeMillis() - t) + " ms");
-				}
-				catch (final IOException x)
-				{
-					file.delete();
-				}
-			}
-
-			blockStore = new BoundedOverheadBlockStore(Constants.NETWORK_PARAMS, file);
-
-			blockChain = new BlockChain(Constants.NETWORK_PARAMS, wallet, blockStore);
-		}
-		catch (final BlockStoreException x)
-		{
-			throw new Error("blockstore cannot be created", x);
-		}
+	public NetworkParameters getNetworkParameters()
+	{
+		return networkParameters;
 	}
 
 	public Wallet getWallet()
@@ -130,32 +118,25 @@ public class Application extends android.app.Application
 		return wallet;
 	}
 
-	public BlockStore getBlockStore()
-	{
-		return blockStore;
-	}
-
-	public BlockChain getBlockChain()
-	{
-		return blockChain;
-	}
-
 	private void loadWallet()
 	{
+		final String filename = Constants.TEST ? Constants.WALLET_FILENAME_TEST : Constants.WALLET_FILENAME_PROD;
+		final int mode = Constants.TEST ? Constants.WALLET_MODE_TEST : Constants.WALLET_MODE_PROD;
+
 		try
 		{
-			wallet = Wallet.loadFromFileStream(openFileInput(Constants.WALLET_FILENAME));
-			System.out.println("wallet loaded from: " + getFilesDir() + "/" + Constants.WALLET_FILENAME);
+			wallet = Wallet.loadFromFileStream(openFileInput(filename));
+			System.out.println("wallet loaded from: " + getFilesDir() + "/" + filename);
 		}
 		catch (final FileNotFoundException x)
 		{
-			wallet = new Wallet(Constants.NETWORK_PARAMS);
+			wallet = new Wallet(networkParameters);
 			wallet.keychain.add(new ECKey());
 
 			try
 			{
-				wallet.saveToFileStream(openFileOutput(Constants.WALLET_FILENAME, Constants.WALLET_MODE));
-				System.out.println("wallet created: " + getFilesDir() + "/" + Constants.WALLET_FILENAME);
+				wallet.saveToFileStream(openFileOutput(filename, mode));
+				System.out.println("wallet created: " + getFilesDir() + "/" + filename);
 			}
 			catch (final IOException x2)
 			{
@@ -170,14 +151,77 @@ public class Application extends android.app.Application
 
 	public void saveWallet()
 	{
+		final String filename = Constants.TEST ? Constants.WALLET_FILENAME_TEST : Constants.WALLET_FILENAME_PROD;
+		final int mode = Constants.TEST ? Constants.WALLET_MODE_TEST : Constants.WALLET_MODE_PROD;
+
 		try
 		{
-			wallet.saveToFileStream(openFileOutput(Constants.WALLET_FILENAME, Constants.WALLET_MODE));
-			System.out.println("wallet saved to: " + getFilesDir() + "/" + Constants.WALLET_FILENAME);
+			wallet.saveToFileStream(openFileOutput(filename, mode));
+			System.out.println("wallet saved to: " + getFilesDir() + "/" + filename);
 		}
 		catch (IOException x)
 		{
 			throw new RuntimeException(x);
 		}
+	}
+
+	public Map<String, Double> getExchangeRates()
+	{
+		try
+		{
+			final URLConnection connection = new URL("http://bitcoincharts.com/t/weighted_prices.json").openConnection();
+			// https://mtgox.com/code/data/ticker.php
+			// https://bitmarket.eu/api/ticker
+			// http://bitcoincharts.com/t/weighted_prices.json
+
+			connection.connect();
+			final Reader is = new InputStreamReader(new BufferedInputStream(connection.getInputStream()));
+			final StringBuilder content = new StringBuilder();
+			copy(is, content);
+			is.close();
+
+			final Map<String, Double> rates = new HashMap<String, Double>();
+
+			final JSONObject head = new JSONObject(content.toString());
+			for (final Iterator<String> i = head.keys(); i.hasNext();)
+			{
+				final String currencyCode = i.next();
+
+				final JSONObject o = head.getJSONObject(currencyCode);
+				double rate = o.optDouble("24h", 0);
+				if (rate == 0)
+					rate = o.optDouble("7d", 0);
+				if (rate == 0)
+					rate = o.optDouble("30d", 0);
+
+				if (rate != 0)
+					rates.put(currencyCode, rate);
+			}
+
+			return rates;
+		}
+		catch (final IOException x)
+		{
+			x.printStackTrace();
+		}
+		catch (final JSONException x)
+		{
+			x.printStackTrace();
+		}
+
+		return null;
+	}
+
+	private static final long copy(final Reader reader, final StringBuilder builder) throws IOException
+	{
+		final char[] buffer = new char[256];
+		long count = 0;
+		int n = 0;
+		while (-1 != (n = reader.read(buffer)))
+		{
+			builder.append(buffer, 0, n);
+			count += n;
+		}
+		return count;
 	}
 }

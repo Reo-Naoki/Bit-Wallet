@@ -24,15 +24,14 @@ import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.net.Uri;
 import android.os.Bundle;
-import android.support.v4.app.FragmentActivity;
 import android.view.View;
 import android.view.View.OnClickListener;
-import android.widget.Toast;
+import de.schildbach.wallet_test.R;
 
 /**
  * @author Andreas Schildbach
  */
-public class SendCoinsActivity extends FragmentActivity
+public class SendCoinsActivity extends AbstractWalletActivity
 {
 	private static final Intent zxingIntent = new Intent().setClassName("com.google.zxing.client.android",
 			"com.google.zxing.client.android.CaptureActivity");
@@ -47,8 +46,9 @@ public class SendCoinsActivity extends FragmentActivity
 		setContentView(R.layout.send_coins_content);
 
 		final ActionBarFragment actionBar = (ActionBarFragment) getSupportFragmentManager().findFragmentById(R.id.action_bar_fragment);
-		actionBar.setIcon(R.drawable.app_icon);
+		actionBar.setIcon(Constants.APP_ICON_RESID);
 		actionBar.setPrimaryTitle("Send Bitcoins");
+		actionBar.setSecondaryTitle(Constants.TEST ? "[testnet!]" : null);
 
 		actionBar.addButton(R.drawable.ic_menu_qr).setOnClickListener(new OnClickListener()
 		{
@@ -60,7 +60,7 @@ public class SendCoinsActivity extends FragmentActivity
 				else if (pm.resolveActivity(gogglesIntent, 0) != null)
 					startActivity(gogglesIntent);
 				else
-					Toast.makeText(SendCoinsActivity.this, "Please install Goggles or Zxing QR-code scanner!", Toast.LENGTH_LONG).show();
+					longToast("Please install Goggles or Zxing QR-code scanner!");
 			}
 		});
 

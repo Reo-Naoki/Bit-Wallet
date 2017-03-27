@@ -14,6 +14,7 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
+
 package de.schildbach.wallet;
 
 import android.app.Activity;
@@ -30,11 +31,12 @@ import android.view.View.OnClickListener;
 import android.view.ViewGroup;
 import android.widget.EditText;
 import android.widget.ImageView;
-import android.widget.Toast;
 
 import com.google.bitcoin.core.Address;
 import com.google.bitcoin.core.ECKey;
 import com.google.bitcoin.core.Wallet;
+
+import de.schildbach.wallet_test.R;
 
 /**
  * @author Andreas Schildbach
@@ -61,7 +63,7 @@ public class RequestCoinsFragment extends Fragment
 				final ClipboardManager clipboardManager = (ClipboardManager) getActivity().getSystemService(Context.CLIPBOARD_SERVICE);
 				final String addressStr = determineAddressStr();
 				clipboardManager.setText(addressStr);
-				Toast.makeText(getActivity(), "bitcoin request uri pasted to clipboard", Toast.LENGTH_SHORT).show();
+				((AbstractWalletActivity) getActivity()).toast("Bitcoin request pasted to clipboard");
 
 				System.out.println("bitcoin request uri: " + addressStr + (Constants.TEST ? " (testnet!)" : ""));
 			}
@@ -103,21 +105,22 @@ public class RequestCoinsFragment extends Fragment
 			{
 				startActivity(Intent.createChooser(
 						new Intent(Intent.ACTION_SEND).putExtra(Intent.EXTRA_TEXT, determineAddressStr()).setType("text/plain"),
-						"Share your bitcoin address..."));
+						"Share request for Bitcoins..."));
 			}
 		});
 	}
 
 	private void updateView()
 	{
-		qrView.setImageBitmap(WalletUtils.getQRCodeBitmap(determineAddressStr()));
+		final int size = (int) (256 * getResources().getDisplayMetrics().density);
+		qrView.setImageBitmap(WalletUtils.getQRCodeBitmap(determineAddressStr(), size));
 	}
 
 	private String determineAddressStr()
 	{
 		final Wallet wallet = application.getWallet();
 		final ECKey key = wallet.keychain.get(0);
-		final Address address = key.toAddress(Constants.NETWORK_PARAMS);
+		final Address address = key.toAddress(application.getNetworkParameters());
 
 		final StringBuilder builder = new StringBuilder("bitcoin:");
 		builder.append(address.toString());

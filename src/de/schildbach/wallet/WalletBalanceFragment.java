@@ -17,24 +17,24 @@
 
 package de.schildbach.wallet;
 
-import java.io.BufferedInputStream;
-import java.io.IOException;
-import java.io.InputStreamReader;
-import java.io.Reader;
 import java.math.BigDecimal;
 import java.math.BigInteger;
-import java.net.URL;
-import java.net.URLConnection;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
+import java.util.Map;
 
+import android.content.SharedPreferences;
+import android.graphics.Color;
+import android.graphics.Paint;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.HandlerThread;
 import android.os.Process;
+import android.preference.PreferenceManager;
 import android.support.v4.app.Fragment;
+import android.support.v4.app.FragmentManager;
+import android.support.v4.app.FragmentTransaction;
 import android.view.LayoutInflater;
 import android.view.View;
+import android.view.View.OnClickListener;
 import android.view.ViewGroup;
 import android.widget.TextView;
 
@@ -43,6 +43,8 @@ import com.google.bitcoin.core.Utils;
 import com.google.bitcoin.core.Wallet;
 import com.google.bitcoin.core.Wallet.BalanceType;
 import com.google.bitcoin.core.WalletEventListener;
+
+import de.schildbach.wallet_test.R;
 
 /**
  * @author Andreas Schildbach
@@ -53,28 +55,46 @@ public class WalletBalanceFragment extends Fragment
 
 	private HandlerThread backgroundThread;
 	private Handler backgroundHandler;
+	private final Handler handler = new Handler();
 
 	private TextView viewBalance;
-	private TextView viewBalanceInDollars;
+	private TextView viewBalanceLocal;
 
-	private Float exchangeRate;
+	private Map<String, Double> exchangeRates;
 
 	private final WalletEventListener walletEventListener = new WalletEventListener()
 	{
 		@Override
+		public void onPendingCoinsReceived(final Wallet wallet, final Transaction tx)
+		{
+			onEverything();
+		}
+
+		@Override
 		public void onCoinsReceived(final Wallet w, final Transaction tx, final BigInteger prevBalance, final BigInteger newBalance)
 		{
-			getActivity().runOnUiThread(new Runnable()
-			{
-				public void run()
-				{
-					updateView();
-				}
-			});
+			onEverything();
+		}
+
+		@Override
+		public void onCoinsSent(final Wallet wallet, final Transaction tx, final BigInteger prevBalance, final BigInteger newBalance)
+		{
+			onEverything();
 		}
 
 		@Override
 		public void onReorganize()
+		{
+			onEverything();
+		}
+
+		@Override
+		public void onDeadTransaction(final Transaction deadTx, final Transaction replacementTx)
+		{
+			onEverything();
+		}
+
+		private void onEverything()
 		{
 			getActivity().runOnUiThread(new Runnable()
 			{
@@ -91,7 +111,7 @@ public class WalletBalanceFragment extends Fragment
 	{
 		final View view = inflater.inflate(R.layout.wallet_balance_fragment, container, false);
 		viewBalance = (TextView) view.findViewById(R.id.wallet_balance);
-		viewBalanceInDollars = (TextView) view.findViewById(R.id.wallet_balance_in_dollars);
+		viewBalanceLocal = (TextView) view.findViewById(R.id.wallet_balance_local);
 
 		application = (Application) getActivity().getApplication();
 		final Wallet wallet = application.getWallet();
@@ -103,23 +123,21 @@ public class WalletBalanceFragment extends Fragment
 
 		wallet.addEventListener(walletEventListener);
 
-		updateView();
-
 		backgroundHandler.post(new Runnable()
 		{
 			public void run()
 			{
 				try
 				{
-					final Float newExchangeRate = getExchangeRate();
+					final Map<String, Double> newExchangeRates = application.getExchangeRates();
 
-					if (newExchangeRate != null)
+					if (newExchangeRates != null)
 					{
 						getActivity().runOnUiThread(new Runnable()
 						{
 							public void run()
 							{
-								exchangeRate = newExchangeRate;
+								exchangeRates = newExchangeRates;
 								updateView();
 							}
 						});
@@ -133,7 +151,30 @@ public class WalletBalanceFragment extends Fragment
 			}
 		});
 
+		view.setOnClickListener(new OnClickListener()
+		{
+			public void onClick(final View v)
+			{
+				final FragmentManager fm = getFragmentManager();
+				final FragmentTransaction ft = fm.beginTransaction();
+				ft.hide(fm.findFragmentById(R.id.wallet_address_fragment));
+				ft.hide(fm.findFragmentById(R.id.wallet_transactions_fragment));
+				ft.show(fm.findFragmentById(R.id.exchange_rates_fragment));
+				ft.setTransition(FragmentTransaction.TRANSIT_FRAGMENT_OPEN);
+				ft.addToBackStack(null);
+				ft.commit();
+			}
+		});
+
 		return view;
+	}
+
+	@Override
+	public void onResume()
+	{
+		super.onResume();
+
+		updateView();
 	}
 
 	@Override
@@ -154,51 +195,35 @@ public class WalletBalanceFragment extends Fragment
 
 		if (balance.equals(BigInteger.ZERO))
 		{
-			viewBalanceInDollars.setText(null);
+			viewBalanceLocal.setText(null);
 		}
-		else if (exchangeRate != null)
+		else if (exchangeRates != null)
 		{
-			final BigInteger dollars = new BigDecimal(balance).multiply(new BigDecimal(exchangeRate)).toBigInteger();
-			viewBalanceInDollars.setText(String.format("worth about US$ %s" + (Constants.TEST ? "\nif it were real bitcoins" : ""),
-					Utils.bitcoinValueToFriendlyString(dollars)));
+			final SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(getActivity());
+			final String exchangeCurrency = prefs.getString(Constants.PREFS_KEY_EXCHANGE_CURRENCY, "USD");
+			final Double exchangeRate = exchangeRates.get(exchangeCurrency);
+			if (exchangeRate != null)
+			{
+				final BigInteger valueLocal = new BigDecimal(balance).multiply(new BigDecimal(exchangeRate)).toBigInteger();
+				viewBalanceLocal.setText(String.format("worth about %s %s", exchangeCurrency, Utils.bitcoinValueToFriendlyString(valueLocal)));
+				if (Constants.TEST)
+					viewBalanceLocal.setPaintFlags(viewBalanceLocal.getPaintFlags() | Paint.STRIKE_THRU_TEXT_FLAG);
+			}
 		}
 	}
 
-	private static final Pattern P_EXCHANGE_RATE = Pattern.compile("\"last\":(\\d*\\.\\d*)[^\\d]");
-
-	private static Float getExchangeRate()
+	private Runnable resetColorRunnable = new Runnable()
 	{
-		try
+		public void run()
 		{
-			final URLConnection connection = new URL("https://mtgox.com/code/data/ticker.php").openConnection(); // https://bitmarket.eu/api/ticker
-			connection.connect();
-			final Reader is = new InputStreamReader(new BufferedInputStream(connection.getInputStream()));
-			final StringBuilder content = new StringBuilder();
-			copy(is, content);
-			is.close();
-
-			final Matcher m = P_EXCHANGE_RATE.matcher(content);
-			if (m.find())
-				return Float.parseFloat(m.group(1));
+			viewBalanceLocal.setTextColor(Color.parseColor("#888888"));
 		}
-		catch (final IOException x)
-		{
-			x.printStackTrace();
-		}
+	};
 
-		return null;
-	}
-
-	private static final long copy(final Reader reader, final StringBuilder builder) throws IOException
+	public void flashLocal()
 	{
-		final char[] buffer = new char[256];
-		long count = 0;
-		int n = 0;
-		while (-1 != (n = reader.read(buffer)))
-		{
-			builder.append(buffer, 0, n);
-			count += n;
-		}
-		return count;
+		viewBalanceLocal.setTextColor(Color.parseColor("#cc5500"));
+		handler.removeCallbacks(resetColorRunnable);
+		handler.postDelayed(resetColorRunnable, 500);
 	}
 }

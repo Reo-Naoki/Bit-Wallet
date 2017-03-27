@@ -14,15 +14,16 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
+
 package de.schildbach.wallet;
 
 import android.os.Bundle;
-import android.support.v4.app.FragmentActivity;
+import de.schildbach.wallet_test.R;
 
 /**
  * @author Andreas Schildbach
  */
-public class RequestCoinsActivity extends FragmentActivity
+public class RequestCoinsActivity extends AbstractWalletActivity
 {
 	@Override
 	protected void onCreate(final Bundle savedInstanceState)
@@ -32,7 +33,8 @@ public class RequestCoinsActivity extends FragmentActivity
 		setContentView(R.layout.request_coins_content);
 
 		final ActionBarFragment actionBar = (ActionBarFragment) getSupportFragmentManager().findFragmentById(R.id.action_bar_fragment);
-		actionBar.setIcon(R.drawable.app_icon);
+		actionBar.setIcon(Constants.APP_ICON_RESID);
 		actionBar.setPrimaryTitle("Request Bitcoins");
+		actionBar.setSecondaryTitle(Constants.TEST ? "[testnet!]" : null);
 	}
 }

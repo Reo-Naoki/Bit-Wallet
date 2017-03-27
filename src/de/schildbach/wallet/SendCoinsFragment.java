@@ -38,12 +38,13 @@ import android.widget.AutoCompleteTextView;
 import android.widget.Button;
 import android.widget.CursorAdapter;
 import android.widget.TextView;
-import android.widget.Toast;
 
 import com.google.bitcoin.core.Address;
 import com.google.bitcoin.core.AddressFormatException;
 import com.google.bitcoin.core.Transaction;
 import com.google.bitcoin.core.Utils;
+
+import de.schildbach.wallet_test.R;
 
 /**
  * @author Andreas Schildbach
@@ -100,7 +101,7 @@ public class SendCoinsFragment extends Fragment
 				{
 					final String address = s.toString().trim();
 					if (address.length() > 0)
-						new Address(Constants.NETWORK_PARAMS, address);
+						new Address(application.getNetworkParameters(), address);
 					receivingAddressErrorView.setVisibility(View.GONE);
 				}
 				catch (AddressFormatException e)
@@ -129,7 +130,7 @@ public class SendCoinsFragment extends Fragment
 			{
 				try
 				{
-					final Address receivingAddress = new Address(Constants.NETWORK_PARAMS, receivingAddressView.getText().toString().trim());
+					final Address receivingAddress = new Address(application.getNetworkParameters(), receivingAddressView.getText().toString().trim());
 					final BigInteger amount = Utils.toNanoCoins(amountView.getText().toString());
 
 					System.out.println("about to send " + amount + " (BTC " + Utils.bitcoinValueToFriendlyString(amount) + ") to " + receivingAddress);
@@ -155,11 +156,11 @@ public class SendCoinsFragment extends Fragment
 							}
 						}, 5000);
 
-						Toast.makeText(getActivity(), Utils.bitcoinValueToFriendlyString(amount) + " BTC sent!", Toast.LENGTH_LONG).show();
+						((AbstractWalletActivity) getActivity()).longToast(Utils.bitcoinValueToFriendlyString(amount) + " BTC sent!");
 					}
 					else
 					{
-						Toast.makeText(getActivity(), "problem sending coins!", Toast.LENGTH_LONG).show();
+						((AbstractWalletActivity) getActivity()).longToast("problem sending coins!");
 						getActivity().finish();
 					}
 				}

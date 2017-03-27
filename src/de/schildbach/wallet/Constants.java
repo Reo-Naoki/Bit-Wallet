@@ -18,8 +18,7 @@
 package de.schildbach.wallet;
 
 import android.content.Context;
-
-import com.google.bitcoin.core.NetworkParameters;
+import de.schildbach.wallet_test.R;
 
 /**
  * @author Andreas Schildbach
@@ -28,15 +27,19 @@ public class Constants
 {
 	public static final boolean TEST = true;
 
-	public static final String WALLET_FILENAME = TEST ? "wallet-testnet" : "wallet";
-	public static final int WALLET_MODE = TEST ? Context.MODE_WORLD_READABLE | Context.MODE_WORLD_WRITEABLE : Context.MODE_PRIVATE;
-	public static final String BLOCKCHAIN_SNAPSHOT_FILENAME = TEST ? "blockchain-snapshot-testnet" : "blockchain-snapshot";
-	public static final String BLOCKCHAIN_FILENAME = TEST ? "blockchain-testnet" : "blockchain";
+	public static final String WALLET_FILENAME_PROD = "wallet";
+	public static final String WALLET_FILENAME_TEST = "wallet-testnet";
+	public static final int WALLET_MODE_PROD = Context.MODE_PRIVATE;
+	public static final int WALLET_MODE_TEST = Context.MODE_WORLD_READABLE | Context.MODE_WORLD_WRITEABLE;
+	public static final String BLOCKCHAIN_SNAPSHOT_FILENAME_PROD = "blockchain-snapshot";
+	public static final String BLOCKCHAIN_SNAPSHOT_FILENAME_TEST = "blockchain-snapshot-testnet";
+	public static final String BLOCKCHAIN_FILENAME_PROD = "blockchain";
+	public static final String BLOCKCHAIN_FILENAME_TEST = "blockchain-testnet";
+	public static final String PEER_DISCOVERY_IRC_CHANNEL_PROD = "#bitcoin";
+	public static final String PEER_DISCOVERY_IRC_CHANNEL_TEST = "#bitcoinTEST";
+	public static final int APP_ICON_RESID = Constants.TEST ? R.drawable.app_icon_test : R.drawable.app_icon;
 
-	public static final NetworkParameters NETWORK_PARAMS = TEST ? NetworkParameters.testNet() : NetworkParameters.prodNet();
-	public static final String PEER_DISCOVERY_IRC_CHANNEL = TEST ? "#bitcoinTEST" : "#bitcoin";
-
-	public static final int MAX_CONNECTED_PEERS = 4;
+	public static final int MAX_CONNECTED_PEERS = 6;
 
 	public static final String LICENSE_URL = "http://www.gnu.org/licenses/gpl-3.0.txt";
 	public static final String SOURCE_URL = "http://code.google.com/p/bitcoin-wallet/";
@@ -46,4 +49,6 @@ public class Constants
 	public static final String TWITTER_URL = "http://twitter.com/android_bitcoin";
 	public static final String MARKET_APP_URL = "market://details?id=%s";
 	public static final String MARKET_PUBLISHER_URL = "market://search?q=pub:\"Andreas Schildbach\"";
+
+	public static final String PREFS_KEY_EXCHANGE_CURRENCY = "exchange_currency";
 }

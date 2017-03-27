@@ -32,11 +32,12 @@ import android.view.ViewGroup;
 import android.view.Window;
 import android.widget.ImageView;
 import android.widget.TextView;
-import android.widget.Toast;
 
 import com.google.bitcoin.core.Address;
 import com.google.bitcoin.core.ECKey;
 import com.google.bitcoin.core.Wallet;
+
+import de.schildbach.wallet_test.R;
 
 /**
  * @author Andreas Schildbach
@@ -55,7 +56,7 @@ public class WalletAddressFragment extends Fragment
 
 		System.out.println(wallet.keychain.size() + " key(s) in keychain");
 		final ECKey key = wallet.keychain.get(0);
-		final Address address = key.toAddress(Constants.NETWORK_PARAMS);
+		final Address address = key.toAddress(application.getNetworkParameters());
 
 		final TextView bitcoinAddressView = (TextView) view.findViewById(R.id.bitcoin_address);
 		bitcoinAddressView.setText(WalletUtils.splitIntoLines(address.toString(), 3));
@@ -63,7 +64,7 @@ public class WalletAddressFragment extends Fragment
 		final ImageView bitcoinAddressQrView = (ImageView) view.findViewById(R.id.bitcoin_address_qr);
 
 		// populate qrcode representation of bitcoin address
-		qrCodeBitmap = WalletUtils.getQRCodeBitmap("bitcoin:" + address.toString());
+		qrCodeBitmap = WalletUtils.getQRCodeBitmap("bitcoin:" + address.toString(), 256);
 		bitcoinAddressQrView.setImageBitmap(qrCodeBitmap);
 
 		bitcoinAddressView.setOnClickListener(new OnClickListener()
@@ -72,7 +73,7 @@ public class WalletAddressFragment extends Fragment
 			{
 				ClipboardManager clipboardManager = (ClipboardManager) getActivity().getSystemService(Context.CLIPBOARD_SERVICE);
 				clipboardManager.setText(address.toString());
-				Toast.makeText(getActivity(), "bitcoin address pasted to clipboard", Toast.LENGTH_SHORT).show();
+				((AbstractWalletActivity) getActivity()).toast("Bitcoin address pasted to clipboard");
 
 				System.out.println("my bitcoin address: " + address + (Constants.TEST ? " (testnet!)" : ""));
 			}
