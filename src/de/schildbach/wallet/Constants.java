@@ -25,18 +25,37 @@ import de.schildbach.wallet_test.R;
  */
 public class Constants
 {
-	public static final boolean TEST = true;
+	public static final boolean TEST = R.class.getPackage().getName().contains("_test");
 
 	public static final String WALLET_FILENAME_PROD = "wallet";
 	public static final String WALLET_FILENAME_TEST = "wallet-testnet";
+
+	private static final String WALLET_KEY_BACKUP_ASN1_PROD = "key-backup-asn1";
+	private static final String WALLET_KEY_BACKUP_ASN1_TEST = "key-backup-asn1-testnet";
+	public static final String WALLET_KEY_BACKUP_ASN1 = Constants.TEST ? WALLET_KEY_BACKUP_ASN1_TEST : WALLET_KEY_BACKUP_ASN1_PROD;
+
+	private static final String WALLET_KEY_BACKUP_BASE58_PROD = "key-backup-base58";
+	private static final String WALLET_KEY_BACKUP_BASE58_TEST = "key-backup-base58-testnet";
+	public static final String WALLET_KEY_BACKUP_BASE58 = Constants.TEST ? WALLET_KEY_BACKUP_BASE58_TEST : WALLET_KEY_BACKUP_BASE58_PROD;
+
 	public static final int WALLET_MODE_PROD = Context.MODE_PRIVATE;
 	public static final int WALLET_MODE_TEST = Context.MODE_WORLD_READABLE | Context.MODE_WORLD_WRITEABLE;
-	public static final String BLOCKCHAIN_SNAPSHOT_FILENAME_PROD = "blockchain-snapshot";
-	public static final String BLOCKCHAIN_SNAPSHOT_FILENAME_TEST = "blockchain-snapshot-testnet";
+	public static final int WALLET_MODE = Constants.TEST ? WALLET_MODE_TEST : WALLET_MODE_PROD;
+
+	public static final String BLOCKCHAIN_SNAPSHOT_FILENAME_PROD = "blockchain-snapshot.jpg";
+	public static final String BLOCKCHAIN_SNAPSHOT_FILENAME_TEST = "blockchain-snapshot-testnet.jpg";
+
+	public static final long BLOCKCHAIN_SNAPSHOT_COPY_THRESHOLD = Constants.TEST ? 3000000 : 10000000;
+
 	public static final String BLOCKCHAIN_FILENAME_PROD = "blockchain";
 	public static final String BLOCKCHAIN_FILENAME_TEST = "blockchain-testnet";
+
 	public static final String PEER_DISCOVERY_IRC_CHANNEL_PROD = "#bitcoin";
 	public static final String PEER_DISCOVERY_IRC_CHANNEL_TEST = "#bitcoinTEST";
+
+	public static final String PACKAGE_NAME_PROD = "de.schildbach.wallet";
+	public static final String PACKAGE_NAME_TEST = "de.schildbach.wallet" + '_' + "test"; // protected against replace
+
 	public static final int APP_ICON_RESID = Constants.TEST ? R.drawable.app_icon_test : R.drawable.app_icon;
 
 	public static final int MAX_CONNECTED_PEERS = 6;
@@ -46,7 +65,8 @@ public class Constants
 	public static final String CREDITS_BITCOINJ_URL = "http://code.google.com/p/bitcoinj/";
 	public static final String CREDITS_ZXING_URL = "http://code.google.com/p/zxing/";
 	public static final String CREDITS_ICON_URL = "http://www.bitcoin.org/smf/index.php?action=profile;u=2062";
-	public static final String TWITTER_URL = "http://twitter.com/android_bitcoin";
+	public static final String AUTHOR_TWITTER_URL = "http://twitter.com/android_bitcoin";
+	public static final String AUTHOR_GOOGLEPLUS_URL = "https://profiles.google.com/andreas.schildbach";
 	public static final String MARKET_APP_URL = "market://details?id=%s";
 	public static final String MARKET_PUBLISHER_URL = "market://search?q=pub:\"Andreas Schildbach\"";
 

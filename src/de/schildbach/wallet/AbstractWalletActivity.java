@@ -17,6 +17,8 @@
 
 package de.schildbach.wallet;
 
+import java.util.Locale;
+
 import android.os.Bundle;
 import android.support.v4.app.FragmentActivity;
 import android.view.View;
@@ -27,7 +29,7 @@ import de.schildbach.wallet_test.R;
 /**
  * @author Andreas Schildbach
  */
-public class AbstractWalletActivity extends FragmentActivity
+public abstract class AbstractWalletActivity extends FragmentActivity
 {
 	private Application application;
 
@@ -65,5 +67,37 @@ public class AbstractWalletActivity extends FragmentActivity
 		toast.setView(view);
 		toast.setDuration(duration);
 		toast.show();
+	}
+
+	protected final void toast(final int textResId, final Object... formatArgs)
+	{
+		toast(textResId, 0, Toast.LENGTH_SHORT, formatArgs);
+	}
+
+	protected final void longToast(final int textResId, final Object... formatArgs)
+	{
+		toast(textResId, 0, Toast.LENGTH_LONG, formatArgs);
+	}
+
+	protected final void toast(final int textResId, final int imageResId, final int duration, final Object... formatArgs)
+	{
+		final View view = getLayoutInflater().inflate(R.layout.transient_notification, null);
+		TextView tv = (TextView) view.findViewById(R.id.transient_notification_text);
+		tv.setText(textResId);
+		tv.setCompoundDrawablesWithIntrinsicBounds(imageResId, 0, 0, 0);
+
+		final Toast toast = new Toast(this);
+		toast.setView(view);
+		toast.setDuration(duration);
+		toast.show();
+	}
+
+	protected final static String languagePrefix()
+	{
+		final String language = Locale.getDefault().getLanguage();
+		if ("de".equals(language))
+			return "_de";
+		else
+			return "";
 	}
 }

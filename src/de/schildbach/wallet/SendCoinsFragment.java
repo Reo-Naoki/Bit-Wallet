@@ -19,15 +19,20 @@ package de.schildbach.wallet;
 
 import java.math.BigInteger;
 
+import android.app.AlertDialog;
 import android.content.ComponentName;
 import android.content.Context;
+import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.ServiceConnection;
 import android.database.Cursor;
+import android.net.Uri;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.IBinder;
+import android.support.v4.app.DialogFragment;
 import android.support.v4.app.Fragment;
+import android.support.v4.app.FragmentTransaction;
 import android.text.Editable;
 import android.text.TextWatcher;
 import android.view.LayoutInflater;
@@ -43,6 +48,7 @@ import com.google.bitcoin.core.Address;
 import com.google.bitcoin.core.AddressFormatException;
 import com.google.bitcoin.core.Transaction;
 import com.google.bitcoin.core.Utils;
+import com.google.bitcoin.core.Wallet.BalanceType;
 
 import de.schildbach.wallet_test.R;
 
@@ -57,7 +63,10 @@ public class SendCoinsFragment extends Fragment
 	private final Handler handler = new Handler();
 
 	private AutoCompleteTextView receivingAddressView;
+	private View receivingAddressErrorView;
 	private TextView amountView;
+	private View amountErrorView;
+	private Button viewGo;
 
 	private final ServiceConnection serviceConnection = new ServiceConnection()
 	{
@@ -71,6 +80,22 @@ public class SendCoinsFragment extends Fragment
 		{
 			service = null;
 			onServiceUnbound();
+		}
+	};
+
+	private final TextWatcher textWatcher = new TextWatcher()
+	{
+		public void afterTextChanged(final Editable s)
+		{
+			updateView();
+		}
+
+		public void beforeTextChanged(final CharSequence s, final int start, final int count, final int after)
+		{
+		}
+
+		public void onTextChanged(final CharSequence s, final int start, final int before, final int count)
+		{
 		}
 	};
 
@@ -88,42 +113,34 @@ public class SendCoinsFragment extends Fragment
 	public View onCreateView(final LayoutInflater inflater, final ViewGroup container, final Bundle savedInstanceState)
 	{
 		final View view = inflater.inflate(R.layout.send_coins_fragment, container);
+		final float density = getResources().getDisplayMetrics().density;
 
-		final View receivingAddressErrorView = view.findViewById(R.id.send_coins_receiving_address_error);
+		final BigInteger estimated = application.getWallet().getBalance(BalanceType.ESTIMATED);
+		final BigInteger available = application.getWallet().getBalance(BalanceType.AVAILABLE);
+		final BigInteger pending = estimated.subtract(available);
+		// TODO subscribe to wallet changes
 
 		receivingAddressView = (AutoCompleteTextView) view.findViewById(R.id.send_coins_receiving_address);
 		receivingAddressView.setAdapter(new AutoCompleteAdapter(getActivity(), null));
-		receivingAddressView.addTextChangedListener(new TextWatcher()
-		{
-			public void afterTextChanged(final Editable s)
-			{
-				try
-				{
-					final String address = s.toString().trim();
-					if (address.length() > 0)
-						new Address(application.getNetworkParameters(), address);
-					receivingAddressErrorView.setVisibility(View.GONE);
-				}
-				catch (AddressFormatException e)
-				{
-					receivingAddressErrorView.setVisibility(View.VISIBLE);
-				}
-			}
+		receivingAddressView.addTextChangedListener(textWatcher);
 
-			public void beforeTextChanged(final CharSequence s, final int start, final int count, final int after)
-			{
-			}
+		receivingAddressErrorView = view.findViewById(R.id.send_coins_receiving_address_error);
 
-			public void onTextChanged(final CharSequence s, final int start, final int before, final int count)
-			{
-			}
-		});
+		final TextView availableView = (TextView) view.findViewById(R.id.send_coins_available);
+		availableView.setCompoundDrawablesWithIntrinsicBounds(new BtcDrawable(24f * density, 10.5f * density), null, null, null);
+		availableView.setText(Utils.bitcoinValueToFriendlyString(available));
+
+		final TextView pendingView = (TextView) view.findViewById(R.id.send_coins_pending);
+		pendingView.setVisibility(pending.signum() > 0 ? View.VISIBLE : View.GONE);
+		pendingView.setText(getString(R.string.send_coins_fragment_pending, Utils.bitcoinValueToFriendlyString(pending)));
 
 		amountView = (TextView) view.findViewById(R.id.send_coins_amount);
-		final float density = getResources().getDisplayMetrics().density;
 		amountView.setCompoundDrawablesWithIntrinsicBounds(new BtcDrawable(24f * density, 10.5f * density), null, null, null);
+		amountView.addTextChangedListener(textWatcher);
 
-		final Button viewGo = (Button) view.findViewById(R.id.send_coins_go);
+		amountErrorView = view.findViewById(R.id.send_coins_amount_error);
+
+		viewGo = (Button) view.findViewById(R.id.send_coins_go);
 		viewGo.setOnClickListener(new OnClickListener()
 		{
 			public void onClick(final View v)
@@ -131,7 +148,7 @@ public class SendCoinsFragment extends Fragment
 				try
 				{
 					final Address receivingAddress = new Address(application.getNetworkParameters(), receivingAddressView.getText().toString().trim());
-					final BigInteger amount = Utils.toNanoCoins(amountView.getText().toString());
+					final BigInteger amount = Utils.toNanoCoins(amountView.getText().toString().trim());
 
 					System.out.println("about to send " + amount + " (BTC " + Utils.bitcoinValueToFriendlyString(amount) + ") to " + receivingAddress);
 
@@ -147,20 +164,66 @@ public class SendCoinsFragment extends Fragment
 							balanceFragment.updateView();
 
 						viewGo.setEnabled(false);
-						viewGo.setText("Sending...");
+						viewGo.setText(R.string.send_coins_sending_msg);
+
 						handler.postDelayed(new Runnable()
 						{
 							public void run()
 							{
-								getActivity().finish();
+								final Uri uri = AddressBookProvider.CONTENT_URI.buildUpon().appendPath(receivingAddress.toString()).build();
+								final Cursor cursor = getActivity().managedQuery(uri, null, null, null, null);
+								if (cursor.getCount() == 0)
+								{
+									final AlertDialog.Builder builder = new AlertDialog.Builder(getActivity());
+									builder.setMessage(R.string.send_coins_add_address_dialog_title);
+									builder.setPositiveButton(R.string.send_coins_add_address_dialog_button_add,
+											new DialogInterface.OnClickListener()
+											{
+												public void onClick(final DialogInterface dialog, final int id)
+												{
+													final FragmentTransaction ft = getFragmentManager().beginTransaction();
+													final Fragment prev = getFragmentManager().findFragmentByTag(
+															EditAddressBookEntryFragment.FRAGMENT_TAG);
+													if (prev != null)
+														ft.remove(prev);
+													ft.addToBackStack(null);
+													final DialogFragment newFragment = new EditAddressBookEntryFragment(getLayoutInflater(null),
+															receivingAddress.toString())
+													{
+														@Override
+														public void onDestroyView()
+														{
+															super.onDestroyView();
+
+															getActivity().finish();
+														}
+													};
+													newFragment.show(ft, EditAddressBookEntryFragment.FRAGMENT_TAG);
+												}
+											});
+									builder.setNegativeButton(R.string.send_coins_add_address_dialog_button_dismiss,
+											new DialogInterface.OnClickListener()
+											{
+												public void onClick(final DialogInterface dialog, final int id)
+												{
+													getActivity().finish();
+												}
+											});
+									builder.show();
+								}
+								else
+								{
+									getActivity().finish();
+								}
 							}
 						}, 5000);
 
-						((AbstractWalletActivity) getActivity()).longToast(Utils.bitcoinValueToFriendlyString(amount) + " BTC sent!");
+						((AbstractWalletActivity) getActivity()).longToast(R.string.send_coins_success_msg,
+								Utils.bitcoinValueToFriendlyString(amount));
 					}
 					else
 					{
-						((AbstractWalletActivity) getActivity()).longToast("problem sending coins!");
+						((AbstractWalletActivity) getActivity()).longToast(R.string.send_coins_error_msg);
 						getActivity().finish();
 					}
 				}
@@ -178,6 +241,8 @@ public class SendCoinsFragment extends Fragment
 				getActivity().finish();
 			}
 		});
+
+		updateView();
 
 		return view;
 	}
@@ -243,5 +308,48 @@ public class SendCoinsFragment extends Fragment
 	{
 		receivingAddressView.setText(receivingAddress);
 		amountView.setText(amount);
+
+		if (receivingAddress != null && amount == null)
+			amountView.requestFocus();
+
+		updateView();
+	}
+
+	private void updateView()
+	{
+		boolean validAddress = false;
+		try
+		{
+			final String address = receivingAddressView.getText().toString().trim();
+			if (address.length() > 0)
+			{
+				new Address(application.getNetworkParameters(), address);
+				validAddress = true;
+			}
+			receivingAddressErrorView.setVisibility(View.GONE);
+		}
+		catch (final Exception x)
+		{
+			receivingAddressErrorView.setVisibility(View.VISIBLE);
+		}
+
+		boolean validAmount = false;
+		try
+		{
+			final String amount = amountView.getText().toString().trim();
+			if (amount.length() > 0)
+			{
+				final BigInteger nanoCoins = Utils.toNanoCoins(amount);
+				if (nanoCoins.signum() > 0)
+					validAmount = true;
+			}
+			amountErrorView.setVisibility(View.GONE);
+		}
+		catch (final Exception x)
+		{
+			amountErrorView.setVisibility(View.VISIBLE);
+		}
+
+		viewGo.setEnabled(validAddress && validAmount);
 	}
 }

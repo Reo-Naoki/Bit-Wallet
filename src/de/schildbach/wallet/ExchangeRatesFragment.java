@@ -173,6 +173,14 @@ public class ExchangeRatesFragment extends ListFragment
 	}
 
 	@Override
+	public void onActivityCreated(final Bundle savedInstanceState)
+	{
+		super.onActivityCreated(savedInstanceState);
+
+		setEmptyText(getString(R.string.exchange_rates_fragment_empty_text));
+	}
+
+	@Override
 	public View onCreateView(final LayoutInflater inflater, final ViewGroup container, final Bundle savedInstanceState)
 	{
 		final View view = super.onCreateView(inflater, container, savedInstanceState);

@@ -24,6 +24,7 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.math.BigInteger;
 import java.net.InetSocketAddress;
+import java.text.DateFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -38,6 +39,8 @@ import java.util.concurrent.atomic.AtomicInteger;
 import android.app.Notification;
 import android.app.NotificationManager;
 import android.app.PendingIntent;
+import android.appwidget.AppWidgetManager;
+import android.appwidget.AppWidgetProviderInfo;
 import android.content.Context;
 import android.content.Intent;
 import android.net.Uri;
@@ -46,6 +49,8 @@ import android.os.Handler;
 import android.os.HandlerThread;
 import android.os.IBinder;
 import android.os.Process;
+import android.os.SystemClock;
+import android.text.format.DateUtils;
 
 import com.google.bitcoin.core.Address;
 import com.google.bitcoin.core.BlockChain;
@@ -107,6 +112,7 @@ public class Service extends android.app.Service
 						System.out.println("!!! got pending bitcoins: " + from + " " + value);
 
 						notifyTransaction(tx.getHash(), from, value);
+						notifyWidgets();
 					}
 				});
 			}
@@ -132,6 +138,7 @@ public class Service extends android.app.Service
 						System.out.println("!!! got confirmed bitcoins: " + from + " " + value);
 
 						notifyTransaction(tx.getHash(), from, value);
+						notifyWidgets();
 					}
 				});
 			}
@@ -147,7 +154,7 @@ public class Service extends android.app.Service
 			{
 				transactionsSeen.add(txHash);
 
-				final String msg = "Received " + Utils.bitcoinValueToFriendlyString(value) + " BTC";
+				final String msg = getString(R.string.notification_coins_received_msg, Utils.bitcoinValueToFriendlyString(value));
 				final Notification notification = new Notification(R.drawable.stat_notify_received, msg, System.currentTimeMillis());
 				notification.flags |= Notification.FLAG_AUTO_CANCEL;
 				notification.sound = Uri.parse("android.resource://" + getPackageName() + "/" + R.raw.coins_received);
@@ -195,7 +202,7 @@ public class Service extends android.app.Service
 			final String blockchainFilename = Constants.TEST ? Constants.BLOCKCHAIN_FILENAME_TEST : Constants.BLOCKCHAIN_FILENAME_PROD;
 			final File file = new File(getDir("blockstore", Context.MODE_WORLD_READABLE | Context.MODE_WORLD_WRITEABLE), blockchainFilename);
 
-			if (!file.exists())
+			if (!file.exists() || file.length() < Constants.BLOCKCHAIN_SNAPSHOT_COPY_THRESHOLD)
 			{
 				// copy snapshot
 				try
@@ -218,6 +225,7 @@ public class Service extends android.app.Service
 				}
 				catch (final IOException x)
 				{
+					System.out.println("failed copying, starting from genesis");
 					file.delete();
 				}
 			}
@@ -274,6 +282,8 @@ public class Service extends android.app.Service
 
 	private void broadcastTransaction(final Transaction tx)
 	{
+		System.out.println("broadcasting transaction: " + tx);
+
 		final AtomicBoolean alreadyConfirmed = new AtomicBoolean(false);
 
 		for (final Iterator<Peer> i = peers.iterator(); i.hasNext();)
@@ -368,14 +378,14 @@ public class Service extends android.app.Service
 
 										peers.add(peer);
 
-										final String msg = peers.size() + " peers connected";
+										final String msg = getString(R.string.notification_peers_connected_msg, peers.size());
 										System.out.println("Peer " + connection.getRemoteIp().getHostAddress() + " connected, " + msg);
 
-										final Notification notification = new Notification(R.drawable.stat_sys_peers, null, System
-												.currentTimeMillis());
+										final Notification notification = new Notification(R.drawable.stat_sys_peers, null, 0);
 										notification.flags |= Notification.FLAG_ONGOING_EVENT;
 										notification.iconLevel = peers.size() > 4 ? 4 : peers.size();
-										notification.setLatestEventInfo(Service.this, "Bitcoin Wallet" + (Constants.TEST ? " [testnet]" : ""), msg,
+										notification.setLatestEventInfo(Service.this, getString(R.string.app_name)
+												+ (Constants.TEST ? " [testnet]" : ""), msg,
 												PendingIntent.getActivity(Service.this, 0, new Intent(Service.this, WalletActivity.class), 0));
 										nm.notify(NOTIFICATION_ID_CONNECTED, notification);
 									}
@@ -435,6 +445,9 @@ public class Service extends android.app.Service
 
 	private void blockChainDownload(final Peer peer)
 	{
+		final DateFormat dateFormat = android.text.format.DateFormat.getDateFormat(this);
+		final DateFormat timeFormat = android.text.format.DateFormat.getTimeFormat(this);
+
 		try
 		{
 			final CountDownLatch latch = peer.startBlockChainDownload();
@@ -451,6 +464,8 @@ public class Service extends android.app.Service
 						try
 						{
 							final long maxCount = latch.getCount();
+							long lastCount = Long.MAX_VALUE;
+							long lastCountAt = SystemClock.uptimeMillis();
 
 							while (true)
 							{
@@ -467,26 +482,58 @@ public class Service extends android.app.Service
 											nm.cancel(NOTIFICATION_ID_SYNCING);
 										}
 									});
+
+									// we made it!
 									return;
 								}
-								else
+								else if (count < lastCount)
 								{
+									lastCount = count;
+									lastCountAt = SystemClock.uptimeMillis();
+
 									final float percent = 100f - (100f * (count / (float) maxCount));
 
 									handler.post(new Runnable()
 									{
 										public void run()
 										{
+											final long t = blockChain.getChainHead().getHeader().getTime() * 1000;
+
+											final String eventTitle = getString(R.string.notification_blockchain_sync_started_msg)
+													+ (Constants.TEST ? " [testnet]" : "");
+											final String eventText = getString(R.string.notification_blockchain_sync_progress_msg, percent,
+													DateUtils.isToday(t) ? timeFormat.format(t) : dateFormat.format(t));
+
 											final Notification notification = new Notification(R.drawable.stat_notify_sync,
-													"Bitcoin Blockchain Sync started", System.currentTimeMillis());
+													"Bitcoin blockchain sync started", 0);
 											notification.flags |= Notification.FLAG_ONGOING_EVENT;
 											notification.iconLevel = (int) (count % 2l);
-											notification.setLatestEventInfo(Service.this, "Bitcoin Blockchain Sync"
-													+ (Constants.TEST ? " [testnet]" : ""), String.format("%.1f%% finished", percent),
+											notification.setLatestEventInfo(Service.this, eventTitle, eventText,
 													PendingIntent.getActivity(Service.this, 0, new Intent(Service.this, WalletActivity.class), 0));
 											nm.notify(NOTIFICATION_ID_SYNCING, notification);
 										}
 									});
+								}
+								else
+								{
+									final long duration = SystemClock.uptimeMillis() - lastCountAt;
+									System.out.println("no progress for " + duration + " ms");
+
+									if (duration > 15000)
+									{
+										peer.disconnect();
+
+										handler.post(new Runnable()
+										{
+											public void run()
+											{
+												System.out.println("giving up!");
+												nm.cancel(NOTIFICATION_ID_SYNCING);
+											}
+										});
+
+										return;
+									}
 								}
 							}
 						}
@@ -501,6 +548,24 @@ public class Service extends android.app.Service
 		catch (final IOException x)
 		{
 			throw new RuntimeException(x);
+		}
+	}
+
+	public void notifyWidgets()
+	{
+		final Context context = getApplicationContext();
+
+		// notify widgets
+		final AppWidgetManager appWidgetManager = AppWidgetManager.getInstance(context);
+		for (final AppWidgetProviderInfo providerInfo : appWidgetManager.getInstalledProviders())
+		{
+			// limit to own widgets
+			if (providerInfo.provider.getPackageName().equals(context.getPackageName()))
+			{
+				final Intent intent = new Intent(AppWidgetManager.ACTION_APPWIDGET_UPDATE);
+				intent.putExtra(AppWidgetManager.EXTRA_APPWIDGET_IDS, appWidgetManager.getAppWidgetIds(providerInfo.provider));
+				context.sendBroadcast(intent);
+			}
 		}
 	}
 }

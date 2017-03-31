@@ -25,6 +25,7 @@ import android.content.ComponentName;
 import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
+import android.content.IntentFilter;
 import android.content.ServiceConnection;
 import android.net.Uri;
 import android.os.Bundle;
@@ -86,6 +87,13 @@ public class WalletActivity extends AbstractWalletActivity
 				startActivity(new Intent(WalletActivity.this, RequestCoinsActivity.class));
 			}
 		});
+		actionBar.addButton(R.drawable.ic_menu_address_book).setOnClickListener(new OnClickListener()
+		{
+			public void onClick(final View v)
+			{
+				startActivity(new Intent(WalletActivity.this, AddressBookActivity.class));
+			}
+		});
 		actionBar.addButton(R.drawable.ic_menu_help).setOnClickListener(new OnClickListener()
 		{
 			public void onClick(final View v)
@@ -98,6 +106,14 @@ public class WalletActivity extends AbstractWalletActivity
 		fm.beginTransaction().hide(fm.findFragmentById(R.id.exchange_rates_fragment)).commit();
 
 		checkTestnetProdnetMigrationAlert();
+	}
+
+	@Override
+	protected void onResume()
+	{
+		super.onResume();
+
+		checkLowStorageAlert();
 	}
 
 	@Override
@@ -154,7 +170,10 @@ public class WalletActivity extends AbstractWalletActivity
 	protected Dialog onCreateDialog(final int id)
 	{
 		final WebView webView = new WebView(this);
-		webView.loadUrl("file:///android_asset/" + (id == DIALOG_HELP ? "help.html" : "safety.html"));
+		if (id == DIALOG_HELP)
+			webView.loadUrl("file:///android_asset/help" + languagePrefix() + ".html");
+		else
+			webView.loadUrl("file:///android_asset/safety" + languagePrefix() + ".html");
 
 		final Dialog dialog = new Dialog(WalletActivity.this);
 		dialog.requestWindowFeature(Window.FEATURE_NO_TITLE);
@@ -172,9 +191,9 @@ public class WalletActivity extends AbstractWalletActivity
 		{
 			final AlertDialog.Builder builder = new AlertDialog.Builder(this);
 			builder.setIcon(android.R.drawable.ic_dialog_alert);
-			builder.setTitle("Important notice!");
-			builder.setMessage("Due to popular demand, Bitcoin Wallet has switched from Testnet to Prodnet. This means that you can now pay for real! Please read the safety hints.\n\nIf you don't want to take the risk and stay on Testnet, please install Bitcoin Wallet for Testnet.");
-			builder.setPositiveButton("Read Safety Hints", new DialogInterface.OnClickListener()
+			builder.setTitle(R.string.wallet_migration_dialog_title);
+			builder.setMessage(R.string.wallet_migration_dialog_msg);
+			builder.setPositiveButton(R.string.wallet_migration_dialog_button_safety, new DialogInterface.OnClickListener()
 			{
 				public void onClick(final DialogInterface dialog, final int id)
 				{
@@ -183,7 +202,7 @@ public class WalletActivity extends AbstractWalletActivity
 					showDialog(DIALOG_SAFETY);
 				}
 			});
-			builder.setNegativeButton("Install Testnet", new DialogInterface.OnClickListener()
+			builder.setNegativeButton(R.string.wallet_migration_dialog_button_testnet, new DialogInterface.OnClickListener()
 			{
 				public void onClick(final DialogInterface dialog, final int id)
 				{
@@ -196,7 +215,7 @@ public class WalletActivity extends AbstractWalletActivity
 
 	private void switchNetwork(final boolean test)
 	{
-		final String packageName = test ? "de.schildbach.wallet_test" : "de.schildbach.wallet";
+		final String packageName = test ? Constants.PACKAGE_NAME_TEST : Constants.PACKAGE_NAME_PROD;
 		final String className = getClass().getName();
 		final Intent intent = new Intent().setClassName(packageName, className);
 		if (getPackageManager().resolveActivity(intent, 0) != null)
@@ -204,5 +223,27 @@ public class WalletActivity extends AbstractWalletActivity
 		else
 			startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse(String.format(Constants.MARKET_APP_URL, packageName))));
 		finish();
+	}
+
+	private void checkLowStorageAlert()
+	{
+		final Intent stickyIntent = registerReceiver(null, new IntentFilter(Intent.ACTION_DEVICE_STORAGE_LOW));
+		if (stickyIntent != null)
+		{
+			final AlertDialog.Builder builder = new AlertDialog.Builder(this);
+			builder.setIcon(android.R.drawable.ic_dialog_alert);
+			builder.setTitle(R.string.wallet_low_storage_dialog_title);
+			builder.setMessage(R.string.wallet_low_storage_dialog_msg);
+			builder.setPositiveButton(R.string.wallet_low_storage_dialog_button_apps, new DialogInterface.OnClickListener()
+			{
+				public void onClick(final DialogInterface dialog, final int id)
+				{
+					startActivity(new Intent(android.provider.Settings.ACTION_MANAGE_APPLICATIONS_SETTINGS));
+					finish();
+				}
+			});
+			builder.setNegativeButton(R.string.wallet_low_storage_dialog_button_dismiss, null);
+			builder.show();
+		}
 	}
 }
