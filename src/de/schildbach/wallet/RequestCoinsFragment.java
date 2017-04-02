@@ -33,8 +33,6 @@ import android.widget.EditText;
 import android.widget.ImageView;
 
 import com.google.bitcoin.core.Address;
-import com.google.bitcoin.core.ECKey;
-import com.google.bitcoin.core.Wallet;
 
 import de.schildbach.wallet_test.R;
 
@@ -118,9 +116,7 @@ public class RequestCoinsFragment extends Fragment
 
 	private String determineAddressStr()
 	{
-		final Wallet wallet = application.getWallet();
-		final ECKey key = wallet.keychain.get(0);
-		final Address address = key.toAddress(application.getNetworkParameters());
+		final Address address = application.determineSelectedAddress();
 
 		final StringBuilder builder = new StringBuilder("bitcoin:");
 		builder.append(address.toString());

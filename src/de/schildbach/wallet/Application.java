@@ -22,10 +22,13 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
+import java.io.OutputStreamWriter;
 import java.io.Reader;
+import java.io.Writer;
 import java.math.BigInteger;
 import java.net.URL;
 import java.net.URLConnection;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
@@ -33,8 +36,12 @@ import java.util.Map;
 import org.json.JSONException;
 import org.json.JSONObject;
 
+import android.content.SharedPreferences;
+import android.content.pm.PackageManager.NameNotFoundException;
 import android.os.Handler;
+import android.preference.PreferenceManager;
 
+import com.google.bitcoin.core.Address;
 import com.google.bitcoin.core.ECKey;
 import com.google.bitcoin.core.NetworkParameters;
 import com.google.bitcoin.core.Transaction;
@@ -106,7 +113,7 @@ public class Application extends android.app.Application
 
 		loadWallet();
 
-		backupKey();
+		backupKeys();
 
 		wallet.addEventListener(walletEventListener);
 	}
@@ -152,6 +159,15 @@ public class Application extends android.app.Application
 		}
 	}
 
+	public void addNewKeyToWallet()
+	{
+		wallet.keychain.add(new ECKey());
+
+		saveWallet();
+
+		backupKeys();
+	}
+
 	public void saveWallet()
 	{
 		final String filename = Constants.TEST ? Constants.WALLET_FILENAME_TEST : Constants.WALLET_FILENAME_PROD;
@@ -168,15 +184,15 @@ public class Application extends android.app.Application
 		}
 	}
 
-	private void backupKey()
+	private void backupKeys()
 	{
-		final ECKey key = wallet.keychain.get(0);
+		final ECKey firstKey = wallet.keychain.get(0);
 
-		if (key != null)
+		if (firstKey != null)
 		{
 			try
 			{
-				final byte[] asn1 = key.toASN1();
+				final byte[] asn1 = firstKey.toASN1();
 
 				final OutputStream os = openFileOutput(Constants.WALLET_KEY_BACKUP_ASN1, Constants.WALLET_MODE);
 				os.write(asn1);
@@ -186,21 +202,43 @@ public class Application extends android.app.Application
 			{
 				x.printStackTrace();
 			}
-
-			try
-			{
-				final String base58 = key.toBase58();
-				final byte[] base58bytes = base58.getBytes("UTF-8");
-
-				final OutputStream os = openFileOutput(Constants.WALLET_KEY_BACKUP_BASE58, Constants.WALLET_MODE);
-				os.write(base58bytes);
-				os.close();
-			}
-			catch (final IOException x)
-			{
-				x.printStackTrace();
-			}
 		}
+
+		try
+		{
+			final Writer out = new OutputStreamWriter(openFileOutput(Constants.WALLET_KEY_BACKUP_BASE58, Constants.WALLET_MODE), "UTF-8");
+
+			for (final ECKey key : wallet.keychain)
+			{
+				out.write(key.toOwnBase58());
+				out.write('\n');
+			}
+
+			out.close();
+		}
+		catch (final IOException x)
+		{
+			x.printStackTrace();
+		}
+	}
+
+	public Address determineSelectedAddress()
+	{
+		final ArrayList<ECKey> keychain = wallet.keychain;
+
+		final SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(this);
+		final String defaultAddress = keychain.get(0).toAddress(networkParameters).toString();
+		final String selectedAddress = prefs.getString(Constants.PREFS_KEY_SELECTED_ADDRESS, defaultAddress);
+
+		// sanity check
+		for (final ECKey key : keychain)
+		{
+			final Address address = key.toAddress(networkParameters);
+			if (address.toString().equals(selectedAddress))
+				return address;
+		}
+
+		throw new IllegalStateException("address not in keychain: " + selectedAddress);
 	}
 
 	public Map<String, Double> getExchangeRates()
@@ -261,5 +299,17 @@ public class Application extends android.app.Application
 			count += n;
 		}
 		return count;
+	}
+
+	public final int versionCode()
+	{
+		try
+		{
+			return getPackageManager().getPackageInfo(getPackageName(), 0).versionCode;
+		}
+		catch (NameNotFoundException x)
+		{
+			return 0;
+		}
 	}
 }

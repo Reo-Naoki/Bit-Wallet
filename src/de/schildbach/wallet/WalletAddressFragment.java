@@ -17,12 +17,18 @@
 
 package de.schildbach.wallet;
 
+import android.app.AlertDialog;
 import android.app.Dialog;
 import android.content.Context;
+import android.content.DialogInterface;
 import android.content.Intent;
 import android.graphics.Bitmap;
+import android.graphics.Color;
 import android.os.Bundle;
+import android.os.Handler;
 import android.support.v4.app.Fragment;
+import android.support.v4.app.FragmentManager;
+import android.support.v4.app.FragmentTransaction;
 import android.text.ClipboardManager;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -34,8 +40,6 @@ import android.widget.ImageView;
 import android.widget.TextView;
 
 import com.google.bitcoin.core.Address;
-import com.google.bitcoin.core.ECKey;
-import com.google.bitcoin.core.Wallet;
 
 import de.schildbach.wallet_test.R;
 
@@ -44,38 +48,28 @@ import de.schildbach.wallet_test.R;
  */
 public class WalletAddressFragment extends Fragment
 {
+	private Application application;
+	private final Handler handler = new Handler();
+
+	private TextView bitcoinAddressView;
+	private ImageView bitcoinAddressQrView;
+
 	private Bitmap qrCodeBitmap;
 
 	@Override
 	public View onCreateView(final LayoutInflater inflater, final ViewGroup container, final Bundle savedInstanceState)
 	{
 		final View view = inflater.inflate(R.layout.wallet_address_fragment, container, false);
+		bitcoinAddressView = (TextView) view.findViewById(R.id.bitcoin_address);
+		bitcoinAddressQrView = (ImageView) view.findViewById(R.id.bitcoin_address_qr);
 
-		final Application application = (Application) getActivity().getApplication();
-		final Wallet wallet = application.getWallet();
-
-		System.out.println(wallet.keychain.size() + " key(s) in keychain");
-		final ECKey key = wallet.keychain.get(0);
-		final Address address = key.toAddress(application.getNetworkParameters());
-
-		final TextView bitcoinAddressView = (TextView) view.findViewById(R.id.bitcoin_address);
-		bitcoinAddressView.setText(WalletUtils.splitIntoLines(address.toString(), 3));
-
-		final ImageView bitcoinAddressQrView = (ImageView) view.findViewById(R.id.bitcoin_address_qr);
-
-		// populate qrcode representation of bitcoin address
-		qrCodeBitmap = WalletUtils.getQRCodeBitmap("bitcoin:" + address.toString(), 256);
-		bitcoinAddressQrView.setImageBitmap(qrCodeBitmap);
+		application = (Application) getActivity().getApplication();
 
 		bitcoinAddressView.setOnClickListener(new OnClickListener()
 		{
 			public void onClick(final View v)
 			{
-				ClipboardManager clipboardManager = (ClipboardManager) getActivity().getSystemService(Context.CLIPBOARD_SERVICE);
-				clipboardManager.setText(address.toString());
-				((AbstractWalletActivity) getActivity()).toast(R.string.wallet_address_fragment_clipboard_msg);
-
-				System.out.println("my bitcoin address: " + address + (Constants.TEST ? " (testnet!)" : ""));
+				showAllAddresses();
 			}
 		});
 
@@ -83,10 +77,40 @@ public class WalletAddressFragment extends Fragment
 		{
 			public boolean onLongClick(final View v)
 			{
+				final Address address = application.determineSelectedAddress();
+
+				System.out.println("selected bitcoin address: " + address + (Constants.TEST ? " (testnet!)" : ""));
+
+				new AlertDialog.Builder(getActivity()).setItems(R.array.wallet_address_fragment_context, new DialogInterface.OnClickListener()
+				{
+					public void onClick(final DialogInterface dialog, final int which)
+					{
+						if (which == 0)
+							showAllAddresses();
+						else if (which == 1)
+							showQRCode();
+						else if (which == 2)
+							pasteToClipboard(address.toString());
+						else if (which == 3)
+							share(address.toString());
+					}
+				}).show();
+
+				return true;
+			}
+
+			private void pasteToClipboard(final String address)
+			{
+				ClipboardManager clipboardManager = (ClipboardManager) getActivity().getSystemService(Context.CLIPBOARD_SERVICE);
+				clipboardManager.setText(address);
+				((AbstractWalletActivity) getActivity()).toast(R.string.wallet_address_fragment_clipboard_msg);
+			}
+
+			private void share(final String address)
+			{
 				startActivity(Intent.createChooser(
 						new Intent(Intent.ACTION_SEND).putExtra(Intent.EXTRA_TEXT, "bitcoin:" + address).setType("text/plain"),
 						getString(R.string.wallet_address_fragment_share_dialog_title)));
-				return false;
 			}
 		});
 
@@ -94,24 +118,19 @@ public class WalletAddressFragment extends Fragment
 		{
 			public void onClick(final View v)
 			{
-				final Dialog dialog = new Dialog(getActivity());
-				dialog.requestWindowFeature(Window.FEATURE_NO_TITLE);
-				dialog.setContentView(R.layout.bitcoin_address_qr_dialog);
-				final ImageView imageView = (ImageView) dialog.findViewById(R.id.bitcoin_address_qr);
-				imageView.setImageBitmap(qrCodeBitmap);
-				dialog.setCanceledOnTouchOutside(true);
-				dialog.show();
-				imageView.setOnClickListener(new OnClickListener()
-				{
-					public void onClick(final View v)
-					{
-						dialog.dismiss();
-					}
-				});
+				showQRCode();
 			}
 		});
 
 		return view;
+	}
+
+	@Override
+	public void onResume()
+	{
+		super.onResume();
+
+		updateView();
 	}
 
 	@Override
@@ -124,5 +143,61 @@ public class WalletAddressFragment extends Fragment
 		}
 
 		super.onDestroyView();
+	}
+
+	public void updateView()
+	{
+		final Address selectedAddress = application.determineSelectedAddress();
+
+		bitcoinAddressView.setText(WalletUtils.splitIntoLines(selectedAddress.toString(), 3));
+
+		// populate qrcode representation of bitcoin address
+		qrCodeBitmap = WalletUtils.getQRCodeBitmap("bitcoin:" + selectedAddress, 256);
+		bitcoinAddressQrView.setImageBitmap(qrCodeBitmap);
+	}
+
+	private Runnable resetColorRunnable = new Runnable()
+	{
+		public void run()
+		{
+			bitcoinAddressView.setTextColor(Color.BLACK);
+		}
+	};
+
+	public void flashAddress()
+	{
+		bitcoinAddressView.setTextColor(Color.parseColor("#cc5500"));
+		handler.removeCallbacks(resetColorRunnable);
+		handler.postDelayed(resetColorRunnable, 500);
+	}
+
+	private void showAllAddresses()
+	{
+		final FragmentManager fm = getFragmentManager();
+		final FragmentTransaction ft = fm.beginTransaction();
+		ft.hide(fm.findFragmentById(R.id.wallet_balance_fragment));
+		ft.hide(fm.findFragmentById(R.id.wallet_transactions_fragment));
+		ft.show(fm.findFragmentById(R.id.wallet_addresses_fragment));
+		ft.setTransition(FragmentTransaction.TRANSIT_FRAGMENT_OPEN);
+		ft.addToBackStack(null);
+		ft.commit();
+	}
+
+	private void showQRCode()
+	{
+		final Dialog dialog = new Dialog(getActivity());
+		dialog.requestWindowFeature(Window.FEATURE_NO_TITLE);
+		dialog.setContentView(R.layout.bitcoin_address_qr_dialog);
+		final ImageView imageView = (ImageView) dialog.findViewById(R.id.bitcoin_address_qr);
+		imageView.setImageBitmap(qrCodeBitmap);
+		dialog.setCanceledOnTouchOutside(true);
+		dialog.show();
+		imageView.setOnClickListener(new OnClickListener()
+		{
+			public void onClick(final View v)
+			{
+				dialog.dismiss();
+			}
+		});
 	}
 }

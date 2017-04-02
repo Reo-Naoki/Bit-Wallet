@@ -102,8 +102,17 @@ public class WalletActivity extends AbstractWalletActivity
 			}
 		});
 
+		findViewById(R.id.wallet_disclaimer).setOnClickListener(new OnClickListener()
+		{
+			public void onClick(final View v)
+			{
+				showDialog(DIALOG_SAFETY);
+			}
+		});
+
 		final FragmentManager fm = getSupportFragmentManager();
-		fm.beginTransaction().hide(fm.findFragmentById(R.id.exchange_rates_fragment)).commit();
+		fm.beginTransaction().hide(fm.findFragmentById(R.id.wallet_addresses_fragment)).hide(fm.findFragmentById(R.id.exchange_rates_fragment))
+				.commit();
 
 		checkTestnetProdnetMigrationAlert();
 	}
