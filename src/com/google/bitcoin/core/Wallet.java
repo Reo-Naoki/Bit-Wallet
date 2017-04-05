@@ -766,7 +766,7 @@ public class Wallet implements Serializable {
             tx.disconnectInputs();
         // Reconnect the transactions in the common part of the chain.
         for (Transaction tx : commonChainTransactions.values()) {
-            TransactionInput badInput = tx.connectInputs(all, false);
+            TransactionInput badInput = tx.connectForReorganize(all);
             assert badInput == null : "Failed to connect " + tx.getHashAsString() + ", " + badInput.toString();
         }
         // Recalculate the unspent/spent buckets for the transactions the re-org did not affect.
@@ -906,7 +906,7 @@ public class Wallet implements Serializable {
         return Collections.unmodifiableCollection(pending.values());
     }
 
-    public ArrayList<Transaction> getAllTransactions(){
+    public synchronized ArrayList<Transaction> getAllTransactions(){
         // generate list of transactions to show
         ArrayList<Transaction> transactions = new ArrayList<Transaction>();
         transactions.addAll(pending.values());

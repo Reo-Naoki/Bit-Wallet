@@ -57,6 +57,7 @@ import android.text.format.DateUtils;
 import com.google.bitcoin.core.Address;
 import com.google.bitcoin.core.BlockChain;
 import com.google.bitcoin.core.NetworkConnection;
+import com.google.bitcoin.core.NetworkParameters;
 import com.google.bitcoin.core.Peer;
 import com.google.bitcoin.core.ProtocolException;
 import com.google.bitcoin.core.ScriptException;
@@ -82,6 +83,8 @@ import de.schildbach.wallet_test.R;
 public class Service extends android.app.Service
 {
 	private Application application;
+	private SharedPreferences prefs;
+
 	private final List<Peer> peers = new ArrayList<Peer>(Constants.MAX_CONNECTED_PEERS);
 	private BlockStore blockStore;
 	private BlockChain blockChain;
@@ -193,27 +196,27 @@ public class Service extends android.app.Service
 		nm = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
 
 		application = (Application) getApplication();
+		prefs = PreferenceManager.getDefaultSharedPreferences(this);
 
 		// background thread
 		backgroundThread = new HandlerThread("backgroundThread", Process.THREAD_PRIORITY_BACKGROUND);
 		backgroundThread.start();
 		backgroundHandler = new Handler(backgroundThread.getLooper());
 
-		final SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(this);
-
 		final int versionCode = application.versionCode();
 		final int lastVersionCode = prefs.getInt(Constants.PREFS_KEY_LAST_VERSION, 0);
 		final boolean blockchainNeedsRescan = lastVersionCode <= 23 && versionCode > 23;
+		final boolean blockchainResetInitiated = prefs.getBoolean(Constants.PREFS_KEY_RESET_BLOCKCHAIN, false);
 
-		prefs.edit().putInt(Constants.PREFS_KEY_LAST_VERSION, versionCode).commit();
+		prefs.edit().putInt(Constants.PREFS_KEY_LAST_VERSION, versionCode).remove(Constants.PREFS_KEY_RESET_BLOCKCHAIN).commit();
 
 		try
 		{
-			final String blockchainFilename = Constants.TEST ? Constants.BLOCKCHAIN_FILENAME_TEST : Constants.BLOCKCHAIN_FILENAME_PROD;
-			final File file = new File(getDir("blockstore", Context.MODE_WORLD_READABLE | Context.MODE_WORLD_WRITEABLE), blockchainFilename);
+			final File file = new File(getDir("blockstore", Context.MODE_WORLD_READABLE | Context.MODE_WORLD_WRITEABLE),
+					Constants.BLOCKCHAIN_FILENAME);
 			final boolean blockchainDoesNotExist = !file.exists() || file.length() < Constants.BLOCKCHAIN_SNAPSHOT_COPY_THRESHOLD;
 
-			if (blockchainNeedsRescan || blockchainDoesNotExist)
+			if (blockchainResetInitiated || blockchainNeedsRescan || blockchainDoesNotExist)
 			{
 				// copy snapshot
 				try
@@ -438,18 +441,30 @@ public class Service extends android.app.Service
 
 			private List<InetSocketAddress> discoverPeers()
 			{
-				try
-				{
-					final PeerDiscovery peerDiscovery = Constants.TEST ? new IrcDiscovery(Constants.PEER_DISCOVERY_IRC_CHANNEL_TEST)
-							: new DnsDiscovery(application.getNetworkParameters());
+				final NetworkParameters networkParameters = application.getNetworkParameters();
+				final List<InetSocketAddress> peers = new LinkedList<InetSocketAddress>();
 
-					return Arrays.asList(peerDiscovery.getPeers());
-				}
-				catch (final PeerDiscoveryException x)
+				final String trustedPeerHost = prefs.getString(Constants.PREFS_KEY_TRUSTED_PEER, "").trim();
+				if (trustedPeerHost.length() == 0)
 				{
-					x.printStackTrace();
-					return new LinkedList<InetSocketAddress>();
+					try
+					{
+						final PeerDiscovery peerDiscovery = Constants.TEST ? new IrcDiscovery(Constants.PEER_DISCOVERY_IRC_CHANNEL_TEST)
+								: new DnsDiscovery(networkParameters);
+
+						peers.addAll(Arrays.asList(peerDiscovery.getPeers()));
+					}
+					catch (final PeerDiscoveryException x)
+					{
+						x.printStackTrace();
+					}
 				}
+				else
+				{
+					peers.add(new InetSocketAddress(trustedPeerHost, networkParameters.port));
+				}
+
+				return peers;
 			}
 		});
 	}

@@ -47,8 +47,9 @@ public class Constants
 
 	public static final long BLOCKCHAIN_SNAPSHOT_COPY_THRESHOLD = Constants.TEST ? 3000000 : 10000000;
 
-	public static final String BLOCKCHAIN_FILENAME_PROD = "blockchain";
+	private static final String BLOCKCHAIN_FILENAME_PROD = "blockchain";
 	public static final String BLOCKCHAIN_FILENAME_TEST = "blockchain-testnet";
+	public static final String BLOCKCHAIN_FILENAME = TEST ? BLOCKCHAIN_FILENAME_TEST : BLOCKCHAIN_FILENAME_PROD;
 
 	public static final String PEER_DISCOVERY_IRC_CHANNEL_PROD = "#bitcoin";
 	public static final String PEER_DISCOVERY_IRC_CHANNEL_TEST = "#bitcoinTEST";
@@ -59,7 +60,9 @@ public class Constants
 	public static final int APP_ICON_RESID = Constants.TEST ? R.drawable.app_icon_test : R.drawable.app_icon;
 
 	public static final int MAX_CONNECTED_PEERS = 6;
-	public static final int BLOCKCHAIN_PROGRESS_TIMEOUT = 30 * 1000;
+	public static final int BLOCKCHAIN_PROGRESS_TIMEOUT = 120 * 1000;
+
+	public static final String DONATION_ADDRESS = "1PZmMahjbfsTy6DsaRyfStzoWTPppWwDnZ";
 
 	public static final String LICENSE_URL = "http://www.gnu.org/licenses/gpl-3.0.txt";
 	public static final String SOURCE_URL = "http://code.google.com/p/bitcoin-wallet/";
@@ -74,4 +77,6 @@ public class Constants
 	public static final String PREFS_KEY_LAST_VERSION = "last_version";
 	public static final String PREFS_KEY_SELECTED_ADDRESS = "selected_address";
 	public static final String PREFS_KEY_EXCHANGE_CURRENCY = "exchange_currency";
+	public static final String PREFS_KEY_TRUSTED_PEER = "trusted_peer";
+	public static final String PREFS_KEY_RESET_BLOCKCHAIN = "reset_blockchain";
 }

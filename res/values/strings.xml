@@ -3,6 +3,7 @@
 <resources>
 
 	<string name="app_name">Bitcoin Wallet</string>
+	<string name="toast_wallet_reset">Wallet was reset,\nwill take some time to recover</string>
 
 	<string name="wallet_content_disclaimer">This is entirely experimental. Use at your own risk! Read the safety notes.</string>
 	<string name="wallet_address_fragment_your">Your Bitcoin Address:</string>
@@ -26,6 +27,7 @@
 	<string name="wallet_options_send_coins">Send coins</string>
 	<string name="wallet_options_about">About</string>
 	<string name="wallet_options_safety">Safety notes</string>
+	<string name="wallet_options_donate">Donate</string>
 	<string name="wallet_options_help">Help</string>
 	<string name="wallet_migration_dialog_title">Important notice!</string>
 	<string name="wallet_migration_dialog_msg">"Due to popular demand, Bitcoin Wallet has switched from Testnet to Prodnet. This means that you
@@ -77,6 +79,13 @@
 	<string name="edit_address_book_entry_dialog_button_delete">Delete</string>
 	<string name="edit_address_book_entry_dialog_button_cancel">Cancel</string>
 
+	<string name="preferences_prefs_title">Preferences (advanced)</string>
+	<string name="preferences_trusted_peer_title">Trusted peer</string>
+	<string name="preferences_trusted_peer_summary">Hostname of single peer to connect to. Regular peer discovery will be skipped. Need to restart app to take effect.</string>
+	<string name="preferences_reset_blockchain_title">Reset the Blockchain</string>
+	<string name="preferences_reset_blockchain_summary">Use only when being instructed. Need to restart app to take effect.</string>
+
+	<string name="preferences_about_title">About</string>
 	<string name="preferences_license_title">License</string>
 	<string name="preferences_credits_bitcoinj_title">"This app is using 'bitcoinj'"</string>
 	<string name="preferences_credits_zxing_title">"This app is using 'zxing'"</string>

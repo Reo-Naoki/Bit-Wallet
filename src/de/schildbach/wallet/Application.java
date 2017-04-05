@@ -18,6 +18,10 @@
 package de.schildbach.wallet;
 
 import java.io.BufferedInputStream;
+import java.io.BufferedReader;
+import java.io.EOFException;
+import java.io.File;
+import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStreamReader;
@@ -36,10 +40,12 @@ import java.util.Map;
 import org.json.JSONException;
 import org.json.JSONObject;
 
+import android.content.Context;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager.NameNotFoundException;
 import android.os.Handler;
 import android.preference.PreferenceManager;
+import android.widget.Toast;
 
 import com.google.bitcoin.core.Address;
 import com.google.bitcoin.core.ECKey;
@@ -48,11 +54,15 @@ import com.google.bitcoin.core.Transaction;
 import com.google.bitcoin.core.Wallet;
 import com.google.bitcoin.core.WalletEventListener;
 
+import de.schildbach.wallet_test.R;
+
 /**
  * @author Andreas Schildbach
  */
 public class Application extends android.app.Application
 {
+	private static final int STACK_SIZE = 64 * 1024;
+
 	private NetworkParameters networkParameters;
 	private Wallet wallet;
 
@@ -135,7 +145,45 @@ public class Application extends android.app.Application
 
 		try
 		{
-			wallet = Wallet.loadFromFileStream(openFileInput(filename));
+			final FileInputStream is = openFileInput(filename);
+			runWithStackSize(new Runnable()
+			{
+				public void run()
+				{
+					try
+					{
+						wallet = Wallet.loadFromFileStream(is);
+					}
+					catch (final EOFException x)
+					{
+						handleException(x);
+					}
+					catch (final StackOverflowError x)
+					{
+						handleException(x);
+					}
+					catch (final IOException x)
+					{
+						throw new Error("cannot load wallet", x);
+					}
+				}
+
+				private void handleException(final Throwable x)
+				{
+					x.printStackTrace();
+
+					wallet = restoreWallet();
+
+					handler.post(new Runnable()
+					{
+						public void run()
+						{
+							Toast.makeText(Application.this, R.string.toast_wallet_reset, Toast.LENGTH_LONG).show();
+						}
+					});
+				}
+			}, STACK_SIZE);
+
 			System.out.println("wallet loaded from: " + getFilesDir() + "/" + filename);
 		}
 		catch (final FileNotFoundException x)
@@ -153,10 +201,6 @@ public class Application extends android.app.Application
 				throw new Error("wallet cannot be created", x2);
 			}
 		}
-		catch (final IOException x)
-		{
-			throw new Error("cannot load wallet", x);
-		}
 	}
 
 	public void addNewKeyToWallet()
@@ -173,19 +217,61 @@ public class Application extends android.app.Application
 		final String filename = Constants.TEST ? Constants.WALLET_FILENAME_TEST : Constants.WALLET_FILENAME_PROD;
 		final int mode = Constants.TEST ? Constants.WALLET_MODE_TEST : Constants.WALLET_MODE_PROD;
 
-		try
+		runWithStackSize(new Runnable()
 		{
-			wallet.saveToFileStream(openFileOutput(filename, mode));
-			System.out.println("wallet saved to: " + getFilesDir() + "/" + filename);
-		}
-		catch (IOException x)
-		{
-			throw new RuntimeException(x);
-		}
+			public void run()
+			{
+				try
+				{
+					wallet.saveToFileStream(openFileOutput(filename, mode));
+					System.out.println("wallet saved to: " + getFilesDir() + "/" + filename);
+				}
+				catch (IOException x)
+				{
+					throw new RuntimeException(x);
+				}
+			}
+		}, STACK_SIZE);
 	}
 
 	private void backupKeys()
 	{
+		try
+		{
+			final Writer out = new OutputStreamWriter(openFileOutput(Constants.WALLET_KEY_BACKUP_BASE58, Constants.WALLET_MODE), "UTF-8");
+
+			for (final ECKey key : wallet.keychain)
+			{
+				out.write(key.toOwnBase58());
+				out.write('\n');
+			}
+
+			out.close();
+		}
+		catch (final IOException x)
+		{
+			x.printStackTrace();
+		}
+
+		try
+		{
+			final long MS_PER_DAY = 24 * 60 * 60 * 1000;
+			final String filename = String.format("%s.%02d", Constants.WALLET_KEY_BACKUP_BASE58, System.currentTimeMillis() / MS_PER_DAY);
+			final Writer out = new OutputStreamWriter(openFileOutput(filename, Constants.WALLET_MODE), "UTF-8");
+
+			for (final ECKey key : wallet.keychain)
+			{
+				out.write(key.toOwnBase58());
+				out.write('\n');
+			}
+
+			out.close();
+		}
+		catch (final IOException x)
+		{
+			x.printStackTrace();
+		}
+
 		final ECKey firstKey = wallet.keychain.get(0);
 
 		if (firstKey != null)
@@ -203,22 +289,36 @@ public class Application extends android.app.Application
 				x.printStackTrace();
 			}
 		}
+	}
 
+	private Wallet restoreWallet()
+	{
 		try
 		{
-			final Writer out = new OutputStreamWriter(openFileOutput(Constants.WALLET_KEY_BACKUP_BASE58, Constants.WALLET_MODE), "UTF-8");
+			final Wallet wallet = new Wallet(networkParameters);
+			final BufferedReader in = new BufferedReader(new InputStreamReader(openFileInput(Constants.WALLET_KEY_BACKUP_BASE58), "UTF-8"));
 
-			for (final ECKey key : wallet.keychain)
+			while (true)
 			{
-				out.write(key.toOwnBase58());
-				out.write('\n');
+				final String line = in.readLine();
+				if (line == null)
+					break;
+
+				final ECKey key = ECKey.fromOwnBase58(line);
+				wallet.keychain.add(key);
 			}
 
-			out.close();
+			in.close();
+
+			final File file = new File(getDir("blockstore", Context.MODE_WORLD_READABLE | Context.MODE_WORLD_WRITEABLE),
+					Constants.BLOCKCHAIN_FILENAME);
+			file.delete();
+
+			return wallet;
 		}
 		catch (final IOException x)
 		{
-			x.printStackTrace();
+			throw new RuntimeException(x);
 		}
 	}
 
@@ -310,6 +410,20 @@ public class Application extends android.app.Application
 		catch (NameNotFoundException x)
 		{
 			return 0;
+		}
+	}
+
+	private static void runWithStackSize(final Runnable runnable, final long stackSize)
+	{
+		final Thread thread = new Thread(null, runnable, "stackSizeBooster", stackSize);
+		thread.start();
+		try
+		{
+			thread.join();
+		}
+		catch (final InterruptedException x)
+		{
+			throw new RuntimeException(x);
 		}
 	}
 }
