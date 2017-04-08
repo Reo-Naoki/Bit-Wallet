@@ -17,23 +17,24 @@
 
 package de.schildbach.wallet;
 
+import java.math.BigInteger;
+
 import android.app.Activity;
 import android.content.Context;
 import android.content.Intent;
 import android.os.Bundle;
 import android.support.v4.app.Fragment;
 import android.text.ClipboardManager;
-import android.text.Editable;
-import android.text.TextWatcher;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.View.OnClickListener;
 import android.view.ViewGroup;
-import android.widget.EditText;
 import android.widget.ImageView;
 
 import com.google.bitcoin.core.Address;
+import com.google.bitcoin.core.Utils;
 
+import de.schildbach.wallet.BtcAmountView.Listener;
 import de.schildbach.wallet_test.R;
 
 /**
@@ -45,7 +46,8 @@ public class RequestCoinsFragment extends Fragment
 	private Object nfcManager;
 
 	private ImageView qrView;
-	private EditText amountView;
+	private BtcAmountView amountView;
+	private View nfcEnabledView;
 
 	@Override
 	public View onCreateView(final LayoutInflater inflater, final ViewGroup container, final Bundle savedInstanceState)
@@ -70,24 +72,16 @@ public class RequestCoinsFragment extends Fragment
 			}
 		});
 
-		amountView = (EditText) view.findViewById(R.id.request_coins_amount);
-		final float density = getResources().getDisplayMetrics().density;
-		amountView.setCompoundDrawablesWithIntrinsicBounds(new BtcDrawable(24f * density, 10.5f * density), null, null, null);
-		amountView.addTextChangedListener(new TextWatcher()
+		amountView = (BtcAmountView) view.findViewById(R.id.request_coins_amount);
+		amountView.setListener(new Listener()
 		{
-			public void afterTextChanged(final Editable s)
+			public void changed()
 			{
 				updateView();
 			}
-
-			public void beforeTextChanged(final CharSequence s, final int start, final int count, final int after)
-			{
-			}
-
-			public void onTextChanged(final CharSequence s, final int start, final int before, final int count)
-			{
-			}
 		});
+
+		nfcEnabledView = view.findViewById(R.id.request_coins_fragment_nfc_enabled);
 
 		return view;
 	}
@@ -125,17 +119,22 @@ public class RequestCoinsFragment extends Fragment
 		qrView.setImageBitmap(WalletUtils.getQRCodeBitmap(addressStr, size));
 
 		if (nfcManager != null)
-			NfcTools.publishUri(nfcManager, getActivity(), addressStr);
+		{
+			final boolean success = NfcTools.publishUri(nfcManager, getActivity(), addressStr);
+			if (success)
+				nfcEnabledView.setVisibility(View.VISIBLE);
+		}
 	}
 
 	private String determineAddressStr()
 	{
 		final Address address = application.determineSelectedAddress();
+		final BigInteger amount = amountView.getAmount();
 
 		final StringBuilder builder = new StringBuilder("bitcoin:");
 		builder.append(address.toString());
-		if (amountView.getText().length() > 0)
-			builder.append("?amount=").append(amountView.getText());
+		if (amount != null && amount.signum() > 0)
+			builder.append("?amount=").append(Utils.bitcoinValueToFriendlyString(amount));
 
 		return builder.toString();
 	}

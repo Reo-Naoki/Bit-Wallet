@@ -232,7 +232,7 @@ public class Wallet implements Serializable {
         BigInteger valueSentToMe = tx.getValueSentToMe(this);
         BigInteger valueDifference = valueSentToMe.subtract(valueSentFromMe);
         
-        tx.updatedAt = new Date();
+		tx.updatedAt = new Date(block.getHeader().getTime() * 1000);
 
         if (!reorg) {
             log.info("Received tx{} for {} BTC: {}", new Object[] { sideChain ? " on a side chain" : "",
@@ -447,27 +447,54 @@ public class Wallet implements Serializable {
      * Transaction objects which are equal. The wallet is not updated to track its pending status or to mark the
      * coins as spent until confirmSend is called on the result.
      */
-    public synchronized Transaction createSend(Address address,  BigInteger nanocoins) {
+    public synchronized Transaction createSend(Address address, BigInteger nanocoins, final BigInteger fee) {
         // For now let's just pick the first key in our keychain. In future we might want to do something else to
         // give the user better privacy here, eg in incognito mode.
         assert keychain.size() > 0 : "Can't send value without an address to use for receiving change";
         ECKey first = keychain.get(0);
-        return createSend(address, nanocoins, first.toAddress(params));
+        return createSend(address, nanocoins, fee, first.toAddress(params));
     }
 
     /**
-     * Sends coins to the given address, via the given {@link Peer}. Change is returned to the first key in the wallet.
+     * Sends coins to the given address, via the given {@link PeerGroup}.
+     * Change is returned to the first key in the wallet.
+     * 
      * @param to Which address to send coins to.
      * @param nanocoins How many nanocoins to send. You can use Utils.toNanoCoins() to calculate this.
+     * @param fee How much fee to offer, in nanocoins.
      * @return The {@link Transaction} that was created or null if there was insufficient balance to send the coins.
      * @throws IOException if there was a problem broadcasting the transaction
      */
-    public synchronized Transaction sendCoins(Peer peer, Address to, BigInteger nanocoins) throws IOException {
-        Transaction tx = createSend(to, nanocoins);
+    public synchronized Transaction sendCoins(PeerGroup peerGroup, Address to, BigInteger nanocoins, final BigInteger fee) throws IOException {
+        Transaction tx = createSend(to, nanocoins, fee);
+        if (tx == null)   // Not enough money! :-(
+            return null;
+        if (!peerGroup.broadcastTransaction(tx)) {
+            throw new IOException("Failed to broadcast tx to all connected peers");
+        }
+
+        // TODO - retry logic
+        confirmSend(tx);
+        return tx;
+    }
+
+    /**
+     * Sends coins to the given address, via the given {@link Peer}.
+     * Change is returned to the first key in the wallet.
+     * 
+     * @param to Which address to send coins to.
+     * @param nanocoins How many nanocoins to send. You can use Utils.toNanoCoins() to calculate this.
+     * @param fee How much fee to offer, in nanocoins.
+     * @return The {@link Transaction} that was created or null if there was insufficient balance to send the coins.
+     * @throws IOException if there was a problem broadcasting the transaction
+     */
+    public synchronized Transaction sendCoins(Peer peer, Address to, BigInteger nanocoins, final BigInteger fee) throws IOException {
+        Transaction tx = createSend(to, nanocoins, fee);
         if (tx == null)   // Not enough money! :-(
             return null;
         peer.broadcastTransaction(tx);
         confirmSend(tx);
+
         return tx;
     }
 
@@ -481,13 +508,15 @@ public class Wallet implements Serializable {
      *
      * @param address The BitCoin address to send the money to.
      * @param nanocoins How much currency to send, in nanocoins.
+     * @param fee How much fee to offer, in nanocoins.
      * @param changeAddress Which address to send the change to, in case we can't make exactly the right value from
      * our coins. This should be an address we own (is in the keychain).
      * @return a new {@link Transaction} or null if we cannot afford this send.
      */
-    synchronized Transaction createSend(Address address, BigInteger nanocoins, Address changeAddress) {
+    synchronized Transaction createSend(Address address, BigInteger nanocoins, final BigInteger fee, Address changeAddress) {
+    	final BigInteger total = nanocoins.add(fee);
         log.info("Creating send tx to " + address.toString() + " for " +
-                bitcoinValueToFriendlyString(nanocoins));
+                bitcoinValueToFriendlyString(total));
         // To send money to somebody else, we need to do gather up transactions with unspent outputs until we have
         // sufficient value. Many coin selection algorithms are possible, we use a simple but suboptimal one.
         // TODO: Sort coins so we use the smallest first, to combat wallet fragmentation and reduce fees.
@@ -500,19 +529,19 @@ public class Wallet implements Serializable {
                 gathered.add(output);
                 valueGathered = valueGathered.add(output.getValue());
             }
-            if (valueGathered.compareTo(nanocoins) >= 0) break;
+            if (valueGathered.compareTo(total) >= 0) break;
         }
         // Can we afford this?
-        if (valueGathered.compareTo(nanocoins) < 0) {
+        if (valueGathered.compareTo(total) < 0) {
             log.info("Insufficient value in wallet for send, missing " +
-                    bitcoinValueToFriendlyString(nanocoins.subtract(valueGathered)));
+                    bitcoinValueToFriendlyString(total.subtract(valueGathered)));
             // TODO: Should throw an exception here.
             return null;
         }
         assert gathered.size() > 0;
         Transaction sendTx = new Transaction(params);
         sendTx.addOutput(new TransactionOutput(params, sendTx, nanocoins, address));
-        BigInteger change = valueGathered.subtract(nanocoins);
+        BigInteger change = valueGathered.subtract(total);
         if (change.compareTo(BigInteger.ZERO) > 0) {
             // The value of the inputs is greater than what we want to send. Just like in real life then,
             // we need to take back some coins ... this is called "change". Add another output that sends the change
@@ -915,16 +944,6 @@ public class Wallet implements Serializable {
 
         // make sure list is unique 
         transactions = new ArrayList<Transaction>(new HashSet<Transaction>(transactions));
-        // Sort by time
-        Collections.sort(transactions, new Comparator<Transaction>() {
-            public int compare(Transaction t1, Transaction t2) {
-                if (t1.updatedAt == null)
-                    t1.updatedAt = new Date(0);
-                if (t2.updatedAt == null)
-                    t2.updatedAt = new Date(0);
-                return t2.updatedAt.compareTo(t1.updatedAt);
-            }
-            });
-            return transactions;
-        }
+        return transactions;
+    }
 }

@@ -21,8 +21,6 @@
 	<string name="wallet_addresses_fragment_add_dialog_positive">Adresse hinzufügen</string>
 	<string name="wallet_addresses_fragment_add_dialog_negative">Schließen</string>
 	<string name="wallet_balance_fragment_local_value">etwa %1$s %2$s wert</string>
-	<string name="transaction_row_sent_to">Gesendet</string>
-	<string name="transaction_row_received_from">Empfangen</string>
 	<string name="exchange_rates_fragment_empty_text">Kann Wechselkurse in laden</string>
 	<string name="wallet_options_request_coins">BTC anfordern</string>
 	<string name="wallet_options_send_coins">BTC senden</string>
@@ -45,7 +43,7 @@
 	<string name="send_coins_fragment_available_label">Verfügbar</string>
 	<string name="send_coins_fragment_pending">(BTC %s warten auf Bestätigung)</string>
 	<string name="send_coins_fragment_amount_label">Betrag</string>
-	<string name="send_coins_fragment_amount_error">Ungültiger Betrag!</string>
+	<string name="send_coins_fragment_fee_label">Gebühr (optional)</string>
 	<string name="send_coins_fragment_button_send">Senden</string>
 	<string name="send_coins_fragment_button_cancel">Abbrechen</string>
 	<string name="send_coins_sending_msg">Sending...</string>
@@ -59,6 +57,7 @@
 	<string name="request_coins_activity_title">Bitcoins anfordern</string>
 	<string name="request_coins_fragment_amount_label">Angeforderter Betrag (optional)</string>
 	<string name="request_coins_fragment_qr_label">Laß diesen QR-Code vom Sender scannen:</string>
+	<string name="request_coins_fragment_nfc_enabled">Oder berühr\'s mit einem NFC-fähigen Gerät.</string>
 	<string name="request_coins_clipboard_msg">Anforderung aufs Clipboard kopiert</string>
 	<string name="request_coins_share_dialog_title">Anforderung veröffentlichen...</string>
 
