@@ -34,13 +34,6 @@ import static com.google.bitcoin.core.Utils.bitcoinValueToFriendlyString;
  * serialization library.<p>
  */
 public class Wallet implements Serializable {
-	
-	   public boolean isPending(Transaction tx)
-	   {
-	       return pending.containsKey(tx.getHash());
-	   }
-	
-	
     private static final Logger log = LoggerFactory.getLogger(Wallet.class);
     private static final long serialVersionUID = 2L;
 
@@ -430,12 +423,15 @@ public class Wallet implements Serializable {
         // Some of the outputs probably send coins back to us, eg for change or because this transaction is just
         // consolidating the wallet. Mark any output that is NOT back to us as spent. Then add this TX to the
         // pending pool.
-        for (TransactionOutput output : tx.outputs) {
-            if (!output.isMine(this)) {
-                // This output didn't go to us, so by definition it is now spent.
-                output.markAsSpent(null);
-            }
-        }
+
+// testing fix for http://code.google.com/p/bitcoinj/issues/detail?id=64
+//        for (TransactionOutput output : tx.outputs) {
+//            if (!output.isMine(this)) {
+//                // This output didn't go to us, so by definition it is now spent.
+//                output.markAsSpent(null);
+//            }
+//        }
+
         pending.put(tx.getHash(), tx);
     }
 
@@ -935,15 +931,35 @@ public class Wallet implements Serializable {
         return Collections.unmodifiableCollection(pending.values());
     }
 
-    public synchronized ArrayList<Transaction> getAllTransactions(){
-        // generate list of transactions to show
-        ArrayList<Transaction> transactions = new ArrayList<Transaction>();
+    public boolean isPending(Transaction tx)
+    {
+        return pending.containsKey(tx.getHash());
+    }	
+
+    public boolean isDead(Transaction tx)
+    {
+        return dead.containsKey(tx.getHash());
+    }	
+
+    public synchronized ArrayList<Transaction> getAllTransactions()
+    {
+    	// generate list of transactions to show
+        final Set<Transaction> transactions = new HashSet<Transaction>();
         transactions.addAll(pending.values());
         transactions.addAll(unspent.values());
         transactions.addAll(spent.values());
+        transactions.addAll(dead.values());
 
         // make sure list is unique 
-        transactions = new ArrayList<Transaction>(new HashSet<Transaction>(transactions));
-        return transactions;
+        return new ArrayList<Transaction>(transactions);
+    }
+
+    public void removeAllTransactions()
+    {
+    	pending.clear();
+    	unspent.clear();
+    	spent.clear();
+    	inactive.clear();
+    	dead.clear();
     }
 }

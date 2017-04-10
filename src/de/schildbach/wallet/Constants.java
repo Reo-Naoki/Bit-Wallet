@@ -77,13 +77,14 @@ public class Constants
 	public static final String AUTHOR_TWITTER_URL = "http://twitter.com/android_bitcoin";
 	public static final String AUTHOR_GOOGLEPLUS_URL = "https://profiles.google.com/andreas.schildbach";
 	public static final String MARKET_APP_URL = "market://details?id=%s";
+	public static final String WEBMARKET_APP_URL = "https://market.android.com/details?id=%s";
 	public static final String MARKET_PUBLISHER_URL = "market://search?q=pub:\"Andreas Schildbach\"";
 
 	public static final String PREFS_KEY_LAST_VERSION = "last_version";
 	public static final String PREFS_KEY_SELECTED_ADDRESS = "selected_address";
 	public static final String PREFS_KEY_EXCHANGE_CURRENCY = "exchange_currency";
 	public static final String PREFS_KEY_TRUSTED_PEER = "trusted_peer";
-	public static final String PREFS_KEY_RESET_BLOCKCHAIN = "reset_blockchain";
+	public static final String PREFS_KEY_INITIATE_RESET = "initiate_reset";
 
 	public static final BigInteger DEFAULT_TX_FEE = Utils.CENT.divide(BigInteger.valueOf(20));
 }
