@@ -48,12 +48,16 @@ import android.preference.PreferenceManager;
 import android.widget.Toast;
 
 import com.google.bitcoin.core.Address;
+import com.google.bitcoin.core.AddressFormatException;
+import com.google.bitcoin.core.DumpedPrivateKey;
 import com.google.bitcoin.core.ECKey;
 import com.google.bitcoin.core.NetworkParameters;
 import com.google.bitcoin.core.Transaction;
 import com.google.bitcoin.core.Wallet;
 import com.google.bitcoin.core.WalletEventListener;
 
+import de.schildbach.wallet.util.ErrorReporter;
+import de.schildbach.wallet.util.StrictModeWrapper;
 import de.schildbach.wallet_test.R;
 
 /**
@@ -61,9 +65,8 @@ import de.schildbach.wallet_test.R;
  */
 public class Application extends android.app.Application
 {
-	private static final int STACK_SIZE = 64 * 1024;
+	private static final int STACK_SIZE = 96 * 1024;
 
-	private NetworkParameters networkParameters;
 	private Wallet wallet;
 
 	private final Handler handler = new Handler();
@@ -115,11 +118,18 @@ public class Application extends android.app.Application
 	@Override
 	public void onCreate()
 	{
+		try
+		{
+			StrictModeWrapper.init();
+		}
+		catch (final Error x)
+		{
+			System.out.println("StrictMode not available");
+		}
+
 		super.onCreate();
 
 		ErrorReporter.getInstance().init(this);
-
-		networkParameters = Constants.TEST ? NetworkParameters.testNet() : NetworkParameters.prodNet();
 
 		loadWallet();
 
@@ -130,7 +140,7 @@ public class Application extends android.app.Application
 
 	public NetworkParameters getNetworkParameters()
 	{
-		return networkParameters;
+		return Constants.NETWORK_PARAMETERS;
 	}
 
 	public Wallet getWallet()
@@ -188,7 +198,7 @@ public class Application extends android.app.Application
 		}
 		catch (final FileNotFoundException x)
 		{
-			wallet = new Wallet(networkParameters);
+			wallet = new Wallet(Constants.NETWORK_PARAMETERS);
 			wallet.keychain.add(new ECKey());
 
 			try
@@ -242,7 +252,7 @@ public class Application extends android.app.Application
 
 			for (final ECKey key : wallet.keychain)
 			{
-				out.write(key.toOwnBase58());
+				out.write(key.getPrivateKeyEncoded(Constants.NETWORK_PARAMETERS).toString());
 				out.write('\n');
 			}
 
@@ -261,7 +271,7 @@ public class Application extends android.app.Application
 
 			for (final ECKey key : wallet.keychain)
 			{
-				out.write(key.toOwnBase58());
+				out.write(key.getPrivateKeyEncoded(Constants.NETWORK_PARAMETERS).toString());
 				out.write('\n');
 			}
 
@@ -295,7 +305,7 @@ public class Application extends android.app.Application
 	{
 		try
 		{
-			final Wallet wallet = new Wallet(networkParameters);
+			final Wallet wallet = new Wallet(Constants.NETWORK_PARAMETERS);
 			final BufferedReader in = new BufferedReader(new InputStreamReader(openFileInput(Constants.WALLET_KEY_BACKUP_BASE58), "UTF-8"));
 
 			while (true)
@@ -304,7 +314,7 @@ public class Application extends android.app.Application
 				if (line == null)
 					break;
 
-				final ECKey key = ECKey.fromOwnBase58(line);
+				final ECKey key = new DumpedPrivateKey(Constants.NETWORK_PARAMETERS, line).getKey();
 				wallet.keychain.add(key);
 			}
 
@@ -320,6 +330,10 @@ public class Application extends android.app.Application
 		{
 			throw new RuntimeException(x);
 		}
+		catch (final AddressFormatException x)
+		{
+			throw new RuntimeException(x);
+		}
 	}
 
 	public Address determineSelectedAddress()
@@ -327,78 +341,18 @@ public class Application extends android.app.Application
 		final ArrayList<ECKey> keychain = wallet.keychain;
 
 		final SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(this);
-		final String defaultAddress = keychain.get(0).toAddress(networkParameters).toString();
+		final String defaultAddress = keychain.get(0).toAddress(Constants.NETWORK_PARAMETERS).toString();
 		final String selectedAddress = prefs.getString(Constants.PREFS_KEY_SELECTED_ADDRESS, defaultAddress);
 
 		// sanity check
 		for (final ECKey key : keychain)
 		{
-			final Address address = key.toAddress(networkParameters);
+			final Address address = key.toAddress(Constants.NETWORK_PARAMETERS);
 			if (address.toString().equals(selectedAddress))
 				return address;
 		}
 
 		throw new IllegalStateException("address not in keychain: " + selectedAddress);
-	}
-
-	public Map<String, Double> getExchangeRates()
-	{
-		try
-		{
-			final URLConnection connection = new URL("http://bitcoincharts.com/t/weighted_prices.json").openConnection();
-			// https://mtgox.com/code/data/ticker.php
-			// https://bitmarket.eu/api/ticker
-			// http://bitcoincharts.com/t/weighted_prices.json
-
-			connection.connect();
-			final Reader is = new InputStreamReader(new BufferedInputStream(connection.getInputStream()));
-			final StringBuilder content = new StringBuilder();
-			copy(is, content);
-			is.close();
-
-			final Map<String, Double> rates = new HashMap<String, Double>();
-
-			final JSONObject head = new JSONObject(content.toString());
-			for (final Iterator<String> i = head.keys(); i.hasNext();)
-			{
-				final String currencyCode = i.next();
-
-				final JSONObject o = head.getJSONObject(currencyCode);
-				double rate = o.optDouble("24h", 0);
-				if (rate == 0)
-					rate = o.optDouble("7d", 0);
-				if (rate == 0)
-					rate = o.optDouble("30d", 0);
-
-				if (rate != 0)
-					rates.put(currencyCode, rate);
-			}
-
-			return rates;
-		}
-		catch (final IOException x)
-		{
-			x.printStackTrace();
-		}
-		catch (final JSONException x)
-		{
-			x.printStackTrace();
-		}
-
-		return null;
-	}
-
-	private static final long copy(final Reader reader, final StringBuilder builder) throws IOException
-	{
-		final char[] buffer = new char[256];
-		long count = 0;
-		int n = 0;
-		while (-1 != (n = reader.read(buffer)))
-		{
-			builder.append(buffer, 0, n);
-			count += n;
-		}
-		return count;
 	}
 
 	public final int versionCode()

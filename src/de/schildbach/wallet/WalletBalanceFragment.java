@@ -19,19 +19,21 @@ package de.schildbach.wallet;
 
 import java.math.BigDecimal;
 import java.math.BigInteger;
-import java.util.Map;
 
+import android.app.Activity;
 import android.content.SharedPreferences;
+import android.database.Cursor;
 import android.graphics.Color;
 import android.graphics.Paint;
 import android.os.Bundle;
 import android.os.Handler;
-import android.os.HandlerThread;
-import android.os.Process;
 import android.preference.PreferenceManager;
 import android.support.v4.app.Fragment;
 import android.support.v4.app.FragmentManager;
 import android.support.v4.app.FragmentTransaction;
+import android.support.v4.app.LoaderManager;
+import android.support.v4.content.CursorLoader;
+import android.support.v4.content.Loader;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.View.OnClickListener;
@@ -49,18 +51,15 @@ import de.schildbach.wallet_test.R;
 /**
  * @author Andreas Schildbach
  */
-public class WalletBalanceFragment extends Fragment
+public class WalletBalanceFragment extends Fragment implements LoaderManager.LoaderCallbacks<Cursor>
 {
 	private Application application;
-
-	private HandlerThread backgroundThread;
-	private Handler backgroundHandler;
+	private Wallet wallet;
+	private SharedPreferences prefs;
 	private final Handler handler = new Handler();
 
-	private TextView viewBalance;
+	private CurrencyAmountView viewBalance;
 	private TextView viewBalanceLocal;
-
-	private Map<String, Double> exchangeRates;
 
 	private final WalletEventListener walletEventListener = new WalletEventListener()
 	{
@@ -107,49 +106,32 @@ public class WalletBalanceFragment extends Fragment
 	};
 
 	@Override
+	public void onCreate(final Bundle savedInstanceState)
+	{
+		super.onCreate(savedInstanceState);
+
+		final Activity activity = getActivity();
+		application = (Application) activity.getApplication();
+		prefs = PreferenceManager.getDefaultSharedPreferences(activity);
+
+		wallet = application.getWallet();
+		wallet.addEventListener(walletEventListener);
+	}
+
+	@Override
+	public void onActivityCreated(final Bundle savedInstanceState)
+	{
+		super.onActivityCreated(savedInstanceState);
+
+		getLoaderManager().initLoader(0, null, this);
+	}
+
+	@Override
 	public View onCreateView(final LayoutInflater inflater, final ViewGroup container, final Bundle savedInstanceState)
 	{
 		final View view = inflater.inflate(R.layout.wallet_balance_fragment, container, false);
-		viewBalance = (TextView) view.findViewById(R.id.wallet_balance);
+		viewBalance = (CurrencyAmountView) view.findViewById(R.id.wallet_balance);
 		viewBalanceLocal = (TextView) view.findViewById(R.id.wallet_balance_local);
-
-		application = (Application) getActivity().getApplication();
-		final Wallet wallet = application.getWallet();
-
-		// background thread
-		backgroundThread = new HandlerThread("backgroundThread", Process.THREAD_PRIORITY_BACKGROUND);
-		backgroundThread.start();
-		backgroundHandler = new Handler(backgroundThread.getLooper());
-
-		wallet.addEventListener(walletEventListener);
-
-		backgroundHandler.post(new Runnable()
-		{
-			public void run()
-			{
-				try
-				{
-					final Map<String, Double> newExchangeRates = application.getExchangeRates();
-
-					if (newExchangeRates != null)
-					{
-						getActivity().runOnUiThread(new Runnable()
-						{
-							public void run()
-							{
-								exchangeRates = newExchangeRates;
-								updateView();
-							}
-						});
-					}
-				}
-				catch (final Exception x)
-				{
-					// if something happens here, don't care. it's not important.
-					x.printStackTrace();
-				}
-			}
-		});
 
 		view.setOnClickListener(new OnClickListener()
 		{
@@ -178,38 +160,18 @@ public class WalletBalanceFragment extends Fragment
 	}
 
 	@Override
-	public void onDestroyView()
+	public void onDestroy()
 	{
-		application.getWallet().removeEventListener(walletEventListener);
+		wallet.removeEventListener(walletEventListener);
 
-		// cancel background thread
-		backgroundThread.getLooper().quit();
-
-		super.onDestroyView();
+		super.onDestroy();
 	}
 
 	public void updateView()
 	{
-		final BigInteger balance = application.getWallet().getBalance(BalanceType.ESTIMATED);
-		viewBalance.setText(Utils.bitcoinValueToFriendlyString(balance));
+		viewBalance.setAmount(wallet.getBalance(BalanceType.ESTIMATED));
 
-		viewBalanceLocal.setVisibility(View.GONE);
-		if (balance.signum() > 0 && exchangeRates != null)
-		{
-			final SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(getActivity());
-			final String exchangeCurrency = prefs.getString(Constants.PREFS_KEY_EXCHANGE_CURRENCY, "USD");
-			final Double exchangeRate = exchangeRates.get(exchangeCurrency);
-
-			if (exchangeRate != null)
-			{
-				final BigInteger valueLocal = new BigDecimal(balance).multiply(new BigDecimal(exchangeRate)).toBigInteger();
-				viewBalanceLocal.setVisibility(View.VISIBLE);
-				viewBalanceLocal.setText(getString(R.string.wallet_balance_fragment_local_value, exchangeCurrency,
-						Utils.bitcoinValueToFriendlyString(valueLocal)));
-				if (Constants.TEST)
-					viewBalanceLocal.setPaintFlags(viewBalanceLocal.getPaintFlags() | Paint.STRIKE_THRU_TEXT_FLAG);
-			}
-		}
+		getLoaderManager().restartLoader(0, null, this);
 	}
 
 	private Runnable resetColorRunnable = new Runnable()
@@ -225,5 +187,38 @@ public class WalletBalanceFragment extends Fragment
 		viewBalanceLocal.setTextColor(Color.parseColor("#cc5500"));
 		handler.removeCallbacks(resetColorRunnable);
 		handler.postDelayed(resetColorRunnable, 500);
+	}
+
+	public Loader<Cursor> onCreateLoader(final int id, final Bundle args)
+	{
+		final String exchangeCurrency = prefs.getString(Constants.PREFS_KEY_EXCHANGE_CURRENCY, Constants.DEFAULT_EXCHANGE_CURRENCY);
+		return new CursorLoader(getActivity(), ExchangeRatesProvider.CONTENT_URI, null, ExchangeRatesProvider.KEY_CURRENCY_CODE,
+				new String[] { exchangeCurrency }, null);
+	}
+
+	public void onLoadFinished(final Loader<Cursor> loader, final Cursor data)
+	{
+		if (data != null)
+		{
+			data.moveToFirst();
+			final Double exchangeRate = data.getDouble(data.getColumnIndexOrThrow(ExchangeRatesProvider.KEY_EXCHANGE_RATE));
+
+			viewBalanceLocal.setVisibility(View.GONE);
+			if (application.getWallet().getBalance(BalanceType.ESTIMATED).signum() > 0 && exchangeRate != null)
+			{
+				final String exchangeCurrency = prefs.getString(Constants.PREFS_KEY_EXCHANGE_CURRENCY, Constants.DEFAULT_EXCHANGE_CURRENCY);
+				final BigInteger balance = wallet.getBalance(BalanceType.ESTIMATED);
+				final BigInteger valueLocal = new BigDecimal(balance).multiply(new BigDecimal(exchangeRate)).toBigInteger();
+				viewBalanceLocal.setVisibility(View.VISIBLE);
+				viewBalanceLocal.setText(getString(R.string.wallet_balance_fragment_local_value, exchangeCurrency,
+						Utils.bitcoinValueToFriendlyString(valueLocal)));
+				if (Constants.TEST)
+					viewBalanceLocal.setPaintFlags(viewBalanceLocal.getPaintFlags() | Paint.STRIKE_THRU_TEXT_FLAG);
+			}
+		}
+	}
+
+	public void onLoaderReset(final Loader<Cursor> loader)
+	{
 	}
 }

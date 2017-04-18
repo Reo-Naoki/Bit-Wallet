@@ -30,7 +30,7 @@ import java.util.Arrays;
 public abstract class Message implements Serializable {
     private static final long serialVersionUID = -3561053461717079135L;
 
-    public static final int MAX_SIZE = 0x02000000;
+    public static final int MAX_SIZE = 0x100000; // 1 MB
 
     // Useful to ensure serialize/deserialize are consistent with each other.
     private static final boolean SELF_CHECK = false;
@@ -153,9 +153,10 @@ public abstract class Message implements Serializable {
             cursor += 1;
             return "";
         }
+        cursor += varInt.getSizeInBytes();
         byte[] characters = new byte[(int)varInt.value];
         System.arraycopy(bytes, cursor, characters, 0, characters.length);
-        cursor += varInt.getSizeInBytes();
+        cursor += characters.length;
         try {
             return new String(characters, "UTF-8");
         } catch (UnsupportedEncodingException e) {

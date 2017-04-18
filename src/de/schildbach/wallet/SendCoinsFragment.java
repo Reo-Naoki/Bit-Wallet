@@ -19,6 +19,7 @@ package de.schildbach.wallet;
 
 import java.math.BigInteger;
 
+import android.app.Activity;
 import android.app.AlertDialog;
 import android.content.ComponentName;
 import android.content.Context;
@@ -26,6 +27,7 @@ import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.ServiceConnection;
 import android.database.Cursor;
+import android.graphics.Color;
 import android.net.Uri;
 import android.os.Bundle;
 import android.os.Handler;
@@ -50,7 +52,7 @@ import com.google.bitcoin.core.Transaction;
 import com.google.bitcoin.core.Utils;
 import com.google.bitcoin.core.Wallet.BalanceType;
 
-import de.schildbach.wallet.BtcAmountView.Listener;
+import de.schildbach.wallet.CurrencyAmountView.Listener;
 import de.schildbach.wallet_test.R;
 
 /**
@@ -65,8 +67,8 @@ public class SendCoinsFragment extends Fragment
 
 	private AutoCompleteTextView receivingAddressView;
 	private View receivingAddressErrorView;
-	private BtcAmountView amountView;
-	private BtcAmountView feeView;
+	private CurrencyAmountView amountView;
+	private CurrencyAmountView feeView;
 	private Button viewGo;
 	private Button viewCancel;
 
@@ -107,6 +109,10 @@ public class SendCoinsFragment extends Fragment
 		{
 			updateView();
 		}
+
+		public void done()
+		{
+		}
 	};
 
 	@Override
@@ -122,8 +128,9 @@ public class SendCoinsFragment extends Fragment
 	@Override
 	public View onCreateView(final LayoutInflater inflater, final ViewGroup container, final Bundle savedInstanceState)
 	{
+		final AbstractWalletActivity activity = (AbstractWalletActivity) getActivity();
+
 		final View view = inflater.inflate(R.layout.send_coins_fragment, container);
-		final float density = getResources().getDisplayMetrics().density;
 
 		final BigInteger estimated = application.getWallet().getBalance(BalanceType.ESTIMATED);
 		final BigInteger available = application.getWallet().getBalance(BalanceType.AVAILABLE);
@@ -131,23 +138,41 @@ public class SendCoinsFragment extends Fragment
 		// TODO subscribe to wallet changes
 
 		receivingAddressView = (AutoCompleteTextView) view.findViewById(R.id.send_coins_receiving_address);
-		receivingAddressView.setAdapter(new AutoCompleteAdapter(getActivity(), null));
+		receivingAddressView.setAdapter(new AutoCompleteAdapter(activity, null));
 		receivingAddressView.addTextChangedListener(textWatcher);
 
 		receivingAddressErrorView = view.findViewById(R.id.send_coins_receiving_address_error);
 
-		final TextView availableView = (TextView) view.findViewById(R.id.send_coins_available);
-		availableView.setCompoundDrawablesWithIntrinsicBounds(new BtcDrawable(24f * density, 10.5f * density), null, null, null);
-		availableView.setText(Utils.bitcoinValueToFriendlyString(available));
+		final CurrencyAmountView availableView = (CurrencyAmountView) view.findViewById(R.id.send_coins_available);
+		availableView.setAmount(available);
 
 		final TextView pendingView = (TextView) view.findViewById(R.id.send_coins_pending);
 		pendingView.setVisibility(pending.signum() > 0 ? View.VISIBLE : View.GONE);
 		pendingView.setText(getString(R.string.send_coins_fragment_pending, Utils.bitcoinValueToFriendlyString(pending)));
 
-		amountView = (BtcAmountView) view.findViewById(R.id.send_coins_amount);
+		amountView = (CurrencyAmountView) view.findViewById(R.id.send_coins_amount);
 		amountView.setListener(listener);
+		amountView.setContextButton(R.drawable.ic_input_calculator, new OnClickListener()
+		{
+			public void onClick(final View v)
+			{
+				final FragmentTransaction ft = getFragmentManager().beginTransaction();
+				final Fragment prev = getFragmentManager().findFragmentByTag(AmountCalculatorFragment.FRAGMENT_TAG);
+				if (prev != null)
+					ft.remove(prev);
+				ft.addToBackStack(null);
+				final DialogFragment newFragment = new AmountCalculatorFragment(new AmountCalculatorFragment.Listener()
+				{
+					public void use(final BigInteger amount)
+					{
+						amountView.setAmount(amount);
+					}
+				});
+				newFragment.show(ft, AmountCalculatorFragment.FRAGMENT_TAG);
+			}
+		});
 
-		feeView = (BtcAmountView) view.findViewById(R.id.send_coins_fee);
+		feeView = (CurrencyAmountView) view.findViewById(R.id.send_coins_fee);
 		feeView.setAmount(Constants.DEFAULT_TX_FEE);
 		feeView.setListener(listener);
 
@@ -174,8 +199,8 @@ public class SendCoinsFragment extends Fragment
 
 						service.sendTransaction(transaction);
 
-						final WalletBalanceFragment balanceFragment = (WalletBalanceFragment) getActivity().getSupportFragmentManager()
-								.findFragmentById(R.id.wallet_balance_fragment);
+						final WalletBalanceFragment balanceFragment = (WalletBalanceFragment) activity.getSupportFragmentManager().findFragmentById(
+								R.id.wallet_balance_fragment);
 						if (balanceFragment != null)
 							balanceFragment.updateView();
 
@@ -184,10 +209,10 @@ public class SendCoinsFragment extends Fragment
 							public void run()
 							{
 								final Uri uri = AddressBookProvider.CONTENT_URI.buildUpon().appendPath(receivingAddress.toString()).build();
-								final Cursor cursor = getActivity().managedQuery(uri, null, null, null, null);
+								final Cursor cursor = activity.managedQuery(uri, null, null, null, null);
 								if (cursor.getCount() == 0)
 								{
-									final AlertDialog.Builder builder = new AlertDialog.Builder(getActivity());
+									final AlertDialog.Builder builder = new AlertDialog.Builder(activity);
 									builder.setMessage(R.string.send_coins_add_address_dialog_title);
 									builder.setPositiveButton(R.string.send_coins_add_address_dialog_button_add,
 											new DialogInterface.OnClickListener()
@@ -200,15 +225,14 @@ public class SendCoinsFragment extends Fragment
 													if (prev != null)
 														ft.remove(prev);
 													ft.addToBackStack(null);
-													final DialogFragment newFragment = new EditAddressBookEntryFragment(getLayoutInflater(null),
-															receivingAddress.toString())
+													final DialogFragment newFragment = new EditAddressBookEntryFragment(receivingAddress.toString())
 													{
 														@Override
 														public void onDestroyView()
 														{
 															super.onDestroyView();
 
-															getActivity().finish();
+															activity.finish();
 														}
 													};
 													newFragment.show(ft, EditAddressBookEntryFragment.FRAGMENT_TAG);
@@ -219,25 +243,26 @@ public class SendCoinsFragment extends Fragment
 											{
 												public void onClick(final DialogInterface dialog, final int id)
 												{
-													getActivity().finish();
+													activity.finish();
 												}
 											});
 									builder.show();
 								}
 								else
 								{
-									getActivity().finish();
+									activity.finish();
 								}
 							}
 						}, 5000);
 
-						((AbstractWalletActivity) getActivity()).longToast(R.string.send_coins_success_msg,
-								Utils.bitcoinValueToFriendlyString(amount));
+						activity.longToast(R.string.send_coins_success_msg, Utils.bitcoinValueToFriendlyString(amount));
+
+						activity.setResult(Activity.RESULT_OK);
 					}
 					else
 					{
-						((AbstractWalletActivity) getActivity()).longToast(R.string.send_coins_error_msg);
-						getActivity().finish();
+						activity.longToast(R.string.send_coins_error_msg);
+						activity.finish();
 					}
 				}
 				catch (final AddressFormatException x)
@@ -252,7 +277,9 @@ public class SendCoinsFragment extends Fragment
 		{
 			public void onClick(final View v)
 			{
-				getActivity().finish();
+				activity.setResult(Activity.RESULT_CANCELED);
+
+				activity.finish();
 			}
 		});
 
@@ -318,18 +345,6 @@ public class SendCoinsFragment extends Fragment
 		}
 	}
 
-	public void update(final String receivingAddress, final String amount)
-	{
-		receivingAddressView.setText(receivingAddress);
-		if (amount != null)
-			amountView.setAmount(Utils.toNanoCoins(amount));
-
-		if (receivingAddress != null && amount == null)
-			amountView.requestFocus();
-
-		updateView();
-	}
-
 	private void updateView()
 	{
 		boolean validAddress = false;
@@ -355,5 +370,34 @@ public class SendCoinsFragment extends Fragment
 		boolean validFee = fee != null && fee.signum() >= 0;
 
 		viewGo.setEnabled(validAddress && validAmount && validFee);
+	}
+
+	public void update(final String receivingAddress, final BigInteger amount)
+	{
+		receivingAddressView.setText(receivingAddress);
+		flashReceivingAddress();
+
+		if (amount != null)
+			amountView.setAmount(amount);
+
+		if (receivingAddress != null && amount == null)
+			amountView.requestFocus();
+
+		updateView();
+	}
+
+	private Runnable resetColorRunnable = new Runnable()
+	{
+		public void run()
+		{
+			receivingAddressView.setTextColor(Color.parseColor("#888888"));
+		}
+	};
+
+	public void flashReceivingAddress()
+	{
+		receivingAddressView.setTextColor(Color.parseColor("#cc5500"));
+		handler.removeCallbacks(resetColorRunnable);
+		handler.postDelayed(resetColorRunnable, 500);
 	}
 }

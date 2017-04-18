@@ -21,6 +21,7 @@ import java.math.BigInteger;
 
 import android.content.Context;
 
+import com.google.bitcoin.core.NetworkParameters;
 import com.google.bitcoin.core.Utils;
 
 import de.schildbach.wallet_test.R;
@@ -31,6 +32,8 @@ import de.schildbach.wallet_test.R;
 public class Constants
 {
 	public static final boolean TEST = R.class.getPackage().getName().contains('_' + "test"); // replace protected
+
+	public static final NetworkParameters NETWORK_PARAMETERS = TEST ? NetworkParameters.testNet() : NetworkParameters.prodNet();
 
 	public static final String WALLET_FILENAME_PROD = "wallet";
 	public static final String WALLET_FILENAME_TEST = "wallet-testnet";
@@ -66,6 +69,7 @@ public class Constants
 
 	public static final int MAX_CONNECTED_PEERS = 6;
 	public static final int BLOCKCHAIN_PROGRESS_TIMEOUT = 120 * 1000;
+	public static final String DEFAULT_EXCHANGE_CURRENCY = "USD";
 
 	public static final String DONATION_ADDRESS = "1PZmMahjbfsTy6DsaRyfStzoWTPppWwDnZ";
 
@@ -80,9 +84,12 @@ public class Constants
 	public static final String WEBMARKET_APP_URL = "https://market.android.com/details?id=%s";
 	public static final String MARKET_PUBLISHER_URL = "market://search?q=pub:\"Andreas Schildbach\"";
 
+	public static final String PACKAGE_NAME_ZXING = "com.google.zxing.client.android";
+
 	public static final String PREFS_KEY_LAST_VERSION = "last_version";
 	public static final String PREFS_KEY_SELECTED_ADDRESS = "selected_address";
 	public static final String PREFS_KEY_EXCHANGE_CURRENCY = "exchange_currency";
+	public static final String PREFS_KEY_CLEAR_SYNC_NOTIFICATION = "clear_sync_notification";
 	public static final String PREFS_KEY_TRUSTED_PEER = "trusted_peer";
 	public static final String PREFS_KEY_INITIATE_RESET = "initiate_reset";
 

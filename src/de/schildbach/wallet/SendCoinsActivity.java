@@ -17,8 +17,7 @@
 
 package de.schildbach.wallet;
 
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
+import java.math.BigInteger;
 
 import android.app.Dialog;
 import android.content.Intent;
@@ -29,6 +28,10 @@ import android.view.View;
 import android.view.View.OnClickListener;
 import android.view.Window;
 import android.webkit.WebView;
+
+import com.google.bitcoin.core.Address;
+
+import de.schildbach.wallet.util.ActionBarFragment;
 import de.schildbach.wallet_test.R;
 
 /**
@@ -40,10 +43,11 @@ public class SendCoinsActivity extends AbstractWalletActivity
 
 	private static final int DIALOG_HELP = 0;
 
-	private static final Intent zxingIntent = new Intent().setClassName("com.google.zxing.client.android",
-			"com.google.zxing.client.android.CaptureActivity");
+	private static final Intent zxingIntent = new Intent("com.google.zxing.client.android.SCAN").putExtra("SCAN_MODE", "QR_CODE_MODE");
 	private static final Intent gogglesIntent = new Intent().setClassName("com.google.android.apps.unveil",
 			"com.google.android.apps.unveil.CaptureActivity");
+
+	private static final int REQUEST_CODE_SCAN = 0;
 
 	@Override
 	protected void onCreate(final Bundle savedInstanceState)
@@ -52,10 +56,8 @@ public class SendCoinsActivity extends AbstractWalletActivity
 
 		setContentView(R.layout.send_coins_content);
 
-		final ActionBarFragment actionBar = (ActionBarFragment) getSupportFragmentManager().findFragmentById(R.id.action_bar_fragment);
-		actionBar.setIcon(Constants.APP_ICON_RESID);
+		final ActionBarFragment actionBar = getActionBar();
 		actionBar.setPrimaryTitle(R.string.send_coins_activity_title);
-		actionBar.setSecondaryTitle(Constants.TEST ? "[testnet!]" : null);
 
 		actionBar.addButton(R.drawable.ic_menu_qr).setOnClickListener(new OnClickListener()
 		{
@@ -63,11 +65,18 @@ public class SendCoinsActivity extends AbstractWalletActivity
 			{
 				final PackageManager pm = getPackageManager();
 				if (pm.resolveActivity(zxingIntent, 0) != null)
-					startActivity(zxingIntent);
+				{
+					startActivityForResult(zxingIntent, REQUEST_CODE_SCAN);
+				}
 				else if (pm.resolveActivity(gogglesIntent, 0) != null)
+				{
 					startActivity(gogglesIntent);
+				}
 				else
+				{
+					showMarketPage(Constants.PACKAGE_NAME_ZXING);
 					longToast(R.string.send_coins_install_qr_scanner_msg);
+				}
 			}
 		});
 		actionBar.addButton(R.drawable.ic_menu_help).setOnClickListener(new OnClickListener()
@@ -101,25 +110,47 @@ public class SendCoinsActivity extends AbstractWalletActivity
 		return dialog;
 	}
 
-	private Pattern P_BITCOIN_URI = Pattern.compile("([a-zA-Z0-9]*)(?:\\?amount=(.*))?");
+	@Override
+	public void onActivityResult(final int requestCode, final int resultCode, final Intent intent)
+	{
+		if (requestCode == REQUEST_CODE_SCAN && resultCode == RESULT_OK && "QR_CODE".equals(intent.getStringExtra("SCAN_RESULT_FORMAT")))
+		{
+			final String contents = intent.getStringExtra("SCAN_RESULT");
+			if (contents.matches("[a-zA-Z0-9]*"))
+			{
+				updateSendCoinsFragment(contents, null);
+			}
+			else
+			{
+				final BitcoinURI bitcoinUri = new BitcoinURI(contents);
+				final Address address = bitcoinUri.getAddress();
+				updateSendCoinsFragment(address != null ? address.toString() : null, bitcoinUri.getAmount());
+			}
+		}
+	}
 
 	private void handleIntent(final Intent intent)
 	{
-		final SendCoinsFragment sendCoinsFragment = (SendCoinsFragment) getSupportFragmentManager().findFragmentById(R.id.send_coins_fragment);
-
 		final Uri intentUri = intent.getData();
-		if (intentUri != null && "bitcoin".equals(intentUri.getScheme()))
+		final String scheme = intentUri != null ? intentUri.getScheme() : null;
+
+		if (intentUri != null && "bitcoin".equals(scheme))
 		{
-			final Matcher m = P_BITCOIN_URI.matcher(intentUri.getSchemeSpecificPart());
-			if (m.matches())
-			{
-				sendCoinsFragment.update(m.group(1), m.group(2));
-			}
+			final BitcoinURI bitcoinUri = new BitcoinURI(intentUri);
+			final Address address = bitcoinUri.getAddress();
+			updateSendCoinsFragment(address != null ? address.toString() : null, bitcoinUri.getAmount());
 		}
 		else if (intent.hasExtra(INTENT_EXTRA_ADDRESS))
 		{
 			final String address = intent.getExtras().getString(INTENT_EXTRA_ADDRESS);
-			sendCoinsFragment.update(address, null);
+			updateSendCoinsFragment(address, null);
 		}
+	}
+
+	private void updateSendCoinsFragment(final String address, final BigInteger amount)
+	{
+		final SendCoinsFragment sendCoinsFragment = (SendCoinsFragment) getSupportFragmentManager().findFragmentById(R.id.send_coins_fragment);
+
+		sendCoinsFragment.update(address, amount);
 	}
 }

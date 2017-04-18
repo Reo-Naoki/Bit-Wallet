@@ -27,7 +27,6 @@ import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.ServiceConnection;
-import android.net.Uri;
 import android.os.Bundle;
 import android.os.IBinder;
 import android.support.v4.app.FragmentManager;
@@ -37,6 +36,8 @@ import android.view.View;
 import android.view.View.OnClickListener;
 import android.view.Window;
 import android.webkit.WebView;
+import de.schildbach.wallet.util.ActionBarFragment;
+import de.schildbach.wallet.util.ErrorReporter;
 import de.schildbach.wallet_test.R;
 
 /**
@@ -69,10 +70,9 @@ public class WalletActivity extends AbstractWalletActivity
 
 		setContentView(R.layout.wallet_content);
 
-		final ActionBarFragment actionBar = (ActionBarFragment) getSupportFragmentManager().findFragmentById(R.id.action_bar_fragment);
-		actionBar.setIcon(Constants.APP_ICON_RESID);
+		final ActionBarFragment actionBar = getActionBar();
 		actionBar.setPrimaryTitle(R.string.app_name);
-		actionBar.setSecondaryTitle(Constants.TEST ? "[testnet!]" : null);
+
 		actionBar.addButton(R.drawable.ic_menu_send).setOnClickListener(new OnClickListener()
 		{
 			public void onClick(final View v)
@@ -236,17 +236,9 @@ public class WalletActivity extends AbstractWalletActivity
 		final String className = getClass().getName();
 		final Intent intent = new Intent().setClassName(packageName, className);
 		if (getPackageManager().resolveActivity(intent, 0) != null)
-		{
 			startActivity(intent);
-		}
 		else
-		{
-			final Intent marketIntent = new Intent(Intent.ACTION_VIEW, Uri.parse(String.format(Constants.MARKET_APP_URL, packageName)));
-			if (getPackageManager().resolveActivity(marketIntent, 0) != null)
-				startActivity(marketIntent);
-			else
-				startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse(String.format(Constants.WEBMARKET_APP_URL, packageName))));
-		}
+			showMarketPage(packageName);
 		finish();
 	}
 

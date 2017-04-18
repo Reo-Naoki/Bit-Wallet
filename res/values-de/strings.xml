@@ -5,8 +5,7 @@
 	<string name="app_name">Bitcoin Wallet</string>
 	<string name="toast_wallet_reset">Wallet wurde zurückgesetzt,\nwird einige Zeit benötigen</string>
 
-	<string name="wallet_content_disclaimer">Dies ist eine experimentelle App. Benutzung auf eigene Gefahr. Bitte lies die Sicherheitshinweise.
-	</string>
+	<string name="wallet_content_disclaimer">Dies ist eine experimentelle App. Benutzung auf eigene Gefahr. Bitte lies die Sicherheitshinweise.</string>
 	<string name="wallet_address_fragment_your">Deine Bitcoin-Adresse:</string>
 	<string name="wallet_address_fragment_clipboard_msg">Bitcoin-Adresse ins Clipboard kopiert</string>
 	<string name="wallet_address_fragment_share_dialog_title">Bitcoin-Adresse veröffentlichen...</string>
@@ -22,6 +21,9 @@
 	<string name="wallet_addresses_fragment_add_dialog_negative">Schließen</string>
 	<string name="wallet_balance_fragment_local_value">etwa %1$s %2$s wert</string>
 	<string name="exchange_rates_fragment_empty_text">Kann Wechselkurse in laden</string>
+	<string name="wallet_transactions_fragment_tab_received">Empfangen</string>
+	<string name="wallet_transactions_fragment_tab_all">Alle</string>
+	<string name="wallet_transactions_fragment_tab_sent">Gesendet</string>
 	<string name="wallet_transactions_fragment_empty_text_received">Noch keine Bitcoins empfangen</string>
 	<string name="wallet_transactions_fragment_empty_text_sent">Noch keine Bitcoins gesendet</string>
 	<string name="wallet_options_request_coins">BTC anfordern</string>
@@ -49,12 +51,11 @@
 	<string name="send_coins_fragment_button_send">Senden</string>
 	<string name="send_coins_fragment_button_cancel">Abbrechen</string>
 	<string name="send_coins_sending_msg">Sending...</string>
-	<string name="send_coins_add_address_dialog_title">Der Empfänger ist noch nicht in Deinem Adressbuch gespeichert.\n\nMöchtest Du ihn jetzt hinzufügen?
-	</string>
+	<string name="send_coins_add_address_dialog_title">Der Empfänger ist noch nicht in Deinem Adressbuch gespeichert.\n\nMöchtest Du ihn jetzt hinzufügen?</string>
 	<string name="send_coins_add_address_dialog_button_add">Adresse hinzufügen</string>
 	<string name="send_coins_add_address_dialog_button_dismiss">Schließen</string>
 	<string name="send_coins_error_msg">Problem beim Versenden der Bitcoins!</string>
-	<string name="send_coins_success_msg">%s BTC versendet!</string>
+	<string name="send_coins_success_msg">BTC %s versendet!</string>
 
 	<string name="request_coins_activity_title">Bitcoins anfordern</string>
 	<string name="request_coins_fragment_amount_label">Angeforderter Betrag (optional)</string>
@@ -65,6 +66,9 @@
 
 	<string name="address_book_activity_title">Adressbuch</string>
 	<string name="address_book_empty_text">Keine Einträge im Adressbuch</string>
+	<string name="address_book_context_send_title">Bitcoins an Adresse senden</string>
+	<string name="address_book_context_edit_title">Adresse ändern</string>
+	<string name="address_book_context_remove_title">Adresse entfernen</string>
 
 	<string name="edit_address_book_entry_dialog_title_add">Adresse hinzufügen</string>
 	<string name="edit_address_book_entry_dialog_title_edit">Adresse ändern</string>
@@ -74,6 +78,10 @@
 	<string name="edit_address_book_entry_dialog_button_edit">Speichern</string>
 	<string name="edit_address_book_entry_dialog_button_delete">Löschen</string>
 	<string name="edit_address_book_entry_dialog_button_cancel">Abbrechen</string>
+
+	<string name="amount_calculator_dialog_title">Währungs-Umrechner</string>
+	<string name="amount_calculator_dialog_button_use">Übernehmen</string>
+	<string name="amount_calculator_dialog_button_cancel">Abbrechen</string>
 
 	<string name="preferences_about_title">Über</string>
 	<string name="preferences_license_title">Lizenz</string>
@@ -85,7 +93,7 @@
 	<string name="preferences_credits_market_app_title">Android Market App-Eintrag</string>
 	<string name="preferences_credits_market_publisher_title">Andere Apps des Autors</string>
 
-	<string name="notification_coins_received_msg">%s BTC empfangen!</string>
+	<string name="notification_coins_received_msg">BTC %s empfangen</string>
 	<string name="notification_peers_connected_msg">%d Peers verbunden</string>
 	<string name="notification_blockchain_sync_started_msg">Bitcoin Blockchain Synchronisierung</string>
 	<string name="notification_blockchain_sync_progress_msg">%1$.1f%% fertig, letzter Block %2$s</string>

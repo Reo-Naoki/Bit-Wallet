@@ -23,6 +23,7 @@ import android.view.View;
 import android.view.View.OnClickListener;
 import android.view.Window;
 import android.webkit.WebView;
+import de.schildbach.wallet.util.ActionBarFragment;
 import de.schildbach.wallet_test.R;
 
 /**
@@ -39,10 +40,8 @@ public class RequestCoinsActivity extends AbstractWalletActivity
 
 		setContentView(R.layout.request_coins_content);
 
-		final ActionBarFragment actionBar = (ActionBarFragment) getSupportFragmentManager().findFragmentById(R.id.action_bar_fragment);
-		actionBar.setIcon(Constants.APP_ICON_RESID);
+		final ActionBarFragment actionBar = getActionBar();
 		actionBar.setPrimaryTitle(R.string.request_coins_activity_title);
-		actionBar.setSecondaryTitle(Constants.TEST ? "[testnet!]" : null);
 
 		actionBar.addButton(R.drawable.ic_menu_help).setOnClickListener(new OnClickListener()
 		{

@@ -19,11 +19,14 @@ package de.schildbach.wallet;
 
 import java.util.Locale;
 
+import android.content.Intent;
+import android.net.Uri;
 import android.os.Bundle;
 import android.support.v4.app.FragmentActivity;
 import android.view.View;
 import android.widget.TextView;
 import android.widget.Toast;
+import de.schildbach.wallet.util.ActionBarFragment;
 import de.schildbach.wallet_test.R;
 
 /**
@@ -32,6 +35,7 @@ import de.schildbach.wallet_test.R;
 public abstract class AbstractWalletActivity extends FragmentActivity
 {
 	private Application application;
+	private ActionBarFragment actionBar;
 
 	@Override
 	protected void onCreate(final Bundle savedInstanceState)
@@ -41,9 +45,27 @@ public abstract class AbstractWalletActivity extends FragmentActivity
 		application = (Application) getApplication();
 	}
 
+	@Override
+	protected void onStart()
+	{
+		super.onStart();
+
+		getActionBar(); // make sure action bar is initialized
+		actionBar.setIcon(Constants.APP_ICON_RESID);
+		actionBar.setSecondaryTitle(Constants.TEST ? "[testnet!]" : null);
+	}
+
 	protected Application getWalletApplication()
 	{
 		return application;
+	}
+
+	protected ActionBarFragment getActionBar()
+	{
+		if (actionBar == null)
+			actionBar = (ActionBarFragment) getSupportFragmentManager().findFragmentById(R.id.action_bar_fragment);
+
+		return actionBar;
 	}
 
 	protected final void toast(final String text, final Object... formatArgs)
@@ -97,9 +119,36 @@ public abstract class AbstractWalletActivity extends FragmentActivity
 		final String language = Locale.getDefault().getLanguage();
 		if ("de".equals(language))
 			return "_de";
+		else if ("cs".equals(language))
+			return "_cs";
+		else if ("el".equals(language))
+			return "_el";
+		else if ("es".equals(language))
+			return "_es";
+		else if ("fr".equals(language))
+			return "_fr";
+		else if ("it".equals(language))
+			return "_it";
+		else if ("nl".equals(language))
+			return "_nl";
+		else if ("pl".equals(language))
+			return "_pl";
+		else if ("sv".equals(language))
+			return "_sv";
 		else if ("ru".equals(language))
 			return "_ru";
+		else if ("zh".equals(language))
+			return "_zh";
 		else
 			return "";
+	}
+
+	protected void showMarketPage(final String packageName)
+	{
+		final Intent marketIntent = new Intent(Intent.ACTION_VIEW, Uri.parse(String.format(Constants.MARKET_APP_URL, packageName)));
+		if (getPackageManager().resolveActivity(marketIntent, 0) != null)
+			startActivity(marketIntent);
+		else
+			startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse(String.format(Constants.WEBMARKET_APP_URL, packageName))));
 	}
 }

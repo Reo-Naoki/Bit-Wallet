@@ -21,6 +21,11 @@
 	<string name="wallet_addresses_fragment_add_dialog_negative">Отмена</string>
 	<string name="wallet_balance_fragment_local_value">стоимостью примерно %1$s %2$s</string>
 	<string name="exchange_rates_fragment_empty_text">Не удалось загрузить обменный курс</string>
+	<string name="wallet_transactions_fragment_tab_received">Получено</string>
+	<string name="wallet_transactions_fragment_tab_all">Все</string>
+	<string name="wallet_transactions_fragment_tab_sent">Отправлено</string>
+	<string name="wallet_transactions_fragment_empty_text_received">Ещё не получено Bitcoin-монет</string>
+	<string name="wallet_transactions_fragment_empty_text_sent">Ещё не отправлено Bitcoin-монет</string>
 	<string name="wallet_options_request_coins">Запросить монеты</string>
 	<string name="wallet_options_send_coins">Отправить монеты</string>
 	<string name="wallet_options_about">О программе</string>
@@ -52,21 +57,24 @@
 	<string name="send_coins_fragment_button_send">Отправить</string>
 	<string name="send_coins_fragment_button_cancel">Отмена</string>
 	<string name="send_coins_sending_msg">Отправка...</string>
-	<string name="send_coins_add_address_dialog_title">Получатель ещё не добавлен в адресную книгу.\n\nЖелаете ли добавить адрес?
-	</string>
+	<string name="send_coins_add_address_dialog_title">Получатель ещё не добавлен в адресную книгу.\n\nЖелаете ли добавить адрес?</string>
 	<string name="send_coins_add_address_dialog_button_add">Добавить адрес</string>
 	<string name="send_coins_add_address_dialog_button_dismiss">Отмена</string>
 	<string name="send_coins_error_msg">Проблема с отправкой монет!</string>
-	<string name="send_coins_success_msg">%s BTC отправлено!</string>
+	<string name="send_coins_success_msg">BTC %s отправлено!</string>
 
 	<string name="request_coins_activity_title">Запросить Bitcoin-монеты</string>
 	<string name="request_coins_fragment_amount_label">Запрашиваемая сумма (опционально)</string>
 	<string name="request_coins_fragment_qr_label">Пусть отправитель сканирует этот QR-код:</string>
+	<string name="request_coins_fragment_nfc_enabled">Или коснитесь устройством другого с поддержкой NFC.</string>
 	<string name="request_coins_clipboard_msg">Запрос получения Bitcoin-монет скопирован</string>
 	<string name="request_coins_share_dialog_title">Распространить запрос Bitcoin-монет...</string>
 
 	<string name="address_book_activity_title">Адресная книга</string>
 	<string name="address_book_empty_text">Адресная книга пуста</string>
+	<string name="address_book_context_send_title">Отправить монеты по адресу</string>
+	<string name="address_book_context_edit_title">Изменить адрес</string>
+	<string name="address_book_context_remove_title">Удалить адрес</string>
 
 	<string name="edit_address_book_entry_dialog_title_add">Добавить адрес</string>
 	<string name="edit_address_book_entry_dialog_title_edit">Изменить адрес</string>
@@ -87,7 +95,7 @@
 	<string name="preferences_credits_market_app_title">Страница на Android Market</string>
 	<string name="preferences_credits_market_publisher_title">Другие Приложения Автора</string>
 
-	<string name="notification_coins_received_msg">Получено %s BTC!</string>
+	<string name="notification_coins_received_msg">Получено BTC %s</string>
 	<string name="notification_peers_connected_msg">подключено %d пиров</string>
 	<string name="notification_blockchain_sync_started_msg">Синхронизация цепочки блоков</string>
 	<string name="notification_blockchain_sync_progress_msg">%1$.1f%% завершено, последний блок от %2$s</string>

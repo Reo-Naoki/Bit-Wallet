@@ -41,6 +41,7 @@ import android.widget.TextView;
 
 import com.google.bitcoin.core.Address;
 
+import de.schildbach.wallet.util.WalletUtils;
 import de.schildbach.wallet_test.R;
 
 /**
@@ -90,7 +91,7 @@ public class WalletAddressFragment extends Fragment
 						else if (which == 1)
 							showQRCode();
 						else if (which == 2)
-							pasteToClipboard(address.toString());
+							copyToClipboard(address.toString());
 						else if (which == 3)
 							share(address.toString());
 					}
@@ -99,7 +100,7 @@ public class WalletAddressFragment extends Fragment
 				return true;
 			}
 
-			private void pasteToClipboard(final String address)
+			private void copyToClipboard(final String address)
 			{
 				ClipboardManager clipboardManager = (ClipboardManager) getActivity().getSystemService(Context.CLIPBOARD_SERVICE);
 				clipboardManager.setText(address);

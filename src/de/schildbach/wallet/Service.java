@@ -253,7 +253,9 @@ public class Service extends android.app.Service
 			{
 				public void run()
 				{
-					nm.cancel(NOTIFICATION_ID_SYNCING);
+					final boolean clearNotification = prefs.getBoolean(Constants.PREFS_KEY_CLEAR_SYNC_NOTIFICATION, true);
+					if (clearNotification)
+						nm.cancel(NOTIFICATION_ID_SYNCING);
 
 					System.out.println("sync finished");
 				}
@@ -276,7 +278,7 @@ public class Service extends android.app.Service
 				final Wallet wallet = application.getWallet();
 				final NetworkParameters networkParameters = application.getNetworkParameters();
 
-				peerGroup = new PeerGroup(blockStore, networkParameters, blockChain, wallet);
+				peerGroup = new PeerGroup(blockStore, networkParameters, blockChain, wallet, 1000);
 				peerGroup.addEventListener(peerEventListener);
 
 				final String trustedPeerHost = prefs.getString(Constants.PREFS_KEY_TRUSTED_PEER, "").trim();
@@ -297,7 +299,15 @@ public class Service extends android.app.Service
 				else
 				{
 					peerGroup.setMaxConnections(1);
-					peerGroup.addAddress(new PeerAddress(new InetSocketAddress(trustedPeerHost, networkParameters.port)));
+
+					// work around similar issue as http://code.google.com/p/bitcoinj/issues/detail?id=52
+					backgroundHandler.post(new Runnable()
+					{
+						public void run()
+						{
+							peerGroup.addAddress(new PeerAddress(new InetSocketAddress(trustedPeerHost, networkParameters.port)));
+						}
+					});
 				}
 				peerGroup.start();
 
@@ -374,41 +384,26 @@ public class Service extends android.app.Service
 		}
 		prefs.edit().putInt(Constants.PREFS_KEY_LAST_VERSION, versionCode).remove(Constants.PREFS_KEY_INITIATE_RESET).commit();
 
+		final File file = new File(getDir("blockstore", Context.MODE_WORLD_READABLE | Context.MODE_WORLD_WRITEABLE), Constants.BLOCKCHAIN_FILENAME);
+		final boolean blockchainDoesNotExist = !file.exists() || file.length() < Constants.BLOCKCHAIN_SNAPSHOT_COPY_THRESHOLD;
+
+		if (blockchainResetInitiated || blockchainNeedsRescan || blockchainDoesNotExist)
+			copyBlockchainSnapshot(file);
+
 		try
 		{
-			final File file = new File(getDir("blockstore", Context.MODE_WORLD_READABLE | Context.MODE_WORLD_WRITEABLE),
-					Constants.BLOCKCHAIN_FILENAME);
-			final boolean blockchainDoesNotExist = !file.exists() || file.length() < Constants.BLOCKCHAIN_SNAPSHOT_COPY_THRESHOLD;
-
-			if (blockchainResetInitiated || blockchainNeedsRescan || blockchainDoesNotExist)
+			try
 			{
-				// copy snapshot
-				try
-				{
-					final long t = System.currentTimeMillis();
-
-					final String blockchainSnapshotFilename = Constants.TEST ? Constants.BLOCKCHAIN_SNAPSHOT_FILENAME_TEST
-							: Constants.BLOCKCHAIN_SNAPSHOT_FILENAME_PROD;
-					final InputStream is = getAssets().open(blockchainSnapshotFilename);
-					final OutputStream os = new FileOutputStream(file);
-
-					System.out.println("copying blockchain snapshot");
-					final byte[] buf = new byte[8192];
-					int read;
-					while (-1 != (read = is.read(buf)))
-						os.write(buf, 0, read);
-					os.close();
-					is.close();
-					System.out.println("finished copying, took " + (System.currentTimeMillis() - t) + " ms");
-				}
-				catch (final IOException x)
-				{
-					System.out.println("failed copying, starting from genesis");
-					file.delete();
-				}
+				blockStore = new BoundedOverheadBlockStore(networkParameters, file);
+				blockStore.getChainHead(); // detect corruptions as early as possible
 			}
+			catch (final BlockStoreException x)
+			{
+				x.printStackTrace();
 
-			blockStore = new BoundedOverheadBlockStore(networkParameters, file);
+				copyBlockchainSnapshot(file);
+				blockStore = new BoundedOverheadBlockStore(networkParameters, file);
+			}
 
 			blockChain = new BlockChain(networkParameters, wallet, blockStore);
 
@@ -417,6 +412,33 @@ public class Service extends android.app.Service
 		catch (final BlockStoreException x)
 		{
 			throw new Error("blockstore cannot be created", x);
+		}
+	}
+
+	private void copyBlockchainSnapshot(final File file)
+	{
+		try
+		{
+			final long t = System.currentTimeMillis();
+
+			final String blockchainSnapshotFilename = Constants.TEST ? Constants.BLOCKCHAIN_SNAPSHOT_FILENAME_TEST
+					: Constants.BLOCKCHAIN_SNAPSHOT_FILENAME_PROD;
+			final InputStream is = getAssets().open(blockchainSnapshotFilename);
+			final OutputStream os = new FileOutputStream(file);
+
+			System.out.println("copying blockchain snapshot");
+			final byte[] buf = new byte[8192];
+			int read;
+			while (-1 != (read = is.read(buf)))
+				os.write(buf, 0, read);
+			os.close();
+			is.close();
+			System.out.println("finished copying, took " + (System.currentTimeMillis() - t) + " ms");
+		}
+		catch (final IOException x)
+		{
+			System.out.println("failed copying, starting from genesis");
+			file.delete();
 		}
 	}
 
@@ -469,6 +491,8 @@ public class Service extends android.app.Service
 					{
 						application.getWallet().confirmSend(tx);
 						application.saveWallet();
+
+						notifyWidgets();
 					}
 				}
 			}

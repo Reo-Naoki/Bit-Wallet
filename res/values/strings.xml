@@ -7,12 +7,12 @@
 
 	<string name="wallet_content_disclaimer">This is entirely experimental. Use at your own risk! Read the safety notes.</string>
 	<string name="wallet_address_fragment_your">Your Bitcoin Address:</string>
-	<string name="wallet_address_fragment_clipboard_msg">Bitcoin address pasted to clipboard</string>
+	<string name="wallet_address_fragment_clipboard_msg">Bitcoin address copied to clipboard</string>
 	<string name="wallet_address_fragment_share_dialog_title">Share your bitcoin address...</string>
 	<string-array name="wallet_address_fragment_context">
 		<item>List all</item>
 		<item>Show QR code</item>
-		<item>Paste to clipboard</item>
+		<item>Copy to clipboard</item>
 		<item>Share</item>
 	</string-array>
 	<string name="wallet_addresses_fragment_add_dialog_title">Add Bitcoin address</string>
@@ -20,16 +20,17 @@
 	<string name="wallet_addresses_fragment_add_dialog_positive">Add address</string>
 	<string name="wallet_addresses_fragment_add_dialog_negative">Dismiss</string>
 	<string name="wallet_balance_fragment_local_value">worth about %1$s %2$s</string>
-	<string name="transaction_row_sent_to">→</string>
-	<string name="transaction_row_received_from">←</string>
 	<string name="exchange_rates_fragment_empty_text">Could not load exchange rates</string>
+	<string name="wallet_transactions_fragment_tab_received">Received</string>
+	<string name="wallet_transactions_fragment_tab_all">Both</string>
+	<string name="wallet_transactions_fragment_tab_sent">Sent</string>
 	<string name="wallet_transactions_fragment_empty_text_received">No Bitcoins received so far</string>
 	<string name="wallet_transactions_fragment_empty_text_sent">No Bitcoins sent so far</string>
 	<string name="wallet_options_request_coins">Request coins</string>
 	<string name="wallet_options_send_coins">Send coins</string>
 	<string name="wallet_options_about">About</string>
 	<string name="wallet_options_safety">Safety notes</string>
-	<string name="wallet_options_donate">Donate</string>
+	<string name="wallet_options_donate">Tip / Donate</string>
 	<string name="wallet_options_help">Help</string>
 	<string name="wallet_migration_dialog_title">Important notice!</string>
 	<string name="wallet_migration_dialog_msg">"Due to popular demand, Bitcoin Wallet has switched from Testnet to Prodnet. This means that you
@@ -56,22 +57,24 @@
 	<string name="send_coins_fragment_button_send">Send</string>
 	<string name="send_coins_fragment_button_cancel">Cancel</string>
 	<string name="send_coins_sending_msg">Sending...</string>
-	<string name="send_coins_add_address_dialog_title">The recipient is not yet contained in your address book.\n\nDo you want to add the address?
-	</string>
+	<string name="send_coins_add_address_dialog_title">The recipient is not yet contained in your address book.\n\nDo you want to add the address?</string>
 	<string name="send_coins_add_address_dialog_button_add">Add address</string>
 	<string name="send_coins_add_address_dialog_button_dismiss">Dismiss</string>
 	<string name="send_coins_error_msg">Problem sending coins!</string>
-	<string name="send_coins_success_msg">%s BTC sent!</string>
+	<string name="send_coins_success_msg">BTC %s sent!</string>
 
 	<string name="request_coins_activity_title">Request Bitcoins</string>
 	<string name="request_coins_fragment_amount_label">Requested amount (optional)</string>
 	<string name="request_coins_fragment_qr_label">Have this QR-code scanned by the sender:</string>
 	<string name="request_coins_fragment_nfc_enabled">Or touch with NFC enabled device.</string>
-	<string name="request_coins_clipboard_msg">Bitcoin request pasted to clipboard</string>
+	<string name="request_coins_clipboard_msg">Bitcoin request copied to clipboard</string>
 	<string name="request_coins_share_dialog_title">Share request for Bitcoins...</string>
 
 	<string name="address_book_activity_title">Address Book</string>
 	<string name="address_book_empty_text">No entries in address book</string>
+	<string name="address_book_context_send_title">Send Bitcoins to address</string>
+	<string name="address_book_context_edit_title">Edit address</string>
+	<string name="address_book_context_remove_title">Remove address</string>
 
 	<string name="edit_address_book_entry_dialog_title_add">Add address</string>
 	<string name="edit_address_book_entry_dialog_title_edit">Edit address</string>
@@ -82,22 +85,9 @@
 	<string name="edit_address_book_entry_dialog_button_delete">Delete</string>
 	<string name="edit_address_book_entry_dialog_button_cancel">Cancel</string>
 
-	<string name="preferences_prefs_title">Preferences (advanced)</string>
-	<string name="preferences_trusted_peer_title">Trusted peer</string>
-	<string name="preferences_trusted_peer_summary">Hostname of single peer to connect to. Regular peer discovery will be skipped. Need to restart app to take effect.</string>
-	<string name="preferences_initiate_reset_title">Reset Blockchain/Transactions</string>
-	<string name="preferences_initiate_reset_summary">Initiate resetting blockchain or blockchain &amp; transactions. Use only when being instructed. Need to restart app to take effect.</string>
-	<string name="preferences_initiate_reset_dialog_title">Initiate reset</string>
-	<string-array name="preferences_initiate_reset_entries">
-		<item>No reset</item>
-		<item>Reset blockchain</item>
-		<item>Reset transactions and blockchain</item>
-	</string-array>
-	<string-array name="preferences_initiate_reset_values">
-		<item>nop</item>
-		<item>blockchain</item>
-		<item>transactions</item>
-	</string-array>
+	<string name="amount_calculator_dialog_title">Currency calculator</string>
+	<string name="amount_calculator_dialog_button_use">Use</string>
+	<string name="amount_calculator_dialog_button_cancel">Cancel</string>
 
 	<string name="preferences_about_title">About</string>
 	<string name="preferences_license_title">License</string>
@@ -109,7 +99,7 @@
 	<string name="preferences_credits_market_app_title">Android Market App Page</string>
 	<string name="preferences_credits_market_publisher_title">Other Apps of Author</string>
 
-	<string name="notification_coins_received_msg">Received %s BTC!</string>
+	<string name="notification_coins_received_msg">Received BTC %s</string>
 	<string name="notification_peers_connected_msg">%d peers connected</string>
 	<string name="notification_blockchain_sync_started_msg">Bitcoin blockchain sync</string>
 	<string name="notification_blockchain_sync_progress_msg">%1$.1f%% finished, last block at %2$s</string>

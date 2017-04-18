@@ -25,12 +25,11 @@ import com.google.bitcoin.store.BlockStoreException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.IOError;
 import java.io.IOException;
+import java.net.ConnectException;
 import java.net.InetSocketAddress;
-import java.util.Collections;
-import java.util.HashSet;
-import java.util.Set;
+import java.net.SocketTimeoutException;
+import java.util.*;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.RejectedExecutionException;
@@ -60,7 +59,7 @@ public class PeerGroup {
 
     private static final Logger log = LoggerFactory.getLogger(PeerGroup.class);
     
-    private static final int CONNECTION_DELAY_MILLIS = 1 * 1000;
+    public static final int DEFAULT_CONNECTION_DELAY_MILLIS = 5 * 1000;
     private static final int CORE_THREADS = 1;
     private static final int THREAD_KEEP_ALIVE_SECONDS = 1;
 
@@ -78,30 +77,39 @@ public class PeerGroup {
     private Peer downloadPeer;
     // Callback for events related to chain download
     private PeerEventListener downloadListener;
-    
     // Callbacks for events related to peer connection/disconnection
     private Set<PeerEventListener> peerEventListeners;
+    // Peer discovery sources, will be polled occasionally if there aren't enough inactives.
+    private Set<PeerDiscovery> peerDiscoverers;
     
     private NetworkParameters params;
     private BlockStore blockStore;
     private BlockChain chain;
     private final Wallet wallet;
+    private int connectionDelayMillis;
 
     /**
-     * Create a PeerGroup
+     * Creates a PeerGroup with the given parameters and a default 5 second connection timeout.
      */
     public PeerGroup(BlockStore blockStore, NetworkParameters params, BlockChain chain, Wallet wallet) {
+        this(blockStore, params, chain, wallet, DEFAULT_CONNECTION_DELAY_MILLIS);
+    }
+
+    /**
+     * Creates a PeerGroup with the given parameters. The connectionDelayMillis parameter controls how long the
+     * PeerGroup will wait between attempts to connect to nodes or read from any added peer discovery sources.
+     */
+    public PeerGroup(BlockStore blockStore, NetworkParameters params, BlockChain chain, Wallet wallet, int connectionDelayMillis) {
         this.blockStore = blockStore;
         this.params = params;
         this.chain = chain;
         this.wallet = wallet;
-        
+        this.connectionDelayMillis = connectionDelayMillis;
+
         inactives = new LinkedBlockingQueue<PeerAddress>();
-        
         peers = Collections.synchronizedSet(new HashSet<Peer>());
-
         peerEventListeners = Collections.synchronizedSet(new HashSet<PeerEventListener>());
-
+        peerDiscoverers = Collections.synchronizedSet(new HashSet<PeerDiscovery>());
         peerPool = new ThreadPoolExecutor(CORE_THREADS, DEFAULT_CONNECTIONS,
                 THREAD_KEEP_ALIVE_SECONDS, TimeUnit.SECONDS,
                 new LinkedBlockingQueue<Runnable>(1),
@@ -141,18 +149,7 @@ public class PeerGroup {
     
     /** Add addresses from a discovery source to the list of potential peers to connect to */
     public void addPeerDiscovery(PeerDiscovery peerDiscovery) {
-        // TODO(miron) consider remembering the discovery source and retrying occasionally 
-        InetSocketAddress[] addresses;
-        try {
-            addresses = peerDiscovery.getPeers();
-        } catch (PeerDiscoveryException e) {
-            log.error("Failed to discover peer addresses from discovery source", e);
-            return;
-        }
-        
-        for (int i = 0; i < addresses.length; i++) {
-            inactives.add(new PeerAddress(addresses[i]));
-        }
+        peerDiscoverers.add(peerDiscovery);
     }
     
     /** Starts the background thread that makes connections. */
@@ -206,19 +203,21 @@ public class PeerGroup {
         public void run() {
             try {
                 while (running) {
-                    tryNextPeer();
+                    if (inactives.size() == 0) {
+                        discoverPeers();
+                    } else {
+                        tryNextPeer();
+                    }
                     
                     // We started a new peer connection, delay before trying another one
-                    Thread.sleep(CONNECTION_DELAY_MILLIS);
+                    Thread.sleep(connectionDelayMillis);
                 }
             } catch (InterruptedException ex) {
                 synchronized (this) {
                     running = false;
                 }
             }
-
             peerPool.shutdownNow();
-
             synchronized (peers) {
                 for (Peer peer : peers) {
                     peer.disconnect();
@@ -226,28 +225,52 @@ public class PeerGroup {
             }
         }
 
-        /*
-         * Try connecting to a peer.  If we exceed the number of connections, delay and try
-         * again.
-         */
+        private void discoverPeers() {
+            for (PeerDiscovery peerDiscovery : peerDiscoverers) {
+                InetSocketAddress[] addresses;
+                try {
+                    addresses = peerDiscovery.getPeers();
+                } catch (PeerDiscoveryException e) {
+                    // Will try again later.
+                    log.error("Failed to discover peer addresses from discovery source", e);
+                    return;
+                }
+
+                for (int i = 0; i < addresses.length; i++) {
+                    inactives.add(new PeerAddress(addresses[i]));
+                }
+
+                if (inactives.size() > 0) break;
+            }
+        }
+
+        /** Try connecting to a peer.  If we exceed the number of connections, delay and try again. */
         private void tryNextPeer() throws InterruptedException {
             final PeerAddress address = inactives.take();
             while (true) {
                 try {
-                    final Peer peer = new Peer(params, address,
-                            blockStore.getChainHead().getHeight(), chain, wallet);
+                    final Peer peer = new Peer(params, address, blockStore.getChainHead().getHeight(), chain, wallet);
                     Runnable command = new Runnable() {
                         public void run() {
                             try {
-                                log.info("connecting to " + peer);
+                                log.info("Connecting to " + peer);
                                 peer.connect();
                                 peers.add(peer);
                                 handleNewPeer(peer);
-                                log.info("running " + peer);
                                 peer.run();
                             } catch (PeerException ex) {
-                                // do not propagate PeerException - log and try next peer
-                                log.error("error while talking to peer", ex);
+                                // Do not propagate PeerException - log and try next peer. Suppress stack traces for
+                                // exceptions we expect as part of normal network behaviour.
+                                final Throwable cause = ex.getCause();
+                                if (cause instanceof SocketTimeoutException) {
+                                    log.info("Timeout talking to " + peer + ": " + cause.getMessage());
+                                } else if (cause instanceof ConnectException) {
+                                    log.info("Could not connect to " + peer + ": " + cause.getMessage());
+                                } else if (cause instanceof IOException) {
+                                    log.info("Error talking to " + peer + ": " + cause.getMessage());
+                                } else {
+                                    log.error("Unexpected exception whilst talking to " + peer, ex);
+                                }
                             } finally {
                                 // In all cases, disconnect and put the address back on the queue.
                                 // We will retry this peer after all other peers have been tried.
@@ -272,12 +295,12 @@ public class PeerGroup {
                     // Fatal error
                     log.error("Block store corrupt?", e);
                     running = false;
-                    throw new IOError(e);
+                    throw new RuntimeException(e);
                 }
                 
                 // If we got here, we should retry this address because an error unrelated
                 // to the peer has occurred.
-                Thread.sleep(CONNECTION_DELAY_MILLIS);
+                Thread.sleep(connectionDelayMillis);
             }
         }
     }
@@ -304,9 +327,9 @@ public class PeerGroup {
     }
     
     /**
-     * Download the blockchain from peers.
+     * Download the blockchain from peers.<p>
      * 
-     * <p>This method wait until the download is complete.  "Complete" is defined as downloading
+     * This method waits until the download is complete.  "Complete" is defined as downloading
      * from at least one peer all the blocks that are in that peer's inventory.
      */
     public void downloadBlockChain() {
@@ -378,6 +401,10 @@ public class PeerGroup {
             Thread t = new Thread(group, r,
                                   namePrefix + threadNumber.getAndIncrement(),
                                   0);
+            // Lower the priority of the peer threads. This is to avoid competing with UI threads created by the API
+            // user when doing lots of work, like downloading the block chain. We select a priority level one lower
+            // than the parent thread, or the minimum.
+            t.setPriority(Math.max(Thread.MIN_PRIORITY, Thread.currentThread().getPriority() - 1));
             t.setDaemon(true);
             return t;
         }

@@ -22,11 +22,9 @@ import java.util.List;
 import android.app.AlertDialog;
 import android.content.DialogInterface;
 import android.content.SharedPreferences;
-import android.graphics.Color;
 import android.os.Bundle;
 import android.preference.PreferenceManager;
 import android.support.v4.app.ListFragment;
-import android.view.LayoutInflater;
 import android.view.View;
 import android.view.View.OnClickListener;
 import android.view.ViewGroup;
@@ -40,6 +38,8 @@ import com.google.bitcoin.core.Address;
 import com.google.bitcoin.core.ECKey;
 import com.google.bitcoin.core.Wallet;
 
+import de.schildbach.wallet.util.ActionBarFragment;
+import de.schildbach.wallet.util.WalletUtils;
 import de.schildbach.wallet_test.R;
 
 /**
@@ -65,16 +65,6 @@ public class WalletAddressesFragment extends ListFragment
 	}
 
 	@Override
-	public View onCreateView(final LayoutInflater inflater, final ViewGroup container, final Bundle savedInstanceState)
-	{
-		final View view = super.onCreateView(inflater, container, savedInstanceState);
-
-		view.setBackgroundColor(Color.WHITE);
-
-		return view;
-	}
-
-	@Override
 	public void onResume()
 	{
 		super.onResume();
@@ -83,9 +73,9 @@ public class WalletAddressesFragment extends ListFragment
 	}
 
 	@Override
-	public void onHiddenChanged(boolean hidden)
+	public void onHiddenChanged(final boolean hidden)
 	{
-		final ActionBarFragment actionBar = (ActionBarFragment) getFragmentManager().findFragmentById(R.id.action_bar_fragment);
+		final ActionBarFragment actionBar = ((AbstractWalletActivity) getActivity()).getActionBar();
 
 		if (!hidden)
 		{
@@ -97,18 +87,18 @@ public class WalletAddressesFragment extends ListFragment
 			actionBar.removeButton(addButton);
 		}
 	}
-	
+
 	@Override
 	public void onListItemClick(final ListView l, final View v, final int position, final long id)
 	{
 		final ECKey key = keys.get(position);
 		final Address address = key.toAddress(application.getNetworkParameters());
-		
+
 		final SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(getActivity());
 		prefs.edit().putString(Constants.PREFS_KEY_SELECTED_ADDRESS, address.toString()).commit();
 
-		final WalletAddressFragment walletAddressFragment = (WalletAddressFragment) getFragmentManager()
-				.findFragmentById(R.id.wallet_address_fragment);
+		final WalletAddressFragment walletAddressFragment = (WalletAddressFragment) getFragmentManager().findFragmentById(
+				R.id.wallet_address_fragment);
 		if (walletAddressFragment != null)
 		{
 			walletAddressFragment.updateView();

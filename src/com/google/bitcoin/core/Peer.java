@@ -36,7 +36,7 @@ import java.util.concurrent.TimeoutException;
  */
 public class Peer {
     private static final Logger log = LoggerFactory.getLogger(Peer.class);
-	
+    
     private NetworkConnection conn;
     private final NetworkParameters params;
     // Whether the peer loop is supposed to be running or not. Set to false during shutdown so the peer loop
@@ -54,6 +54,12 @@ public class Peer {
     private PeerAddress address;
 
     private List<PeerEventListener> eventListeners;
+
+    /**
+     * If true, we do some things that may only make sense on constrained devices like Android phones. Currently this
+     * only controls message deduplication.
+     */
+    public static boolean MOBILE_OPTIMIZED = true;
 
     /**
      * Construct a peer that handles the given network connection and reads/writes from the given block chain. Note that
@@ -83,8 +89,8 @@ public class Peer {
         eventListeners.add(listener);
     }
 
-    public synchronized void removeEventListener(PeerEventListener listener) {
-        eventListeners.remove(listener);
+    public synchronized boolean removeEventListener(PeerEventListener listener) {
+        return eventListeners.remove(listener);
     }
 
     @Override
@@ -97,14 +103,19 @@ public class Peer {
      * 
      * @throws PeerException when there is a temporary problem with the peer and we should retry later
      */
-    public void connect() throws PeerException {
+    public synchronized void connect() throws PeerException {
         try {
-            conn = new NetworkConnection(address, params, bestHeight, 60000);
+            conn = new NetworkConnection(address, params, bestHeight, 60000, MOBILE_OPTIMIZED);
         } catch (IOException ex) {
             throw new PeerException(ex);
         } catch (ProtocolException ex) {
             throw new PeerException(ex);
         }
+    }
+
+    // For testing
+    void setConnection(NetworkConnection conn) {
+        this.conn = conn;
     }
 
     /**
@@ -140,11 +151,11 @@ public class Peer {
                 }
             }
         } catch (IOException e) {
-            disconnect();
             if (!running) {
                 // This exception was expected because we are tearing down the socket as part of quitting.
                 log.info("Shutting down peer loop");
             } else {
+                disconnect();
                 throw new PeerException(e);
             }
         } catch (ProtocolException e) {
@@ -161,7 +172,7 @@ public class Peer {
 
     // process an unverified pending transaction, add it to pending in our wallet and call onPendingCoinsReceived
     private void processPendingTransaction(Transaction tx) {
-        if (tx.isMine(wallet)) {
+        if (tx.isMine(wallet) && !tx.sent(wallet)) {
             wallet.receivePendingTransaction(tx);
         }
     }
@@ -270,7 +281,7 @@ public class Peer {
 
     // A GetDataFuture wraps the result of a getBlock or (in future) getTransaction so the owner of the object can
     // decide whether to wait forever, wait for a short while or check later after doing other work.
-    private class GetDataFuture<T extends Message> implements Future<T> {
+    private static class GetDataFuture<T extends Message> implements Future<T> {
         private boolean cancelled;
         private final InventoryItem item;
         private final CountDownLatch latch;
@@ -410,10 +421,8 @@ public class Peer {
     /**
      * Terminates the network connection and stops the message handling loop.
      */
-    public void disconnect() {
-        synchronized (this) {
-            running = false;
-        }
+    public synchronized void disconnect() {
+        running = false;
         try {
             // This is the correct way to stop an IO bound loop
             if (conn != null)

@@ -27,7 +27,6 @@ import java.util.List;
 import android.database.ContentObserver;
 import android.database.Cursor;
 import android.graphics.Color;
-import android.graphics.Typeface;
 import android.net.Uri;
 import android.os.Bundle;
 import android.os.Handler;
@@ -37,7 +36,6 @@ import android.support.v4.app.FragmentManager;
 import android.support.v4.app.FragmentStatePagerAdapter;
 import android.support.v4.app.FragmentTransaction;
 import android.support.v4.view.ViewPager;
-import android.support.v4.view.ViewPager.SimpleOnPageChangeListener;
 import android.text.format.DateUtils;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -54,6 +52,7 @@ import com.google.bitcoin.core.Utils;
 import com.google.bitcoin.core.Wallet;
 import com.google.bitcoin.core.WalletEventListener;
 
+import de.schildbach.wallet.util.ViewPagerTabs;
 import de.schildbach.wallet_test.R;
 
 /**
@@ -66,29 +65,17 @@ public class WalletTransactionsFragment extends Fragment
 	{
 		final View view = inflater.inflate(R.layout.wallet_transactions_fragment, container, false);
 
-		final TextView tabReceived = (TextView) view.findViewById(R.id.transactions_tab_received);
-		final TextView tabBoth = (TextView) view.findViewById(R.id.transactions_tab_both);
-		final TextView tabSent = (TextView) view.findViewById(R.id.transactions_tab_sent);
+		final ViewPagerTabs pagerTabs = (ViewPagerTabs) view.findViewById(R.id.transactions_pager_tabs);
+		pagerTabs.addTabLabels(R.string.wallet_transactions_fragment_tab_received, R.string.wallet_transactions_fragment_tab_all,
+				R.string.wallet_transactions_fragment_tab_sent);
 
 		final PagerAdapter pagerAdapter = new PagerAdapter(getFragmentManager());
 
 		final ViewPager pager = (ViewPager) view.findViewById(R.id.transactions_pager);
 		pager.setAdapter(pagerAdapter);
-		pager.setOnPageChangeListener(new SimpleOnPageChangeListener()
-		{
-			@Override
-			public void onPageSelected(final int position)
-			{
-				tabReceived.setTextColor(position == 0 ? Color.BLACK : Color.DKGRAY);
-				tabBoth.setTextColor(position == 1 ? Color.BLACK : Color.DKGRAY);
-				tabSent.setTextColor(position == 2 ? Color.BLACK : Color.DKGRAY);
-
-				tabReceived.setTypeface(position == 0 ? Typeface.DEFAULT_BOLD : Typeface.DEFAULT);
-				tabBoth.setTypeface(position == 1 ? Typeface.DEFAULT_BOLD : Typeface.DEFAULT);
-				tabSent.setTypeface(position == 2 ? Typeface.DEFAULT_BOLD : Typeface.DEFAULT);
-			}
-		});
+		pager.setOnPageChangeListener(pagerTabs);
 		pager.setCurrentItem(1);
+		pagerTabs.onPageScrolled(1, 0, 0); // should not be needed
 
 		return view;
 	}
@@ -192,25 +179,27 @@ public class WalletTransactionsFragment extends Fragment
 		{
 			public void onItemClick(final AdapterView<?> parent, final View view, final int position, final long id)
 			{
+				final Transaction tx = transactionsListAdapter.getItem(position);
+				System.out.println("clicked on tx " + tx);
+
+				final boolean sent = tx.sent(application.getWallet());
+
 				try
 				{
-					final Transaction tx = transactionsListAdapter.getItem(position);
-					final boolean sent = tx.sent(application.getWallet());
 					final Address address = sent ? tx.outputs.get(0).getScriptPubKey().getToAddress() : tx.getInputs().get(0).getFromAddress();
-
-					System.out.println("clicked on tx " + tx.getHash());
 
 					final FragmentTransaction ft = getFragmentManager().beginTransaction();
 					final Fragment prev = getFragmentManager().findFragmentByTag(EditAddressBookEntryFragment.FRAGMENT_TAG);
 					if (prev != null)
 						ft.remove(prev);
 					ft.addToBackStack(null);
-					final DialogFragment newFragment = new EditAddressBookEntryFragment(getLayoutInflater(null), address.toString());
+					final DialogFragment newFragment = new EditAddressBookEntryFragment(address.toString());
 					newFragment.show(ft, EditAddressBookEntryFragment.FRAGMENT_TAG);
 				}
 				catch (final ScriptException x)
 				{
-					throw new RuntimeException(x);
+					// ignore click
+					x.printStackTrace();
 				}
 			}
 		};
@@ -233,53 +222,63 @@ public class WalletTransactionsFragment extends Fragment
 				@Override
 				public View getView(final int position, View row, final ViewGroup parent)
 				{
+					if (row == null)
+						row = getLayoutInflater(null).inflate(R.layout.transaction_row, null);
+
+					final Transaction tx = getItem(position);
+					final boolean sent = tx.sent(wallet);
+					final boolean pending = wallet.isPending(tx);
+					final boolean dead = wallet.isDead(tx);
+					final int textColor;
+					if (dead)
+						textColor = Color.RED;
+					else if (pending)
+						textColor = Color.LTGRAY;
+					else
+						textColor = Color.BLACK;
+
+					String address = null;
+					String label = null;
 					try
 					{
-						if (row == null)
-							row = getLayoutInflater(null).inflate(R.layout.transaction_row, null);
-
-						final Transaction tx = getItem(position);
-						final boolean sent = tx.sent(wallet);
-						final boolean pending = wallet.isPending(tx);
-						final boolean dead = wallet.isDead(tx);
-						final int textColor;
-						if (dead)
-							textColor = Color.RED;
-						else if (pending)
-							textColor = Color.LTGRAY;
+						if (sent)
+							address = tx.outputs.get(0).getScriptPubKey().getToAddress().toString();
 						else
-							textColor = Color.BLACK;
-						final String address = (sent ? tx.outputs.get(0).getScriptPubKey().getToAddress() : tx.getInputs().get(0).getFromAddress())
-								.toString();
+							address = tx.getInputs().get(0).getFromAddress().toString();
 
 						final Uri uri = AddressBookProvider.CONTENT_URI.buildUpon().appendPath(address).build();
 
-						final String label;
 						final Cursor cursor = getActivity().managedQuery(uri, null, null, null, null);
 						if (cursor.moveToFirst())
 							label = cursor.getString(cursor.getColumnIndexOrThrow(AddressBookProvider.KEY_LABEL));
-						else
-							label = null;
+					}
+					catch (final ScriptException x)
+					{
+						x.printStackTrace();
+					}
 
-						final TextView rowTime = (TextView) row.findViewById(R.id.transaction_time);
-						final Date time = tx.updatedAt;
-						rowTime.setText(time != null ? DateUtils.isToday(time.getTime()) ? timeFormat.format(time) : dateFormat.format(time) : null);
-						rowTime.setTextColor(textColor);
+					final TextView rowTime = (TextView) row.findViewById(R.id.transaction_time);
+					final Date time = tx.updatedAt;
+					rowTime.setText(time != null ? DateUtils.isToday(time.getTime()) ? timeFormat.format(time) : dateFormat.format(time) : null);
+					rowTime.setTextColor(textColor);
 
-						final TextView rowTo = (TextView) row.findViewById(R.id.transaction_to);
-						rowTo.setVisibility(sent ? View.VISIBLE : View.INVISIBLE);
-						rowTo.setTextColor(textColor);
+					final TextView rowTo = (TextView) row.findViewById(R.id.transaction_to);
+					rowTo.setVisibility(sent ? View.VISIBLE : View.INVISIBLE);
+					rowTo.setTextColor(textColor);
 
-						final TextView rowFrom = (TextView) row.findViewById(R.id.transaction_from);
-						rowFrom.setVisibility(sent ? View.INVISIBLE : View.VISIBLE);
-						rowFrom.setTextColor(textColor);
+					final TextView rowFrom = (TextView) row.findViewById(R.id.transaction_from);
+					rowFrom.setVisibility(sent ? View.INVISIBLE : View.VISIBLE);
+					rowFrom.setTextColor(textColor);
 
-						final TextView rowLabel = (TextView) row.findViewById(R.id.transaction_address);
-						rowLabel.setTextColor(textColor);
-						rowLabel.setText(label != null ? label : address);
+					final TextView rowLabel = (TextView) row.findViewById(R.id.transaction_address);
+					rowLabel.setTextColor(textColor);
+					rowLabel.setText(label != null ? label : address);
 
-						final TextView rowValue = (TextView) row.findViewById(R.id.transaction_value);
-						rowValue.setTextColor(textColor);
+					final TextView rowValue = (TextView) row.findViewById(R.id.transaction_value);
+					rowValue.setTextColor(textColor);
+
+					try
+					{
 						rowValue.setText((sent ? "-" : "+") + "\u2009" /* thin space */+ Utils.bitcoinValueToFriendlyString(tx.amount(wallet)));
 					}
 					catch (final ScriptException x)
