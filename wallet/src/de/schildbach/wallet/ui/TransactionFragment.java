@@ -22,6 +22,7 @@ import java.io.IOException;
 import java.math.BigInteger;
 import java.text.DateFormat;
 import java.util.Date;
+import java.util.Locale;
 import java.util.zip.GZIPOutputStream;
 
 import android.app.Activity;
@@ -29,7 +30,6 @@ import android.content.ContentResolver;
 import android.graphics.Bitmap;
 import android.graphics.Typeface;
 import android.os.Bundle;
-import android.support.v4.app.Fragment;
 import android.support.v4.app.FragmentActivity;
 import android.text.format.DateUtils;
 import android.view.LayoutInflater;
@@ -39,6 +39,7 @@ import android.view.ViewGroup;
 import android.widget.ImageView;
 import android.widget.TextView;
 
+import com.actionbarsherlock.app.SherlockFragment;
 import com.google.bitcoin.core.Address;
 import com.google.bitcoin.core.ScriptException;
 import com.google.bitcoin.core.Transaction;
@@ -46,17 +47,17 @@ import com.google.bitcoin.core.TransactionConfidence.ConfidenceType;
 import com.google.bitcoin.core.Wallet;
 
 import de.schildbach.wallet.AddressBookProvider;
-import de.schildbach.wallet.WalletApplication;
 import de.schildbach.wallet.Constants;
+import de.schildbach.wallet.WalletApplication;
 import de.schildbach.wallet.util.Base43;
-import de.schildbach.wallet.util.QrDialog;
+import de.schildbach.wallet.util.BitmapFragment;
 import de.schildbach.wallet.util.WalletUtils;
 import de.schildbach.wallet_test.R;
 
 /**
  * @author Andreas Schildbach
  */
-public final class TransactionFragment extends Fragment
+public final class TransactionFragment extends SherlockFragment
 {
 	public static final String FRAGMENT_TAG = TransactionFragment.class.getName();
 
@@ -121,8 +122,8 @@ public final class TransactionFragment extends Fragment
 		if (time != null)
 		{
 			final TextView viewDate = (TextView) view.findViewById(R.id.transaction_fragment_time);
-			viewDate.setText((DateUtils.isToday(time.getTime()) ? getString(R.string.transaction_fragment_time_today) : dateFormat.format(time))
-					+ ", " + timeFormat.format(time));
+			viewDate.setText((DateUtils.isToday(time.getTime()) ? getString(R.string.time_today) : dateFormat.format(time)) + ", "
+					+ timeFormat.format(time));
 		}
 
 		try
@@ -222,7 +223,7 @@ public final class TransactionFragment extends Fragment
 
 		final TextView viewStatus = (TextView) view.findViewById(R.id.transaction_fragment_status);
 		final ConfidenceType confidenceType = tx.getConfidence().getConfidenceType();
-		if (confidenceType == ConfidenceType.OVERRIDDEN_BY_DOUBLE_SPEND || confidenceType == ConfidenceType.NOT_IN_BEST_CHAIN)
+		if (confidenceType == ConfidenceType.DEAD || confidenceType == ConfidenceType.NOT_IN_BEST_CHAIN)
 			viewStatus.setText(R.string.transaction_fragment_status_dead);
 		else if (confidenceType == ConfidenceType.NOT_SEEN_IN_CHAIN)
 			viewStatus.setText(R.string.transaction_fragment_status_pending);
@@ -254,13 +255,13 @@ public final class TransactionFragment extends Fragment
 			txStr.append(useCompressioon ? 'Z' : '-');
 			txStr.append(Base43.encode(useCompressioon ? gzippedSerializedTx : serializedTx));
 
-			final Bitmap qrCodeBitmap = WalletUtils.getQRCodeBitmap(txStr.toString().toUpperCase(), 512);
+			final Bitmap qrCodeBitmap = WalletUtils.getQRCodeBitmap(txStr.toString().toUpperCase(Locale.US), 512);
 			viewQr.setImageBitmap(qrCodeBitmap);
 			viewQr.setOnClickListener(new OnClickListener()
 			{
 				public void onClick(final View v)
 				{
-					new QrDialog(activity, qrCodeBitmap).show();
+					BitmapFragment.show(getFragmentManager(), qrCodeBitmap);
 				}
 			});
 		}

@@ -24,17 +24,16 @@ import android.content.Intent;
 import android.net.Uri;
 import android.nfc.NfcAdapter;
 import android.os.Bundle;
-import android.view.View;
-import android.view.View.OnClickListener;
 import android.view.Window;
 import android.webkit.WebView;
 
-import com.google.bitcoin.core.Address;
+import com.actionbarsherlock.app.ActionBar;
+import com.actionbarsherlock.view.Menu;
+import com.actionbarsherlock.view.MenuItem;
 import com.google.bitcoin.uri.BitcoinURI;
 import com.google.bitcoin.uri.BitcoinURIParseException;
 
-import de.schildbach.wallet.Constants;
-import de.schildbach.wallet.util.ActionBarFragment;
+import de.schildbach.wallet.service.BlockchainServiceImpl;
 import de.schildbach.wallet_test.R;
 
 /**
@@ -43,11 +42,9 @@ import de.schildbach.wallet_test.R;
 public final class SendCoinsActivity extends AbstractWalletActivity
 {
 	public static final String INTENT_EXTRA_ADDRESS = "address";
-	private static final String INTENT_EXTRA_QUERY = "query";
+	public static final String INTENT_EXTRA_ADDRESS_LABEL = "address_label";
 
 	private static final int DIALOG_HELP = 0;
-
-	private static final int REQUEST_CODE_SCAN = 0;
 
 	@Override
 	protected void onCreate(final Bundle savedInstanceState)
@@ -56,40 +53,11 @@ public final class SendCoinsActivity extends AbstractWalletActivity
 
 		setContentView(R.layout.send_coins_content);
 
-		final ActionBarFragment actionBar = getActionBar();
+		startService(new Intent(this, BlockchainServiceImpl.class));
 
-		actionBar.setPrimaryTitle(R.string.send_coins_activity_title);
-
-		actionBar.setBack(new OnClickListener()
-		{
-			public void onClick(final View v)
-			{
-				finish();
-			}
-		});
-
-		actionBar.addButton(R.drawable.ic_action_qr).setOnClickListener(new OnClickListener()
-		{
-			public void onClick(final View v)
-			{
-				if (getPackageManager().resolveActivity(Constants.INTENT_QR_SCANNER, 0) != null)
-				{
-					startActivityForResult(Constants.INTENT_QR_SCANNER, REQUEST_CODE_SCAN);
-				}
-				else
-				{
-					showMarketPage(Constants.PACKAGE_NAME_ZXING);
-					longToast(R.string.send_coins_install_qr_scanner_msg);
-				}
-			}
-		});
-		actionBar.addButton(R.drawable.ic_action_help).setOnClickListener(new OnClickListener()
-		{
-			public void onClick(final View v)
-			{
-				showDialog(DIALOG_HELP);
-			}
-		});
+		final ActionBar actionBar = getSupportActionBar();
+		actionBar.setTitle(R.string.send_coins_activity_title);
+		actionBar.setDisplayHomeAsUpEnabled(true);
 
 		handleIntent(getIntent());
 	}
@@ -115,29 +83,28 @@ public final class SendCoinsActivity extends AbstractWalletActivity
 	}
 
 	@Override
-	public void onActivityResult(final int requestCode, final int resultCode, final Intent intent)
+	public boolean onCreateOptionsMenu(final Menu menu)
 	{
-		if (requestCode == REQUEST_CODE_SCAN && resultCode == RESULT_OK && "QR_CODE".equals(intent.getStringExtra("SCAN_RESULT_FORMAT")))
+		getSupportMenuInflater().inflate(R.menu.send_coins_activity_options, menu);
+
+		return super.onCreateOptionsMenu(menu);
+	}
+
+	@Override
+	public boolean onOptionsItemSelected(final MenuItem item)
+	{
+		switch (item.getItemId())
 		{
-			final String contents = intent.getStringExtra("SCAN_RESULT");
-			if (contents.matches("[a-zA-Z0-9]*"))
-			{
-				updateSendCoinsFragment(contents, null);
-			}
-			else
-			{
-				try
-				{
-					final BitcoinURI bitcoinUri = new BitcoinURI(Constants.NETWORK_PARAMETERS, contents);
-					final Address address = bitcoinUri.getAddress();
-					updateSendCoinsFragment(address != null ? address.toString() : null, bitcoinUri.getAmount());
-				}
-				catch (final BitcoinURIParseException x)
-				{
-					parseErrorDialog(contents);
-				}
-			}
+			case android.R.id.home:
+				finish();
+				return true;
+
+			case R.id.send_coins_options_help:
+				showDialog(DIALOG_HELP);
+				return true;
 		}
+
+		return super.onOptionsItemSelected(item);
 	}
 
 	private void handleIntent(final Intent intent)
@@ -147,28 +114,16 @@ public final class SendCoinsActivity extends AbstractWalletActivity
 		final String scheme = intentUri != null ? intentUri.getScheme() : null;
 
 		final String address;
+		final String addressLabel;
 		final BigInteger amount;
 
 		if ((Intent.ACTION_VIEW.equals(action) || NfcAdapter.ACTION_NDEF_DISCOVERED.equals(action)) && intentUri != null && "bitcoin".equals(scheme))
 		{
 			try
 			{
-				final BitcoinURI bitcoinUri = new BitcoinURI(Constants.NETWORK_PARAMETERS, intentUri.toString());
+				final BitcoinURI bitcoinUri = new BitcoinURI(null, intentUri.toString());
 				address = bitcoinUri.getAddress().toString();
-				amount = bitcoinUri.getAmount();
-			}
-			catch (final BitcoinURIParseException x)
-			{
-				parseErrorDialog(intentUri.toString());
-				return;
-			}
-		}
-		else if (Intent.ACTION_WEB_SEARCH.equals(action) && intent.hasExtra(INTENT_EXTRA_QUERY))
-		{
-			try
-			{
-				final BitcoinURI bitcoinUri = new BitcoinURI(Constants.NETWORK_PARAMETERS, intent.getStringExtra(INTENT_EXTRA_QUERY));
-				address = bitcoinUri.getAddress().toString();
+				addressLabel = bitcoinUri.getLabel();
 				amount = bitcoinUri.getAmount();
 			}
 			catch (final BitcoinURIParseException x)
@@ -180,6 +135,7 @@ public final class SendCoinsActivity extends AbstractWalletActivity
 		else if (intent.hasExtra(INTENT_EXTRA_ADDRESS))
 		{
 			address = intent.getStringExtra(INTENT_EXTRA_ADDRESS);
+			addressLabel = intent.getStringExtra(INTENT_EXTRA_ADDRESS_LABEL);
 			amount = null;
 		}
 		else
@@ -188,15 +144,15 @@ public final class SendCoinsActivity extends AbstractWalletActivity
 		}
 
 		if (address != null || amount != null)
-			updateSendCoinsFragment(address, amount);
+			updateSendCoinsFragment(address, addressLabel, amount);
 		else
 			longToast(R.string.send_coins_parse_address_error_msg);
 	}
 
-	private void updateSendCoinsFragment(final String address, final BigInteger amount)
+	private void updateSendCoinsFragment(final String receivingAddress, final String receivingLabel, final BigInteger amount)
 	{
 		final SendCoinsFragment sendCoinsFragment = (SendCoinsFragment) getSupportFragmentManager().findFragmentById(R.id.send_coins_fragment);
 
-		sendCoinsFragment.update(address, amount);
+		sendCoinsFragment.update(receivingAddress, receivingLabel, amount);
 	}
 }

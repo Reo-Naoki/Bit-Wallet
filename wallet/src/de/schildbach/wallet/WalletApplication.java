@@ -18,41 +18,44 @@
 package de.schildbach.wallet;
 
 import java.io.BufferedReader;
-import java.io.EOFException;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.InputStreamReader;
-import java.io.ObjectStreamException;
 import java.io.OutputStream;
 import java.io.OutputStreamWriter;
 import java.io.Writer;
-import java.text.DateFormat;
-import java.text.ParseException;
+import java.lang.reflect.Method;
+import java.nio.charset.Charset;
 import java.util.ArrayList;
-import java.util.Date;
+import java.util.List;
+import java.util.Locale;
+import java.util.concurrent.TimeUnit;
 
 import android.app.Application;
 import android.content.Context;
+import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager.NameNotFoundException;
-import android.os.Handler;
 import android.preference.PreferenceManager;
+import android.util.Log;
 import android.widget.Toast;
 
-import com.google.bitcoin.core.AbstractWalletEventListener;
 import com.google.bitcoin.core.Address;
-import com.google.bitcoin.core.AddressFormatException;
-import com.google.bitcoin.core.DumpedPrivateKey;
 import com.google.bitcoin.core.ECKey;
 import com.google.bitcoin.core.Wallet;
-import com.google.bitcoin.core.WalletEventListener;
+import com.google.bitcoin.core.Wallet.AutosaveEventListener;
+import com.google.bitcoin.store.BlockStore;
+import com.google.bitcoin.store.BlockStoreException;
+import com.google.bitcoin.store.BoundedOverheadBlockStore;
 import com.google.bitcoin.store.WalletProtobufSerializer;
 
+import de.schildbach.wallet.service.BlockchainServiceImpl;
 import de.schildbach.wallet.util.ErrorReporter;
-import de.schildbach.wallet.util.Iso8601Format;
 import de.schildbach.wallet.util.StrictModeWrapper;
+import de.schildbach.wallet.util.WalletUtils;
 import de.schildbach.wallet_test.R;
 
 /**
@@ -60,24 +63,11 @@ import de.schildbach.wallet_test.R;
  */
 public class WalletApplication extends Application
 {
+	private File walletFile;
 	private Wallet wallet;
 
-	private final Handler handler = new Handler();
-
-	final private WalletEventListener walletEventListener = new AbstractWalletEventListener()
-	{
-		@Override
-		public void onChange()
-		{
-			handler.post(new Runnable()
-			{
-				public void run()
-				{
-					saveWallet();
-				}
-			});
-		}
-	};
+	private static final Charset UTF_8 = Charset.forName("UTF-8");
+	private static final String TAG = WalletApplication.class.getSimpleName();
 
 	@Override
 	public void onCreate()
@@ -88,14 +78,16 @@ public class WalletApplication extends Application
 		}
 		catch (final Error x)
 		{
-			System.out.println("StrictMode not available");
+			Log.i(TAG, "StrictMode not available");
 		}
 
-		System.out.println(getClass().getName() + ".onCreate()");
+		Log.d(TAG, ".onCreate()");
 
 		super.onCreate();
 
 		ErrorReporter.getInstance().init(this);
+
+		walletFile = getFileStreamPath(Constants.WALLET_FILENAME_PROTOBUF);
 
 		migrateWalletToProtobuf();
 
@@ -103,7 +95,41 @@ public class WalletApplication extends Application
 
 		backupKeys();
 
-		wallet.addEventListener(walletEventListener);
+		wallet.autosaveToFile(walletFile, 1, TimeUnit.SECONDS, new WalletAutosaveEventListener());
+	}
+
+	private static final class WalletAutosaveEventListener implements AutosaveEventListener
+	{
+		public boolean caughtException(final Throwable t)
+		{
+			throw new Error(t);
+		}
+
+		public void onBeforeAutoSave(final File file)
+		{
+		}
+
+		public void onAfterAutoSave(final File file)
+		{
+			// make wallets world accessible in test mode
+			if (Constants.TEST)
+				chmod(file, 0777);
+		}
+
+		@SuppressWarnings({ "rawtypes", "unchecked" })
+		public void chmod(final File path, final int mode)
+		{
+			try
+			{
+				final Class fileUtils = Class.forName("android.os.FileUtils");
+				final Method setPermissions = fileUtils.getMethod("setPermissions", String.class, int.class, int.class, int.class);
+				setPermissions.invoke(null, path.getAbsolutePath(), mode, -1, -1);
+			}
+			catch (final Exception x)
+			{
+				x.printStackTrace();
+			}
+		}
 	}
 
 	public Wallet getWallet()
@@ -113,132 +139,130 @@ public class WalletApplication extends Application
 
 	private void migrateWalletToProtobuf()
 	{
-		try
+		final File oldWalletFile = getFileStreamPath(Constants.WALLET_FILENAME);
+
+		if (oldWalletFile.exists())
 		{
+			Log.i(TAG, "found wallet to migrate");
+
 			final long start = System.currentTimeMillis();
-			final FileInputStream is = openFileInput(Constants.WALLET_FILENAME);
 
-			runWithStackSize(new Runnable()
+			// read
+			wallet = restoreWalletFromBackup();
+
+			try
 			{
-				public void run()
-				{
-					try
-					{
-						// read
-						final Wallet walletToMigrate = Wallet.loadFromFileStream(is);
+				// write
+				protobufSerializeWallet(wallet);
 
-						// write
-						protobufSerializeWallet(walletToMigrate);
+				// delete
+				oldWalletFile.delete();
 
-						// delete
-						new File(getFilesDir(), Constants.WALLET_FILENAME).delete();
-					}
-					catch (final EOFException x)
-					{
-						handleException(x);
-					}
-					catch (final StackOverflowError x)
-					{
-						handleException(x);
-					}
-					catch (final ObjectStreamException x)
-					{
-						handleException(x);
-					}
-					catch (final IOException x)
-					{
-						throw new Error("cannot migrate wallet", x);
-					}
-				}
-
-				private void handleException(final Throwable x)
-				{
-					x.printStackTrace();
-
-					try
-					{
-						// read
-						final Wallet walletToMigrate = restoreWalletFromBackup();
-
-						// write
-						protobufSerializeWallet(walletToMigrate);
-
-						// delete
-						new File(getFilesDir(), Constants.WALLET_FILENAME).delete();
-
-						handler.post(new Runnable()
-						{
-							public void run()
-							{
-								Toast.makeText(WalletApplication.this, R.string.toast_wallet_reset, Toast.LENGTH_LONG).show();
-							}
-						});
-					}
-					catch (final IOException x2)
-					{
-						throw new RuntimeException(x2);
-					}
-				}
-			}, Constants.WALLET_OPERATION_STACK_SIZE);
-
-			System.out.println("wallet migrated: '" + getFilesDir() + "/" + Constants.WALLET_FILENAME + "', took "
-					+ (System.currentTimeMillis() - start) + "ms");
-		}
-		catch (final FileNotFoundException x)
-		{
-			System.out.println("no wallet to migrate");
-			return; // nothing to migrate
+				Log.i(TAG, "wallet migrated: '" + oldWalletFile + "', took " + (System.currentTimeMillis() - start) + "ms");
+			}
+			catch (final IOException x)
+			{
+				throw new Error("cannot migrate wallet", x);
+			}
 		}
 	}
 
 	private void loadWalletFromProtobuf()
 	{
-		try
+		if (walletFile.exists())
 		{
 			final long start = System.currentTimeMillis();
-			final FileInputStream is = openFileInput(Constants.WALLET_FILENAME_PROTOBUF);
+
+			FileInputStream walletStream = null;
 
 			try
 			{
-				wallet = WalletProtobufSerializer.readWallet(is, Constants.NETWORK_PARAMETERS);
+				walletStream = new FileInputStream(walletFile);
+
+				final WalletProtobufSerializer walletSerializer = new WalletProtobufSerializer();
+
+				// temporary code: transaction confidence depth migration
+				final File blockChainFile = new File(getDir("blockstore", Context.MODE_WORLD_READABLE | Context.MODE_WORLD_WRITEABLE),
+						Constants.BLOCKCHAIN_FILENAME);
+				if (blockChainFile.exists())
+				{
+					try
+					{
+						final BlockStore blockStore = new BoundedOverheadBlockStore(Constants.NETWORK_PARAMETERS, blockChainFile);
+						walletSerializer.setChainHeight(blockStore.getChainHead().getHeight());
+						blockStore.close();
+					}
+					catch (final BlockStoreException x)
+					{
+						// don't migrate, blockchain will be rescanned anyway
+						x.printStackTrace();
+					}
+				}
+
+				wallet = walletSerializer.readWallet(walletStream);
+
+				Log.i(TAG, "wallet loaded from: '" + walletFile + "', took " + (System.currentTimeMillis() - start) + "ms");
 			}
 			catch (final IOException x)
 			{
 				x.printStackTrace();
 
-				wallet = restoreWalletFromBackup();
+				Toast.makeText(WalletApplication.this, x.getClass().getName(), Toast.LENGTH_LONG).show();
 
-				handler.post(new Runnable()
+				wallet = restoreWalletFromBackup();
+			}
+			catch (final IllegalStateException x)
+			{
+				x.printStackTrace();
+
+				Toast.makeText(WalletApplication.this, x.getClass().getName(), Toast.LENGTH_LONG).show();
+
+				wallet = restoreWalletFromBackup();
+			}
+			finally
+			{
+				if (walletStream != null)
 				{
-					public void run()
+					try
 					{
-						Toast.makeText(WalletApplication.this, R.string.toast_wallet_reset, Toast.LENGTH_LONG).show();
+						walletStream.close();
 					}
-				});
+					catch (final IOException x)
+					{
+						x.printStackTrace();
+					}
+				}
 			}
 
-			System.out.println("wallet loaded from: '" + getFilesDir() + "/" + Constants.WALLET_FILENAME_PROTOBUF + "', took "
-					+ (System.currentTimeMillis() - start) + "ms");
+			if (!wallet.isConsistent())
+			{
+				Toast.makeText(this, "inconsistent wallet: " + walletFile, Toast.LENGTH_LONG).show();
+
+				wallet = restoreWalletFromBackup();
+			}
+
+			if (!wallet.getParams().equals(Constants.NETWORK_PARAMETERS))
+				throw new Error("bad wallet network parameters: " + wallet.getParams().getId());
 		}
-		catch (final FileNotFoundException x)
+		else
 		{
 			try
 			{
 				wallet = restoreWalletFromSnapshot();
 			}
-			catch (final FileNotFoundException x2)
+			catch (final FileNotFoundException x)
 			{
 				wallet = new Wallet(Constants.NETWORK_PARAMETERS);
-				wallet.keychain.add(new ECKey());
+				wallet.addKey(new ECKey());
 
 				try
 				{
 					protobufSerializeWallet(wallet);
-					System.out.println("wallet created: '" + getFilesDir() + "/" + Constants.WALLET_FILENAME_PROTOBUF + "'");
+					Log.i(TAG, "wallet created: '" + walletFile + "'");
 				}
-				catch (final IOException x3)
+				catch (final IOException x2)
 				{
-					throw new Error("wallet cannot be created", x3);
+					throw new Error("wallet cannot be created", x2);
 				}
 			}
 		}
@@ -248,40 +272,19 @@ public class WalletApplication extends Application
 	{
 		try
 		{
-			final Wallet wallet = new Wallet(Constants.NETWORK_PARAMETERS);
-			final BufferedReader in = new BufferedReader(new InputStreamReader(openFileInput(Constants.WALLET_KEY_BACKUP_BASE58), "UTF-8"));
-
-			while (true)
-			{
-				final String line = in.readLine();
-				if (line == null)
-					break;
-
-				final String[] parts = line.split(" ");
-
-				final ECKey key = new DumpedPrivateKey(Constants.NETWORK_PARAMETERS, parts[0]).getKey();
-				key.setCreationTimeSeconds(parts.length >= 2 ? Iso8601Format.parseDateTimeT(parts[1]).getTime() / 1000 : 0);
-
-				wallet.keychain.add(key);
-			}
-
-			in.close();
+			final Wallet wallet = readKeys(openFileInput(Constants.WALLET_KEY_BACKUP_BASE58));
 
 			final File file = new File(getDir("blockstore", Context.MODE_WORLD_READABLE | Context.MODE_WORLD_WRITEABLE),
 					Constants.BLOCKCHAIN_FILENAME);
 			file.delete();
 
+			Toast.makeText(this, R.string.toast_wallet_reset, Toast.LENGTH_LONG).show();
+
+			Log.i(TAG, "wallet restored from backup: '" + Constants.WALLET_KEY_BACKUP_BASE58 + "'");
+
 			return wallet;
 		}
 		catch (final IOException x)
-		{
-			throw new RuntimeException(x);
-		}
-		catch (final AddressFormatException x)
-		{
-			throw new RuntimeException(x);
-		}
-		catch (final ParseException x)
 		{
 			throw new RuntimeException(x);
 		}
@@ -291,26 +294,9 @@ public class WalletApplication extends Application
 	{
 		try
 		{
-			final Wallet wallet = new Wallet(Constants.NETWORK_PARAMETERS);
-			final BufferedReader in = new BufferedReader(new InputStreamReader(getAssets().open(Constants.WALLET_KEY_BACKUP_SNAPSHOT), "UTF-8"));
+			final Wallet wallet = readKeys(getAssets().open(Constants.WALLET_KEY_BACKUP_SNAPSHOT));
 
-			while (true)
-			{
-				final String line = in.readLine();
-				if (line == null)
-					break;
-
-				final String[] parts = line.split(" ");
-
-				final ECKey key = new DumpedPrivateKey(Constants.NETWORK_PARAMETERS, parts[0]).getKey();
-				key.setCreationTimeSeconds(parts.length >= 2 ? Iso8601Format.parseDateTimeT(parts[1]).getTime() / 1000 : 0);
-
-				wallet.keychain.add(key);
-			}
-
-			in.close();
-
-			System.out.println("wallet restored from snapshot");
+			Log.i(TAG, "wallet restored from snapshot: '" + Constants.WALLET_KEY_BACKUP_SNAPSHOT + "'");
 
 			return wallet;
 		}
@@ -322,21 +308,24 @@ public class WalletApplication extends Application
 		{
 			throw new RuntimeException(x);
 		}
-		catch (final AddressFormatException x)
-		{
-			throw new RuntimeException(x);
-		}
-		catch (final ParseException x)
-		{
-			throw new RuntimeException(x);
-		}
+	}
+
+	private static Wallet readKeys(final InputStream is) throws IOException
+	{
+		final BufferedReader in = new BufferedReader(new InputStreamReader(is, UTF_8));
+		final List<ECKey> keys = WalletUtils.readKeys(in);
+		in.close();
+
+		final Wallet wallet = new Wallet(Constants.NETWORK_PARAMETERS);
+		for (final ECKey key : keys)
+			wallet.addKey(key);
+
+		return wallet;
 	}
 
 	public void addNewKeyToWallet()
 	{
-		wallet.keychain.add(new ECKey());
-
-		saveWallet();
+		wallet.addKey(new ECKey());
 
 		backupKeys();
 	}
@@ -356,35 +345,17 @@ public class WalletApplication extends Application
 	private void protobufSerializeWallet(final Wallet wallet) throws IOException
 	{
 		final long start = System.currentTimeMillis();
-		WalletProtobufSerializer.writeWallet(wallet, openFileOutput(Constants.WALLET_FILENAME_PROTOBUF, Constants.WALLET_MODE));
-		System.out.println("wallet saved to: '" + getFilesDir() + "/" + Constants.WALLET_FILENAME_PROTOBUF + "', took "
-				+ (System.currentTimeMillis() - start) + "ms");
-	}
 
-	private void writeKeys(final OutputStream os) throws IOException
-	{
-		final DateFormat format = Iso8601Format.newDateTimeFormatT();
-		final Writer out = new OutputStreamWriter(os, "UTF-8");
+		wallet.saveToFile(walletFile);
 
-		for (final ECKey key : wallet.keychain)
-		{
-			out.write(key.getPrivateKeyEncoded(Constants.NETWORK_PARAMETERS).toString());
-			if (key.getCreationTimeSeconds() != 0)
-			{
-				out.write(' ');
-				out.write(format.format(new Date(key.getCreationTimeSeconds() * 1000)));
-			}
-			out.write('\n');
-		}
-
-		out.close();
+		Log.d(TAG, "wallet saved to: '" + walletFile + "', took " + (System.currentTimeMillis() - start) + "ms");
 	}
 
 	private void backupKeys()
 	{
 		try
 		{
-			writeKeys(openFileOutput(Constants.WALLET_KEY_BACKUP_BASE58, Constants.WALLET_MODE));
+			writeKeys(openFileOutput(Constants.WALLET_KEY_BACKUP_BASE58, Context.MODE_PRIVATE));
 		}
 		catch (final IOException x)
 		{
@@ -394,13 +365,21 @@ public class WalletApplication extends Application
 		try
 		{
 			final long MS_PER_DAY = 24 * 60 * 60 * 1000;
-			final String filename = String.format("%s.%02d", Constants.WALLET_KEY_BACKUP_BASE58, (System.currentTimeMillis() / MS_PER_DAY) % 100l);
-			writeKeys(openFileOutput(filename, Constants.WALLET_MODE));
+			final String filename = String.format(Locale.US, "%s.%02d", Constants.WALLET_KEY_BACKUP_BASE58,
+					(System.currentTimeMillis() / MS_PER_DAY) % 100l);
+			writeKeys(openFileOutput(filename, Context.MODE_PRIVATE));
 		}
 		catch (final IOException x)
 		{
 			x.printStackTrace();
 		}
+	}
+
+	private void writeKeys(final OutputStream os) throws IOException
+	{
+		final Writer out = new OutputStreamWriter(os, UTF_8);
+		WalletUtils.writeKeys(out, wallet.keychain);
+		out.close();
 	}
 
 	public Address determineSelectedAddress()
@@ -422,18 +401,22 @@ public class WalletApplication extends Application
 		throw new IllegalStateException("address not in keychain: " + selectedAddress);
 	}
 
-	private static void runWithStackSize(final Runnable runnable, final long stackSize)
+	public void resetBlockchain()
 	{
-		final Thread thread = new Thread(null, runnable, "stackSizeBooster", stackSize);
-		thread.start();
-		try
-		{
-			thread.join();
-		}
-		catch (final InterruptedException x)
-		{
-			throw new RuntimeException(x);
-		}
+		// stop service to make sure peers do not get in the way
+		final Intent serviceIntent = new Intent(this, BlockchainServiceImpl.class);
+		stopService(serviceIntent);
+
+		// remove block chain
+		final File blockChainFile = new File(getDir("blockstore", Context.MODE_WORLD_READABLE | Context.MODE_WORLD_WRITEABLE),
+				Constants.BLOCKCHAIN_FILENAME);
+		blockChainFile.delete();
+
+		// clear transactions from wallet, keep keys
+		wallet.clearTransactions(0);
+
+		// start service again
+		startService(serviceIntent);
 	}
 
 	public final int applicationVersionCode()

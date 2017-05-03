@@ -18,96 +18,114 @@
 package de.schildbach.wallet.ui;
 
 import java.math.BigInteger;
+import java.util.ArrayList;
 
 import android.app.Activity;
+import android.content.ContentResolver;
 import android.content.Context;
-import android.content.Intent;
 import android.graphics.Bitmap;
 import android.os.Bundle;
-import android.support.v4.app.DialogFragment;
-import android.support.v4.app.Fragment;
-import android.support.v4.app.FragmentTransaction;
+import android.support.v4.app.ShareCompat.IntentBuilder;
 import android.text.ClipboardManager;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.View.OnClickListener;
 import android.view.ViewGroup;
+import android.widget.AdapterView;
+import android.widget.AdapterView.OnItemSelectedListener;
+import android.widget.CheckBox;
+import android.widget.CompoundButton;
+import android.widget.CompoundButton.OnCheckedChangeListener;
 import android.widget.ImageView;
+import android.widget.Spinner;
 
+import com.actionbarsherlock.app.SherlockFragment;
+import com.actionbarsherlock.view.Menu;
+import com.actionbarsherlock.view.MenuInflater;
+import com.actionbarsherlock.view.MenuItem;
+import com.actionbarsherlock.widget.ShareActionProvider;
 import com.google.bitcoin.core.Address;
+import com.google.bitcoin.core.ECKey;
 import com.google.bitcoin.uri.BitcoinURI;
 
-import de.schildbach.wallet.WalletApplication;
+import de.schildbach.wallet.AddressBookProvider;
 import de.schildbach.wallet.Constants;
-import de.schildbach.wallet.ui.CurrencyAmountView.Listener;
-import de.schildbach.wallet.util.ActionBarFragment;
+import de.schildbach.wallet.WalletApplication;
+import de.schildbach.wallet.util.BitmapFragment;
 import de.schildbach.wallet.util.NfcTools;
-import de.schildbach.wallet.util.QrDialog;
 import de.schildbach.wallet.util.WalletUtils;
 import de.schildbach.wallet_test.R;
 
 /**
  * @author Andreas Schildbach
  */
-public final class RequestCoinsFragment extends Fragment
+public final class RequestCoinsFragment extends SherlockFragment implements AmountCalculatorFragment.Listener
 {
+	private AbstractWalletActivity activity;
 	private WalletApplication application;
+	private ContentResolver contentResolver;
 	private Object nfcManager;
+	private ClipboardManager clipboardManager;
+	private ShareActionProvider shareActionProvider;
 
 	private ImageView qrView;
 	private Bitmap qrCodeBitmap;
 	private CurrencyAmountView amountView;
+	private Spinner addressView;
+	private CheckBox includeLabelView;
 	private View nfcEnabledView;
+
+	@Override
+	public void onAttach(final Activity activity)
+	{
+		super.onAttach(activity);
+		this.activity = (AbstractWalletActivity) activity;
+		application = (WalletApplication) activity.getApplication();
+		contentResolver = activity.getContentResolver();
+
+		nfcManager = activity.getSystemService(Context.NFC_SERVICE);
+		clipboardManager = (ClipboardManager) activity.getSystemService(Context.CLIPBOARD_SERVICE);
+	}
 
 	@Override
 	public View onCreateView(final LayoutInflater inflater, final ViewGroup container, final Bundle savedInstanceState)
 	{
-		nfcManager = getActivity().getSystemService(Context.NFC_SERVICE);
-
-		application = (WalletApplication) getActivity().getApplication();
-
-		final View view = inflater.inflate(R.layout.request_coins_fragment, container);
+		final View view = inflater.inflate(R.layout.request_coins_fragment, container, false);
 
 		qrView = (ImageView) view.findViewById(R.id.request_coins_qr);
 		qrView.setOnClickListener(new OnClickListener()
 		{
 			public void onClick(final View v)
 			{
-				new QrDialog(getActivity(), qrCodeBitmap).show();
+				BitmapFragment.show(getFragmentManager(), qrCodeBitmap);
 			}
 		});
 
 		amountView = (CurrencyAmountView) view.findViewById(R.id.request_coins_amount);
-		amountView.setListener(new Listener()
-		{
-			public void changed()
-			{
-				updateView();
-			}
-
-			public void done()
-			{
-			}
-		});
 		amountView.setContextButton(R.drawable.ic_input_calculator, new OnClickListener()
 		{
 			public void onClick(final View v)
 			{
-				final FragmentTransaction ft = getFragmentManager().beginTransaction();
-				final Fragment prev = getFragmentManager().findFragmentByTag(AmountCalculatorFragment.FRAGMENT_TAG);
-				if (prev != null)
-					ft.remove(prev);
-				ft.addToBackStack(null);
-				final DialogFragment newFragment = new AmountCalculatorFragment(new AmountCalculatorFragment.Listener()
-				{
-					public void use(final BigInteger amount)
-					{
-						amountView.setAmount(amount);
-					}
-				});
-				newFragment.show(ft, AmountCalculatorFragment.FRAGMENT_TAG);
+				AmountCalculatorFragment.calculate(getFragmentManager(), RequestCoinsFragment.this);
 			}
 		});
+
+		addressView = (Spinner) view.findViewById(R.id.request_coins_fragment_address);
+		final ArrayList<ECKey> keys = application.getWallet().keychain;
+		final WalletAddressesAdapter adapter = new WalletAddressesAdapter(activity, keys, false);
+		addressView.setAdapter(adapter);
+		final Address selectedAddress = application.determineSelectedAddress();
+		for (int i = 0; i < keys.size(); i++)
+		{
+			final Address address = keys.get(i).toAddress(Constants.NETWORK_PARAMETERS);
+			if (address.equals(selectedAddress))
+			{
+				addressView.setSelection(i);
+				break;
+			}
+		}
+
+		includeLabelView = (CheckBox) view.findViewById(R.id.request_coins_fragment_include_label);
 
 		nfcEnabledView = view.findViewById(R.id.request_coins_fragment_nfc_enabled);
 
@@ -115,34 +133,12 @@ public final class RequestCoinsFragment extends Fragment
 	}
 
 	@Override
-	public void onAttach(final Activity activity)
+	public void onViewCreated(final View view, final Bundle savedInstanceState)
 	{
-		super.onAttach(activity);
+		super.onViewCreated(view, savedInstanceState);
 
-		final ActionBarFragment actionBar = ((AbstractWalletActivity) activity).getActionBar();
-
-		actionBar.addButton(R.drawable.ic_action_share).setOnClickListener(new OnClickListener()
-		{
-			public void onClick(final View v)
-			{
-				startActivity(Intent.createChooser(
-						new Intent(Intent.ACTION_SEND).putExtra(Intent.EXTRA_TEXT, determineAddressStr()).setType("text/plain"), getActivity()
-								.getString(R.string.request_coins_share_dialog_title)));
-			}
-		});
-
-		actionBar.addButton(R.drawable.ic_action_copy).setOnClickListener(new OnClickListener()
-		{
-			public void onClick(final View v)
-			{
-				final ClipboardManager clipboardManager = (ClipboardManager) getActivity().getSystemService(Context.CLIPBOARD_SERVICE);
-				final String addressStr = determineAddressStr();
-				clipboardManager.setText(addressStr);
-				((AbstractWalletActivity) getActivity()).toast(R.string.request_coins_clipboard_msg);
-
-				System.out.println("bitcoin request uri: " + addressStr + (Constants.TEST ? " [testnet]" : ""));
-			}
-		});
+		// don't call in onCreate() because ActionBarSherlock invokes onCreateOptionsMenu() too early
+		setHasOptionsMenu(true);
 	}
 
 	@Override
@@ -150,42 +146,138 @@ public final class RequestCoinsFragment extends Fragment
 	{
 		super.onResume();
 
+		amountView.setListener(new CurrencyAmountView.Listener()
+		{
+			public void changed()
+			{
+				updateView();
+				updateShareIntent();
+			}
+
+			public void done()
+			{
+			}
+
+			public void focusChanged(final boolean hasFocus)
+			{
+			}
+		});
+
+		addressView.setOnItemSelectedListener(new OnItemSelectedListener()
+		{
+			public void onItemSelected(final AdapterView<?> parent, final View view, final int position, final long id)
+			{
+				updateView();
+				updateShareIntent();
+			}
+
+			public void onNothingSelected(final AdapterView<?> parent)
+			{
+			}
+		});
+
+		includeLabelView.setOnCheckedChangeListener(new OnCheckedChangeListener()
+		{
+			public void onCheckedChanged(final CompoundButton buttonView, final boolean isChecked)
+			{
+				updateView();
+				updateShareIntent();
+			}
+		});
+
 		updateView();
 	}
 
 	@Override
 	public void onPause()
 	{
-		super.onPause();
-
 		if (nfcManager != null)
-			NfcTools.unpublish(nfcManager, getActivity());
+			NfcTools.unpublish(nfcManager, activity);
+
+		amountView.setListener(null);
+
+		addressView.setOnItemSelectedListener(null);
+
+		includeLabelView.setOnCheckedChangeListener(null);
+
+		super.onPause();
+	}
+
+	@Override
+	public void onCreateOptionsMenu(final Menu menu, final MenuInflater inflater)
+	{
+		inflater.inflate(R.menu.request_coins_fragment_options, menu);
+
+		final MenuItem shareItem = menu.findItem(R.id.request_coins_options_share);
+		shareActionProvider = (ShareActionProvider) shareItem.getActionProvider();
+
+		updateShareIntent();
+
+		super.onCreateOptionsMenu(menu, inflater);
+	}
+
+	@Override
+	public boolean onOptionsItemSelected(final MenuItem item)
+	{
+		switch (item.getItemId())
+		{
+			case R.id.request_coins_options_copy:
+				handleCopy();
+				return true;
+		}
+
+		return super.onOptionsItemSelected(item);
+	}
+
+	private void handleCopy()
+	{
+		final String request = determineRequestStr();
+		clipboardManager.setText(request);
+		activity.toast(R.string.request_coins_clipboard_msg);
 	}
 
 	private void updateView()
 	{
-		final String addressStr = determineAddressStr();
+		final String request = determineRequestStr();
 
-		if (qrCodeBitmap != null)
-			qrCodeBitmap.recycle();
-
+		// update qr code
 		final int size = (int) (256 * getResources().getDisplayMetrics().density);
-		qrCodeBitmap = WalletUtils.getQRCodeBitmap(addressStr, size);
+		qrCodeBitmap = WalletUtils.getQRCodeBitmap(request, size);
 		qrView.setImageBitmap(qrCodeBitmap);
 
+		// update ndef message
 		if (nfcManager != null)
 		{
-			final boolean success = NfcTools.publishUri(nfcManager, getActivity(), addressStr);
+			final boolean success = NfcTools.publishUri(nfcManager, getActivity(), request);
 			if (success)
 				nfcEnabledView.setVisibility(View.VISIBLE);
 		}
 	}
 
-	private String determineAddressStr()
+	private void updateShareIntent()
 	{
-		final Address address = application.determineSelectedAddress();
+		// update share intent
+		final IntentBuilder builder = IntentBuilder.from(activity);
+		builder.setText(determineRequestStr());
+		builder.setType("text/plain");
+		builder.setChooserTitle(R.string.request_coins_share_dialog_title);
+		shareActionProvider.setShareIntent(builder.getIntent());
+	}
+
+	private String determineRequestStr()
+	{
+		final boolean includeLabel = includeLabelView.isChecked();
+
+		final ECKey key = application.getWallet().keychain.get(addressView.getSelectedItemPosition());
+		final Address address = key.toAddress(Constants.NETWORK_PARAMETERS);
+		final String label = includeLabel ? AddressBookProvider.resolveLabel(contentResolver, address.toString()) : null;
 		final BigInteger amount = amountView.getAmount();
 
-		return BitcoinURI.convertToBitcoinURI(address, amount, null, null).toString();
+		return BitcoinURI.convertToBitcoinURI(address, amount, label, null).toString();
+	}
+
+	public void useCalculatedAmount(final BigInteger amount)
+	{
+		amountView.setAmount(amount);
 	}
 }

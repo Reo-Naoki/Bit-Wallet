@@ -18,36 +18,61 @@
 package de.schildbach.wallet.ui;
 
 import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileFilter;
+import java.io.FileReader;
+import java.io.FileWriter;
+import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.io.Reader;
+import java.io.StringReader;
+import java.io.StringWriter;
+import java.io.Writer;
 import java.net.URL;
 import java.net.URLConnection;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Date;
+import java.util.List;
 
 import android.app.AlertDialog;
 import android.app.Dialog;
-import android.content.ComponentName;
-import android.content.Context;
 import android.content.DialogInterface;
+import android.content.DialogInterface.OnCancelListener;
+import android.content.DialogInterface.OnClickListener;
 import android.content.Intent;
 import android.content.IntentFilter;
-import android.content.ServiceConnection;
-import android.content.res.Configuration;
+import android.content.pm.PackageManager;
 import android.net.Uri;
-import android.os.Build;
 import android.os.Bundle;
-import android.os.IBinder;
-import android.support.v4.app.FragmentManager;
-import android.support.v4.app.FragmentTransaction;
-import android.view.Menu;
-import android.view.MenuItem;
+import android.os.Environment;
+import android.text.Editable;
+import android.text.TextWatcher;
 import android.view.View;
-import android.view.View.OnClickListener;
 import android.view.Window;
 import android.webkit.WebView;
+import android.widget.AdapterView;
+import android.widget.AdapterView.OnItemSelectedListener;
+import android.widget.Button;
+import android.widget.CheckBox;
+import android.widget.EditText;
+import android.widget.Spinner;
+import android.widget.TextView;
+
+import com.actionbarsherlock.app.ActionBar;
+import com.actionbarsherlock.view.Menu;
+import com.actionbarsherlock.view.MenuItem;
+import com.google.bitcoin.core.ECKey;
+import com.google.bitcoin.core.Wallet;
+
 import de.schildbach.wallet.Constants;
 import de.schildbach.wallet.service.BlockchainService;
-import de.schildbach.wallet.util.ActionBarFragment;
+import de.schildbach.wallet.service.BlockchainServiceImpl;
+import de.schildbach.wallet.util.EncryptionUtils;
 import de.schildbach.wallet.util.ErrorReporter;
+import de.schildbach.wallet.util.Iso8601Format;
+import de.schildbach.wallet.util.WalletUtils;
 import de.schildbach.wallet_test.R;
 
 /**
@@ -55,26 +80,10 @@ import de.schildbach.wallet_test.R;
  */
 public final class WalletActivity extends AbstractWalletActivity
 {
-	public static final int DIALOG_SAFETY = 1;
 	private static final int DIALOG_HELP = 0;
-
-	private static final int HONEYCOMB = 11; // API level 11
-
-	private BlockchainService service;
-
-	private final ServiceConnection serviceConnection = new ServiceConnection()
-	{
-		public void onServiceConnected(final ComponentName name, final IBinder binder)
-		{
-			service = ((BlockchainService.LocalBinder) binder).getService();
-
-			service.cancelCoinsReceived();
-		}
-
-		public void onServiceDisconnected(final ComponentName name)
-		{
-		}
-	};
+	public static final int DIALOG_SAFETY = 1;
+	private static final int DIALOG_IMPORT_KEYS = 2;
+	private static final int DIALOG_EXPORT_KEYS = 3;
 
 	@Override
 	protected void onCreate(final Bundle savedInstanceState)
@@ -85,57 +94,12 @@ public final class WalletActivity extends AbstractWalletActivity
 
 		setContentView(R.layout.wallet_content);
 
-		final ActionBarFragment actionBar = getActionBar();
-
-		actionBar.setPrimaryTitle(R.string.app_name);
-
-		if (Build.VERSION.SDK_INT >= HONEYCOMB)
-		{
-			actionBar.addButton(R.drawable.ic_action_overflow).setOnClickListener(new OnClickListener()
-			{
-				public void onClick(final View v)
-				{
-					openOptionsMenu();
-				}
-			});
-		}
-
-		actionBar.addButton(R.drawable.ic_action_send).setOnClickListener(new OnClickListener()
-		{
-			public void onClick(final View v)
-			{
-				startActivity(new Intent(WalletActivity.this, SendCoinsActivity.class));
-			}
-		});
-
-		actionBar.addButton(R.drawable.ic_action_receive).setOnClickListener(new OnClickListener()
-		{
-			public void onClick(final View v)
-			{
-				startActivity(new Intent(WalletActivity.this, RequestCoinsActivity.class));
-			}
-		});
-
-		if ((getResources().getConfiguration().screenLayout & Configuration.SCREENLAYOUT_SIZE_MASK) >= Configuration.SCREENLAYOUT_SIZE_LARGE)
-		{
-			actionBar.addButton(R.drawable.ic_action_address_book).setOnClickListener(new OnClickListener()
-			{
-				public void onClick(final View v)
-				{
-					AddressBookActivity.start(WalletActivity.this, true);
-				}
-			});
-		}
-
-		if ((getResources().getConfiguration().screenLayout & Configuration.SCREENLAYOUT_SIZE_MASK) < Configuration.SCREENLAYOUT_SIZE_LARGE)
-		{
-			final FragmentManager fm = getSupportFragmentManager();
-			final FragmentTransaction ft = fm.beginTransaction();
-			ft.hide(fm.findFragmentById(R.id.exchange_rates_fragment));
-			ft.commit();
-		}
+		final ActionBar actionBar = getSupportActionBar();
+		actionBar.setTitle(R.string.app_name);
 
 		checkVersionAndTimeskewAlert();
+
+		touchLastUsed();
 	}
 
 	@Override
@@ -143,25 +107,32 @@ public final class WalletActivity extends AbstractWalletActivity
 	{
 		super.onResume();
 
-		bindService(new Intent(this, BlockchainService.class), serviceConnection, Context.BIND_AUTO_CREATE);
+		startService(new Intent(BlockchainService.ACTION_CANCEL_COINS_RECEIVED, null, this, BlockchainServiceImpl.class));
 
 		checkLowStorageAlert();
-	}
-
-	@Override
-	protected void onPause()
-	{
-		unbindService(serviceConnection);
-
-		super.onPause();
 	}
 
 	@Override
 	public boolean onCreateOptionsMenu(final Menu menu)
 	{
 		super.onCreateOptionsMenu(menu);
-		getMenuInflater().inflate(R.menu.wallet_options, menu);
+
+		getSupportMenuInflater().inflate(R.menu.wallet_options, menu);
 		menu.findItem(R.id.wallet_options_donate).setVisible(!Constants.TEST);
+
+		return true;
+	}
+
+	@Override
+	public boolean onPrepareOptionsMenu(final Menu menu)
+	{
+		super.onPrepareOptionsMenu(menu);
+
+		final String externalStorageState = Environment.getExternalStorageState();
+		menu.findItem(R.id.wallet_options_import_keys).setEnabled(
+				Environment.MEDIA_MOUNTED.equals(externalStorageState) || Environment.MEDIA_MOUNTED_READ_ONLY.equals(externalStorageState));
+		menu.findItem(R.id.wallet_options_export_keys).setEnabled(Environment.MEDIA_MOUNTED.equals(externalStorageState));
+
 		return true;
 	}
 
@@ -170,12 +141,44 @@ public final class WalletActivity extends AbstractWalletActivity
 	{
 		switch (item.getItemId())
 		{
+			case R.id.wallet_options_request:
+				startActivity(new Intent(this, RequestCoinsActivity.class));
+				return true;
+
+			case R.id.wallet_options_send:
+				startActivity(new Intent(this, SendCoinsActivity.class));
+				return true;
+
 			case R.id.wallet_options_address_book:
-				AddressBookActivity.start(WalletActivity.this, true);
+				AddressBookActivity.start(this, true);
+				return true;
+
+			case R.id.wallet_options_exchange_rates:
+				startActivity(new Intent(this, ExchangeRatesActivity.class));
+				return true;
+
+			case R.id.wallet_options_peer_monitor:
+				startActivity(new Intent(this, PeerMonitorActivity.class));
+				return true;
+
+			case R.id.wallet_options_import_keys:
+				showDialog(DIALOG_IMPORT_KEYS);
+				return true;
+
+			case R.id.wallet_options_export_keys:
+				showDialog(DIALOG_EXPORT_KEYS);
+				return true;
+
+			case R.id.wallet_options_disconnect:
+				handleDisconnect();
 				return true;
 
 			case R.id.wallet_options_preferences:
 				startActivity(new Intent(this, PreferencesActivity.class));
+				return true;
+
+			case R.id.wallet_options_about:
+				startActivity(new Intent(this, AboutActivity.class));
 				return true;
 
 			case R.id.wallet_options_safety:
@@ -185,6 +188,7 @@ public final class WalletActivity extends AbstractWalletActivity
 			case R.id.wallet_options_donate:
 				final Intent intent = new Intent(this, SendCoinsActivity.class);
 				intent.putExtra(SendCoinsActivity.INTENT_EXTRA_ADDRESS, Constants.DONATION_ADDRESS);
+				intent.putExtra(SendCoinsActivity.INTENT_EXTRA_ADDRESS_LABEL, getString(R.string.wallet_donate_address_label));
 				startActivity(intent);
 				return true;
 
@@ -193,17 +197,166 @@ public final class WalletActivity extends AbstractWalletActivity
 				return true;
 		}
 
-		return false;
+		return super.onOptionsItemSelected(item);
+	}
+
+	private void handleDisconnect()
+	{
+		stopService(new Intent(this, BlockchainServiceImpl.class));
+		finish();
 	}
 
 	@Override
 	protected Dialog onCreateDialog(final int id)
 	{
-		final WebView webView = new WebView(this);
-		if (id == DIALOG_HELP)
-			webView.loadUrl("file:///android_asset/help" + languagePrefix() + ".html");
+		if (id == DIALOG_IMPORT_KEYS)
+			return createImportKeysDialog();
+		else if (id == DIALOG_EXPORT_KEYS)
+			return createExportKeysDialog();
+		else if (id == DIALOG_HELP)
+			return createWebViewDialog("file:///android_asset/help" + languagePrefix() + ".html");
+		else if (id == DIALOG_SAFETY)
+			return createWebViewDialog("file:///android_asset/safety" + languagePrefix() + ".html");
 		else
-			webView.loadUrl("file:///android_asset/safety" + languagePrefix() + ".html");
+			throw new IllegalArgumentException();
+	}
+
+	@Override
+	protected void onPrepareDialog(final int id, final Dialog dialog)
+	{
+		if (id == DIALOG_IMPORT_KEYS)
+			prepareImportKeysDialog(dialog);
+		else if (id == DIALOG_EXPORT_KEYS)
+			prepareExportKeysDialog(dialog);
+	}
+
+	private Dialog createImportKeysDialog()
+	{
+		final View view = getLayoutInflater().inflate(R.layout.wallet_import_keys_dialog, null);
+		final TextView messageView = (TextView) view.findViewById(R.id.wallet_import_keys_message);
+		messageView.setText(getString(R.string.wallet_import_keys_dialog_message, Constants.EXTERNAL_WALLET_BACKUP_DIR));
+		final Spinner fileView = (Spinner) view.findViewById(R.id.wallet_import_keys_file);
+		final EditText passwordView = (EditText) view.findViewById(R.id.wallet_import_keys_password);
+
+		final AlertDialog.Builder builder = new AlertDialog.Builder(this);
+		builder.setInverseBackgroundForced(true);
+		builder.setTitle(R.string.wallet_import_keys_dialog_title);
+		builder.setView(view);
+		builder.setPositiveButton(R.string.wallet_import_keys_dialog_button_import, new OnClickListener()
+		{
+			public void onClick(final DialogInterface dialog, final int which)
+			{
+				final File file = (File) fileView.getSelectedItem();
+				final String password = passwordView.getText().toString().trim();
+				passwordView.setText(null); // get rid of it asap
+
+				importPrivateKeys(file, password);
+			}
+		});
+		builder.setNegativeButton(R.string.button_cancel, new OnClickListener()
+		{
+			public void onClick(final DialogInterface dialog, final int which)
+			{
+				passwordView.setText(null); // get rid of it asap
+			}
+		});
+		builder.setOnCancelListener(new OnCancelListener()
+		{
+			public void onCancel(final DialogInterface dialog)
+			{
+				passwordView.setText(null); // get rid of it asap
+			}
+		});
+
+		return builder.create();
+	}
+
+	private void prepareImportKeysDialog(final Dialog dialog)
+	{
+		final AlertDialog alertDialog = (AlertDialog) dialog;
+
+		final File[] files = Constants.EXTERNAL_WALLET_BACKUP_DIR.listFiles(new FileFilter()
+		{
+			public boolean accept(final File file)
+			{
+				return WalletUtils.KEYS_FILE_FILTER.accept(file) || EncryptionUtils.OPENSSL_FILE_FILTER.accept(file);
+			}
+		});
+		Arrays.sort(files);
+		final FileAdapter adapter = new FileAdapter(this, files);
+
+		final Spinner fileView = (Spinner) alertDialog.findViewById(R.id.wallet_import_keys_file);
+		fileView.setAdapter(adapter);
+		fileView.setEnabled(!adapter.isEmpty());
+
+		final EditText passwordView = (EditText) alertDialog.findViewById(R.id.wallet_import_keys_password);
+		passwordView.setText(null);
+
+		final DialogButtonEnablerListener dialogButtonEnabler = new DialogButtonEnablerListener(fileView, passwordView, alertDialog);
+		passwordView.addTextChangedListener(dialogButtonEnabler);
+		fileView.setOnItemSelectedListener(dialogButtonEnabler);
+
+		final CheckBox showView = (CheckBox) alertDialog.findViewById(R.id.wallet_import_keys_show);
+		showView.setOnCheckedChangeListener(new ShowPasswordCheckListener(passwordView));
+	}
+
+	private Dialog createExportKeysDialog()
+	{
+		final View view = getLayoutInflater().inflate(R.layout.wallet_export_keys_dialog, null);
+		final EditText passwordView = (EditText) view.findViewById(R.id.wallet_export_keys_password);
+
+		final AlertDialog.Builder builder = new AlertDialog.Builder(this);
+		builder.setInverseBackgroundForced(true);
+		builder.setTitle(R.string.wallet_export_keys_dialog_title);
+		builder.setView(view);
+		builder.setPositiveButton(R.string.wallet_export_keys_dialog_button_export, new OnClickListener()
+		{
+			public void onClick(final DialogInterface dialog, final int which)
+			{
+				final String password = passwordView.getText().toString().trim();
+				passwordView.setText(null); // get rid of it asap
+
+				exportPrivateKeys(password);
+			}
+		});
+		builder.setNegativeButton(R.string.button_cancel, new OnClickListener()
+		{
+			public void onClick(final DialogInterface dialog, final int which)
+			{
+				passwordView.setText(null); // get rid of it asap
+			}
+		});
+		builder.setOnCancelListener(new OnCancelListener()
+		{
+			public void onCancel(final DialogInterface dialog)
+			{
+				passwordView.setText(null); // get rid of it asap
+			}
+		});
+
+		final AlertDialog dialog = builder.create();
+
+		return dialog;
+	}
+
+	private void prepareExportKeysDialog(final Dialog dialog)
+	{
+		final AlertDialog alertDialog = (AlertDialog) dialog;
+
+		final EditText passwordView = (EditText) alertDialog.findViewById(R.id.wallet_export_keys_password);
+		passwordView.setText(null);
+
+		final DialogButtonEnablerListener dialogButtonEnabler = new DialogButtonEnablerListener(null, passwordView, alertDialog);
+		passwordView.addTextChangedListener(dialogButtonEnabler);
+
+		final CheckBox showView = (CheckBox) alertDialog.findViewById(R.id.wallet_export_keys_show);
+		showView.setOnCheckedChangeListener(new ShowPasswordCheckListener(passwordView));
+	}
+
+	private Dialog createWebViewDialog(final String url)
+	{
+		final WebView webView = new WebView(this);
+		webView.loadUrl(url);
 
 		final Dialog dialog = new Dialog(WalletActivity.this);
 		dialog.requestWindowFeature(Window.FEATURE_NO_TITLE);
@@ -211,6 +364,67 @@ public final class WalletActivity extends AbstractWalletActivity
 		dialog.setCanceledOnTouchOutside(true);
 
 		return dialog;
+	}
+
+	private static final class DialogButtonEnablerListener implements TextWatcher, OnItemSelectedListener
+	{
+		private final Spinner fileView;
+		private final TextView passwordView;
+		private final AlertDialog dialog;
+
+		public DialogButtonEnablerListener(final Spinner fileView, final TextView passwordView, final AlertDialog dialog)
+		{
+			this.fileView = fileView;
+			this.passwordView = passwordView;
+			this.dialog = dialog;
+
+			handle();
+		}
+
+		public void onItemSelected(final AdapterView<?> parent, final View view, final int position, final long id)
+		{
+			handle();
+		}
+
+		public void onNothingSelected(final AdapterView<?> parent)
+		{
+			handle();
+		}
+
+		public void afterTextChanged(final Editable s)
+		{
+			handle();
+		}
+
+		public void beforeTextChanged(final CharSequence s, final int start, final int count, final int after)
+		{
+		}
+
+		public void onTextChanged(final CharSequence s, final int start, final int before, final int count)
+		{
+		}
+
+		public void handle()
+		{
+			final boolean hasFile;
+			final boolean needsPassword;
+			if (fileView != null)
+			{
+				final File selectedFile = (File) fileView.getSelectedItem();
+				hasFile = selectedFile != null;
+				needsPassword = hasFile ? EncryptionUtils.OPENSSL_FILE_FILTER.accept(selectedFile) : true;
+			}
+			else
+			{
+				hasFile = true;
+				needsPassword = true;
+			}
+
+			final boolean hasPassword = passwordView.getText().toString().trim().length() > 0;
+
+			final Button button = dialog.getButton(DialogInterface.BUTTON_POSITIVE);
+			button.setEnabled(hasFile && (!needsPassword || hasPassword));
+		}
 	}
 
 	private void checkLowStorageAlert()
@@ -249,7 +463,7 @@ public final class WalletActivity extends AbstractWalletActivity
 					connection.connect();
 					final long serverTime = connection.getHeaderFieldDate("Date", 0);
 					final InputStream is = connection.getInputStream();
-					final BufferedReader reader = new BufferedReader(new InputStreamReader(is));
+					final BufferedReader reader = new BufferedReader(new InputStreamReader(is), 64);
 					final int serverVersionCode = Integer.parseInt(reader.readLine().trim().split("\\s+")[0]);
 					reader.close();
 
@@ -296,37 +510,174 @@ public final class WalletActivity extends AbstractWalletActivity
 
 	private void timeskewAlert(final long diffMinutes)
 	{
+		final PackageManager pm = getPackageManager();
+		final Intent settingsIntent = new Intent(android.provider.Settings.ACTION_DATE_SETTINGS);
+
 		final AlertDialog.Builder builder = new AlertDialog.Builder(this);
 		builder.setIcon(android.R.drawable.ic_dialog_alert);
 		builder.setTitle(R.string.wallet_timeskew_dialog_title);
 		builder.setMessage(getString(R.string.wallet_timeskew_dialog_msg, diffMinutes));
-		builder.setPositiveButton(R.string.wallet_timeskew_dialog_button_settings, new DialogInterface.OnClickListener()
+
+		if (pm.resolveActivity(settingsIntent, 0) != null)
 		{
-			public void onClick(final DialogInterface dialog, final int id)
+			builder.setPositiveButton(R.string.wallet_timeskew_dialog_button_settings, new DialogInterface.OnClickListener()
 			{
-				startActivity(new Intent(android.provider.Settings.ACTION_DATE_SETTINGS));
-				finish();
-			}
-		});
+				public void onClick(final DialogInterface dialog, final int id)
+				{
+					startActivity(settingsIntent);
+					finish();
+				}
+			});
+		}
+
 		builder.setNegativeButton(R.string.button_dismiss, null);
 		builder.show();
 	}
 
 	private void versionAlert(final int serverVersionCode)
 	{
+		final PackageManager pm = getPackageManager();
+		final Intent marketIntent = new Intent(Intent.ACTION_VIEW, Uri.parse(String.format(Constants.MARKET_APP_URL, getPackageName())));
+		final Intent binaryIntent = new Intent(Intent.ACTION_VIEW, Uri.parse(Constants.BINARY_URL));
+
 		final AlertDialog.Builder builder = new AlertDialog.Builder(this);
 		builder.setIcon(android.R.drawable.ic_dialog_alert);
 		builder.setTitle(R.string.wallet_version_dialog_title);
 		builder.setMessage(getString(R.string.wallet_version_dialog_msg));
-		builder.setPositiveButton(R.string.wallet_version_dialog_button_market, new DialogInterface.OnClickListener()
+
+		if (pm.resolveActivity(marketIntent, 0) != null)
 		{
-			public void onClick(final DialogInterface dialog, final int id)
+			builder.setPositiveButton(R.string.wallet_version_dialog_button_market, new DialogInterface.OnClickListener()
 			{
-				startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse(String.format(Constants.MARKET_APP_URL, getPackageName()))));
-				finish();
-			}
-		});
+				public void onClick(final DialogInterface dialog, final int id)
+				{
+					startActivity(marketIntent);
+					finish();
+				}
+			});
+		}
+
+		if (pm.resolveActivity(binaryIntent, 0) != null)
+		{
+			builder.setNeutralButton(R.string.wallet_version_dialog_button_binary, new DialogInterface.OnClickListener()
+			{
+				public void onClick(final DialogInterface dialog, final int id)
+				{
+					startActivity(binaryIntent);
+					finish();
+				}
+			});
+		}
+
 		builder.setNegativeButton(R.string.button_dismiss, null);
 		builder.show();
+	}
+
+	private void importPrivateKeys(final File file, final String password)
+	{
+		try
+		{
+			final Reader plainReader;
+			if (EncryptionUtils.OPENSSL_FILE_FILTER.accept(file))
+			{
+				final BufferedReader cipherIn = new BufferedReader(new FileReader(file));
+				final StringBuilder cipherText = new StringBuilder();
+				while (true)
+				{
+					final String line = cipherIn.readLine();
+					if (line == null)
+						break;
+
+					cipherText.append(line);
+				}
+				cipherIn.close();
+
+				final String plainText = EncryptionUtils.decrypt(cipherText.toString(), password.toCharArray());
+				plainReader = new StringReader(plainText);
+			}
+			else if (WalletUtils.KEYS_FILE_FILTER.accept(file))
+			{
+				plainReader = new FileReader(file);
+			}
+			else
+			{
+				throw new IllegalStateException(file.getAbsolutePath());
+			}
+
+			final BufferedReader keyReader = new BufferedReader(plainReader);
+			final List<ECKey> importedKeys = WalletUtils.readKeys(keyReader);
+			keyReader.close();
+
+			final Wallet wallet = getWalletApplication().getWallet();
+			int importCount = 0;
+			k: for (final ECKey importedKey : importedKeys)
+			{
+				for (final ECKey key : wallet.getKeys())
+					if (importedKey.equals(key))
+						continue k;
+
+				wallet.addKey(importedKey);
+				importCount++;
+			}
+
+			final AlertDialog.Builder dialog = new AlertDialog.Builder(this);
+			dialog.setInverseBackgroundForced(true);
+			dialog.setMessage(getString(R.string.wallet_import_keys_dialog_success, importCount));
+			dialog.setPositiveButton(R.string.wallet_import_keys_dialog_button_reset_blockchain, new DialogInterface.OnClickListener()
+			{
+				public void onClick(final DialogInterface dialog, final int id)
+				{
+					getWalletApplication().resetBlockchain();
+					finish();
+				}
+			});
+			dialog.setNegativeButton(R.string.button_dismiss, null);
+			dialog.show();
+		}
+		catch (final IOException x)
+		{
+			new AlertDialog.Builder(this).setInverseBackgroundForced(true).setIcon(android.R.drawable.ic_dialog_alert)
+					.setTitle(R.string.wallet_import_export_keys_dialog_failure_title)
+					.setMessage(getString(R.string.wallet_import_keys_dialog_failure, x.getMessage()))
+					.setNeutralButton(R.string.button_dismiss, null).show();
+
+			x.printStackTrace();
+		}
+	}
+
+	private void exportPrivateKeys(final String password)
+	{
+		try
+		{
+			Constants.EXTERNAL_WALLET_BACKUP_DIR.mkdirs();
+			final File file = new File(Constants.EXTERNAL_WALLET_BACKUP_DIR, Constants.EXTERNAL_WALLET_KEY_BACKUP + "-"
+					+ Iso8601Format.newDateFormat().format(new Date()));
+
+			final Wallet wallet = getWalletApplication().getWallet();
+			final ArrayList<ECKey> keys = wallet.keychain;
+
+			final StringWriter plainOut = new StringWriter();
+			WalletUtils.writeKeys(plainOut, keys);
+			plainOut.close();
+			final String plainText = plainOut.toString();
+
+			final String cipherText = EncryptionUtils.encrypt(plainText, password.toCharArray());
+
+			final Writer cipherOut = new FileWriter(file);
+			cipherOut.write(cipherText);
+			cipherOut.close();
+
+			new AlertDialog.Builder(this).setInverseBackgroundForced(true).setMessage(getString(R.string.wallet_export_keys_dialog_success, file))
+					.setNeutralButton(R.string.button_dismiss, null).show();
+		}
+		catch (final IOException x)
+		{
+			new AlertDialog.Builder(this).setInverseBackgroundForced(true).setIcon(android.R.drawable.ic_dialog_alert)
+					.setTitle(R.string.wallet_import_export_keys_dialog_failure_title)
+					.setMessage(getString(R.string.wallet_export_keys_dialog_failure, x.getMessage()))
+					.setNeutralButton(R.string.button_dismiss, null).show();
+
+			x.printStackTrace();
+		}
 	}
 }

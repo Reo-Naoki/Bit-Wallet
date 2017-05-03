@@ -22,24 +22,27 @@ import java.util.Locale;
 import android.app.AlertDialog;
 import android.app.AlertDialog.Builder;
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.net.Uri;
 import android.os.Bundle;
-import android.support.v4.app.FragmentActivity;
+import android.preference.PreferenceManager;
 import android.view.View;
 import android.widget.TextView;
 import android.widget.Toast;
-import de.schildbach.wallet.WalletApplication;
+
+import com.actionbarsherlock.app.ActionBar;
+import com.actionbarsherlock.app.SherlockFragmentActivity;
+
 import de.schildbach.wallet.Constants;
-import de.schildbach.wallet.util.ActionBarFragment;
+import de.schildbach.wallet.WalletApplication;
 import de.schildbach.wallet_test.R;
 
 /**
  * @author Andreas Schildbach
  */
-public abstract class AbstractWalletActivity extends FragmentActivity
+public abstract class AbstractWalletActivity extends SherlockFragmentActivity
 {
 	private WalletApplication application;
-	private ActionBarFragment actionBar;
 
 	@Override
 	protected void onCreate(final Bundle savedInstanceState)
@@ -54,22 +57,15 @@ public abstract class AbstractWalletActivity extends FragmentActivity
 	{
 		super.onStart();
 
-		getActionBar(); // make sure action bar is initialized
-		actionBar.setIcon(Constants.APP_ICON_RESID);
-		actionBar.setSecondaryTitle(Constants.TEST ? "[testnet]" : null);
+		final ActionBar actionBar = getSupportActionBar();
+		actionBar.setIcon(R.drawable.app_icon);
+		final String subtitle = Constants.NETWORK_SUFFIX.trim();
+		actionBar.setSubtitle(subtitle.length() > 0 ? subtitle : null);
 	}
 
 	protected WalletApplication getWalletApplication()
 	{
 		return application;
-	}
-
-	protected ActionBarFragment getActionBar()
-	{
-		if (actionBar == null)
-			actionBar = (ActionBarFragment) getSupportFragmentManager().findFragmentById(R.id.action_bar_fragment);
-
-		return actionBar;
 	}
 
 	protected final void toast(final String text, final Object... formatArgs)
@@ -165,5 +161,11 @@ public abstract class AbstractWalletActivity extends FragmentActivity
 			startActivity(marketIntent);
 		else
 			startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse(String.format(Constants.WEBMARKET_APP_URL, packageName))));
+	}
+
+	protected void touchLastUsed()
+	{
+		final SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(this);
+		prefs.edit().putLong(Constants.PREFS_KEY_LAST_USED, System.currentTimeMillis()).commit();
 	}
 }

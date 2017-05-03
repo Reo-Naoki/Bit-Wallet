@@ -17,8 +17,8 @@
 
 package de.schildbach.wallet.ui;
 
+import android.app.Activity;
 import android.app.AlertDialog;
-import android.app.AlertDialog.Builder;
 import android.app.Dialog;
 import android.content.ContentResolver;
 import android.content.ContentValues;
@@ -27,7 +27,6 @@ import android.net.Uri;
 import android.os.Bundle;
 import android.support.v4.app.DialogFragment;
 import android.support.v4.app.Fragment;
-import android.support.v4.app.FragmentActivity;
 import android.support.v4.app.FragmentManager;
 import android.support.v4.app.FragmentTransaction;
 import android.view.LayoutInflater;
@@ -46,37 +45,53 @@ public final class EditAddressBookEntryFragment extends DialogFragment
 	private static final String FRAGMENT_TAG = EditAddressBookEntryFragment.class.getName();
 
 	private static final String KEY_ADDRESS = "address";
-
-	private String address;
+	private static final String KEY_SUGGESTED_ADDRESS_LABEL = "suggested_address_label";
 
 	public static void edit(final FragmentManager fm, final String address)
+	{
+		edit(fm, address, null);
+	}
+
+	public static void edit(final FragmentManager fm, final String address, final String suggestedAddressLabel)
 	{
 		final FragmentTransaction ft = fm.beginTransaction();
 		final Fragment prev = fm.findFragmentByTag(EditAddressBookEntryFragment.FRAGMENT_TAG);
 		if (prev != null)
 			ft.remove(prev);
 		ft.addToBackStack(null);
-		final DialogFragment newFragment = EditAddressBookEntryFragment.instance(address.toString());
+		final DialogFragment newFragment = EditAddressBookEntryFragment.instance(address, suggestedAddressLabel);
 		newFragment.show(ft, EditAddressBookEntryFragment.FRAGMENT_TAG);
 	}
 
-	private static EditAddressBookEntryFragment instance(final String address)
+	private static EditAddressBookEntryFragment instance(final String address, final String suggestedAddressLabel)
 	{
 		final EditAddressBookEntryFragment fragment = new EditAddressBookEntryFragment();
 
 		final Bundle args = new Bundle();
 		args.putString(KEY_ADDRESS, address);
+		args.putString(KEY_SUGGESTED_ADDRESS_LABEL, suggestedAddressLabel);
 		fragment.setArguments(args);
 
 		return fragment;
 	}
 
+	private Activity activity;
+
+	@Override
+	public void onAttach(final Activity activity)
+	{
+		super.onAttach(activity);
+
+		this.activity = activity;
+	}
+
 	@Override
 	public Dialog onCreateDialog(final Bundle savedInstanceState)
 	{
-		this.address = getArguments().getString(KEY_ADDRESS);
+		final Bundle args = getArguments();
+		final String address = args.getString(KEY_ADDRESS);
+		final String suggestedAddressLabel = args.getString(KEY_SUGGESTED_ADDRESS_LABEL);
 
-		final FragmentActivity activity = getActivity();
 		final LayoutInflater inflater = LayoutInflater.from(activity);
 
 		final ContentResolver contentResolver = activity.getContentResolver();
@@ -86,8 +101,9 @@ public final class EditAddressBookEntryFragment extends DialogFragment
 
 		final boolean isAdd = label == null;
 
-		final Builder dialog = new AlertDialog.Builder(activity).setTitle(isAdd ? R.string.edit_address_book_entry_dialog_title_add
-				: R.string.edit_address_book_entry_dialog_title_edit);
+		final AlertDialog.Builder dialog = new AlertDialog.Builder(activity);
+		dialog.setInverseBackgroundForced(true);
+		dialog.setTitle(isAdd ? R.string.edit_address_book_entry_dialog_title_add : R.string.edit_address_book_entry_dialog_title_edit);
 
 		final View view = inflater.inflate(R.layout.edit_address_book_entry_dialog, null);
 
@@ -95,53 +111,46 @@ public final class EditAddressBookEntryFragment extends DialogFragment
 		viewAddress.setText(WalletUtils.formatAddress(address, Constants.ADDRESS_FORMAT_GROUP_SIZE, Constants.ADDRESS_FORMAT_LINE_SIZE));
 
 		final TextView viewLabel = (TextView) view.findViewById(R.id.edit_address_book_entry_label);
-		viewLabel.setText(label);
+		viewLabel.setText(label != null ? label : suggestedAddressLabel);
 
 		dialog.setView(view);
 
-		dialog.setPositiveButton(isAdd ? R.string.edit_address_book_entry_dialog_button_add : R.string.edit_address_book_entry_dialog_button_edit,
-				new DialogInterface.OnClickListener()
-				{
-					public void onClick(final DialogInterface dialog, final int whichButton)
-					{
-						final String newLabel = viewLabel.getText().toString().trim();
-
-						if (newLabel.length() > 0)
-						{
-							final ContentValues values = new ContentValues();
-							values.put(AddressBookProvider.KEY_LABEL, newLabel);
-
-							if (isAdd)
-								contentResolver.insert(uri, values);
-							else
-								contentResolver.update(uri, values, null, null);
-						}
-						else if (!isAdd)
-						{
-							contentResolver.delete(uri, null, null);
-						}
-
-						dismiss();
-					}
-				});
-		if (!isAdd)
+		final DialogInterface.OnClickListener onClickListener = new DialogInterface.OnClickListener()
 		{
-			dialog.setNeutralButton(R.string.edit_address_book_entry_dialog_button_delete, new DialogInterface.OnClickListener()
+			public void onClick(final DialogInterface dialog, final int which)
 			{
-				public void onClick(final DialogInterface dialog, final int whichButton)
+				if (which == DialogInterface.BUTTON_POSITIVE)
+				{
+					final String newLabel = viewLabel.getText().toString().trim();
+
+					if (newLabel.length() > 0)
+					{
+						final ContentValues values = new ContentValues();
+						values.put(AddressBookProvider.KEY_LABEL, newLabel);
+
+						if (isAdd)
+							contentResolver.insert(uri, values);
+						else
+							contentResolver.update(uri, values, null, null);
+					}
+					else if (!isAdd)
+					{
+						contentResolver.delete(uri, null, null);
+					}
+				}
+				else if (which == DialogInterface.BUTTON_NEUTRAL)
 				{
 					contentResolver.delete(uri, null, null);
-					dismiss();
 				}
-			});
-		}
-		dialog.setNegativeButton(R.string.button_cancel, new DialogInterface.OnClickListener()
-		{
-			public void onClick(final DialogInterface dialog, final int whichButton)
-			{
+
 				dismiss();
 			}
-		});
+		};
+
+		dialog.setPositiveButton(isAdd ? R.string.button_add : R.string.edit_address_book_entry_dialog_button_edit, onClickListener);
+		if (!isAdd)
+			dialog.setNeutralButton(R.string.button_delete, onClickListener);
+		dialog.setNegativeButton(R.string.button_cancel, onClickListener);
 
 		return dialog.create();
 	}

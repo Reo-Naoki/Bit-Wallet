@@ -1,7 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
-	android:layout_width="fill_parent"
-	android:layout_height="fill_parent"
+	android:layout_width="match_parent"
+	android:layout_height="match_parent"
+	android:background="@color/bg_bright"
 	android:orientation="horizontal"
 	android:paddingBottom="8dp"
 	android:paddingLeft="@dimen/list_entry_padding_horizontal"
@@ -34,26 +35,13 @@
 		android:textSize="@dimen/font_size_normal"
 		android:textStyle="bold" />
 
-	<FrameLayout
+	<TextView
+		android:id="@+id/transaction_row_fromto"
 		android:layout_width="wrap_content"
 		android:layout_height="wrap_content"
 		android:layout_marginRight="8dp"
-		android:layout_weight="0" >
-
-		<TextView
-			android:id="@+id/transaction_row_to"
-			android:layout_width="wrap_content"
-			android:layout_height="wrap_content"
-			android:text="→"
-			android:textSize="@dimen/font_size_normal" />
-
-		<TextView
-			android:id="@+id/transaction_row_from"
-			android:layout_width="wrap_content"
-			android:layout_height="wrap_content"
-			android:text="←"
-			android:textSize="@dimen/font_size_normal" />
-	</FrameLayout>
+		android:layout_weight="0"
+		android:textSize="@dimen/font_size_normal" />
 
 	<TextView
 		android:id="@+id/transaction_row_address"

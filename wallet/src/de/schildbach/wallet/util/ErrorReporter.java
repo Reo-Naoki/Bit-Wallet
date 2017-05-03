@@ -22,6 +22,7 @@ import java.io.File;
 import java.io.FileOutputStream;
 import java.io.FileReader;
 import java.io.IOException;
+import java.io.InputStreamReader;
 import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.io.Writer;
@@ -30,12 +31,12 @@ import java.util.Formatter;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import de.schildbach.wallet.Constants;
-
+import android.app.ActivityManager;
 import android.app.AlertDialog;
 import android.app.AlertDialog.Builder;
 import android.content.Context;
 import android.content.DialogInterface;
+import android.content.DialogInterface.OnCancelListener;
 import android.content.DialogInterface.OnClickListener;
 import android.content.Intent;
 import android.content.pm.PackageInfo;
@@ -45,6 +46,7 @@ import android.content.res.Configuration;
 import android.content.res.Resources;
 import android.os.Environment;
 import android.os.StatFs;
+import de.schildbach.wallet.Constants;
 
 /**
  * @author Andreas Schildbach
@@ -94,6 +96,7 @@ public class ErrorReporter implements Thread.UncaughtExceptionHandler
 			final PackageInfo pi = pm.getPackageInfo(context.getPackageName(), 0);
 			final Resources res = context.getResources();
 			final Configuration config = res.getConfiguration();
+			final ActivityManager activityManager = (ActivityManager) context.getSystemService(Context.ACTIVITY_SERVICE);
 
 			report.append("Date: " + new Date() + "\n");
 			report.append("Version: " + pi.versionName + " (" + pi.versionCode + ")\n");
@@ -115,17 +118,18 @@ public class ErrorReporter implements Thread.UncaughtExceptionHandler
 			report.append("Type: " + android.os.Build.TYPE + "\n");
 			report.append("User: " + android.os.Build.USER + "\n");
 			report.append("Configuration: " + config + "\n");
-			report.append("ScreenLayout: size " + (config.screenLayout & Configuration.SCREENLAYOUT_SIZE_MASK) + " long "
+			report.append("Screen Layout: size " + (config.screenLayout & Configuration.SCREENLAYOUT_SIZE_MASK) + " long "
 					+ (config.screenLayout & Configuration.SCREENLAYOUT_LONG_MASK) + "\n");
-			report.append("DisplayMetrics: " + res.getDisplayMetrics() + "\n");
+			report.append("Display Metrics: " + res.getDisplayMetrics() + "\n");
+			report.append("Memory Class: " + activityManager.getMemoryClass() + "\n");
 			report.append("Databases:");
 			for (final String db : context.databaseList())
 				report.append(" " + db);
 			report.append("\n\n\n");
 		}
-		catch (NameNotFoundException e)
+		catch (final NameNotFoundException x)
 		{
-			e.printStackTrace();
+			x.printStackTrace();
 		}
 	}
 
@@ -149,37 +153,61 @@ public class ErrorReporter implements Thread.UncaughtExceptionHandler
 
 	public synchronized void uncaughtException(final Thread t, final Throwable e)
 	{
-		report.append("=== collected at exception time ===\n\n");
-
-		report.append("Total Internal memory: " + getTotalInternalMemorySize() + "\n");
-		report.append("Available Internal memory: " + getAvailableInternalMemorySize() + "\n");
-		report.append("\n");
-
-		final Writer result = new StringWriter();
-		final PrintWriter printWriter = new PrintWriter(result);
-		e.printStackTrace(printWriter);
-		final String stacktrace = result.toString();
-		report.append(stacktrace + "\n");
-
-		// If the exception was thrown in a background thread inside
-		// AsyncTask, then the actual exception can be found with getCause
-		Throwable cause = e.getCause();
-		while (cause != null)
+		Process process = null;
+		try
 		{
-			cause.printStackTrace(printWriter);
-			report.append("Cause:\n");
-			report.append(result.toString() + "\n");
-			cause = cause.getCause();
+			report.append("=== collected at exception time ===\n\n");
+
+			report.append("Total Internal memory: " + getTotalInternalMemorySize() + "\n");
+			report.append("Available Internal memory: " + getAvailableInternalMemorySize() + "\n");
+			report.append("\n");
+
+			final Writer result = new StringWriter();
+			final PrintWriter printWriter = new PrintWriter(result);
+			e.printStackTrace(printWriter);
+			final String stacktrace = result.toString();
+			report.append(stacktrace + "\n");
+
+			// If the exception was thrown in a background thread inside
+			// AsyncTask, then the actual exception can be found with getCause
+			Throwable cause = e.getCause();
+			while (cause != null)
+			{
+				cause.printStackTrace(printWriter);
+				report.append("Cause:\n");
+				report.append(result.toString() + "\n");
+				cause = cause.getCause();
+			}
+			printWriter.close();
+
+			// append contents of directories
+			report.append("\nContents of FilesDir " + filesDir + ":\n");
+			appendReport(report, filesDir, 0);
+			report.append("\nContents of CacheDir " + cacheDir + ":\n");
+			appendReport(report, cacheDir, 0);
+
+			// likely to throw exception on older android devices
+			process = Runtime.getRuntime().exec("logcat -d -v time");
+			final BufferedReader logReader = new BufferedReader(new InputStreamReader(process.getInputStream()));
+
+			report.append('\n');
+			String line;
+			while ((line = logReader.readLine()) != null)
+				report.append(line).append('\n');
+
+			logReader.close();
+
+			saveAsFile(report.toString());
 		}
-		printWriter.close();
-
-		// append contents of directories
-		report.append("\nContents of FilesDir " + filesDir + ":\n");
-		appendReport(report, filesDir, 0);
-		report.append("\nContents of CacheDir " + cacheDir + ":\n");
-		appendReport(report, cacheDir, 0);
-
-		saveAsFile(report.toString());
+		catch (final Exception x)
+		{
+			x.printStackTrace();
+		}
+		finally
+		{
+			if (process != null)
+				process.destroy();
+		}
 
 		previousHandler.uncaughtException(t, e);
 	}
@@ -246,7 +274,7 @@ public class ErrorReporter implements Thread.UncaughtExceptionHandler
 		{
 			final StringBuilder errorText = new StringBuilder();
 
-			final BufferedReader input = new BufferedReader(new FileReader(stackTraceFile));
+			final BufferedReader input = new BufferedReader(new FileReader(stackTraceFile), 1024);
 			String line;
 			while ((line = input.readLine()) != null)
 				errorText.append(line + "\n");
@@ -262,11 +290,12 @@ public class ErrorReporter implements Thread.UncaughtExceptionHandler
 
 	private static void appendReport(final StringBuilder report, final File file, final int indent)
 	{
-		final Formatter formatter = new Formatter(report);
-
 		for (int i = 0; i < indent; i++)
 			report.append("  - ");
+
+		final Formatter formatter = new Formatter(report);
 		formatter.format("%tF %tT  %s  [%d]\n", file.lastModified(), file.lastModified(), file.getName(), file.length());
+		formatter.close();
 
 		if (file.isDirectory())
 			for (final File f : file.listFiles())
@@ -293,7 +322,13 @@ public class ErrorReporter implements Thread.UncaughtExceptionHandler
 			public void onClick(final DialogInterface dialog, final int which)
 			{
 				stackTraceFile.delete();
-				dialog.dismiss();
+			}
+		});
+		builder.setOnCancelListener(new OnCancelListener()
+		{
+			public void onCancel(final DialogInterface dialog)
+			{
+				stackTraceFile.delete();
 			}
 		});
 

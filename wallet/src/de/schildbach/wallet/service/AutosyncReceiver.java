@@ -17,11 +17,16 @@
 
 package de.schildbach.wallet.service;
 
+import android.app.AlarmManager;
+import android.app.PendingIntent;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
+import android.content.IntentFilter;
 import android.content.SharedPreferences;
+import android.os.BatteryManager;
 import android.preference.PreferenceManager;
+import android.util.Log;
 import de.schildbach.wallet.Constants;
 
 /**
@@ -29,22 +34,53 @@ import de.schildbach.wallet.Constants;
  */
 public class AutosyncReceiver extends BroadcastReceiver
 {
+	private static final String TAG = AutosyncReceiver.class.getSimpleName();
+
 	@Override
 	public void onReceive(final Context context, final Intent intent)
 	{
-		final String action = intent.getAction();
+		Log.i(TAG, "got broadcast intent: " + intent);
 
-		if (Intent.ACTION_POWER_CONNECTED.equals(action))
+		// other app got replaced
+		if (intent.getAction().equals(Intent.ACTION_PACKAGE_REPLACED) && !intent.getDataString().equals(context.getPackageName()))
+			return;
+
+		final SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(context);
+		final boolean prefsAutosync = prefs.getBoolean(Constants.PREFS_KEY_AUTOSYNC, true);
+		final long prefsLastUsed = prefs.getLong(Constants.PREFS_KEY_LAST_USED, 0);
+
+		// determine power connected state
+		final Intent batteryChanged = context.getApplicationContext().registerReceiver(null, new IntentFilter(Intent.ACTION_BATTERY_CHANGED));
+		final int batteryStatus = batteryChanged.getIntExtra(BatteryManager.EXTRA_STATUS, -1);
+		boolean isPowerConnected = batteryStatus == BatteryManager.BATTERY_STATUS_CHARGING || batteryStatus == BatteryManager.BATTERY_STATUS_FULL;
+
+		final boolean running = prefsAutosync && isPowerConnected;
+
+		final AlarmManager alarmManager = (AlarmManager) context.getSystemService(Context.ALARM_SERVICE);
+
+		final Intent serviceIntent = new Intent(BlockchainService.ACTION_HOLD_WIFI_LOCK, null, context, BlockchainServiceImpl.class);
+		final PendingIntent alarmIntent = PendingIntent.getService(context, 0, serviceIntent, 0);
+
+		if (running)
 		{
-			final SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(context);
-			final boolean autosync = prefs.getBoolean(Constants.PREFS_KEY_AUTOSYNC, false);
+			context.startService(serviceIntent);
 
-			if (autosync)
-				context.startService(new Intent(context, BlockchainService.class));
+			final long now = System.currentTimeMillis();
+
+			final long lastUsedAgo = now - prefsLastUsed;
+			final long alarmInterval;
+			if (lastUsedAgo < Constants.LAST_USAGE_THRESHOLD_JUST_MS)
+				alarmInterval = AlarmManager.INTERVAL_FIFTEEN_MINUTES;
+			else if (lastUsedAgo < Constants.LAST_USAGE_THRESHOLD_RECENTLY_MS)
+				alarmInterval = AlarmManager.INTERVAL_HOUR;
+			else
+				alarmInterval = AlarmManager.INTERVAL_HALF_DAY;
+
+			alarmManager.setInexactRepeating(AlarmManager.RTC_WAKEUP, now, alarmInterval, alarmIntent);
 		}
-		else if (Intent.ACTION_POWER_DISCONNECTED.equals(action))
+		else
 		{
-			context.stopService(new Intent(context, BlockchainService.class));
+			alarmManager.cancel(alarmIntent);
 		}
 	}
 }

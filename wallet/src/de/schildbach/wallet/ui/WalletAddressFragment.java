@@ -18,10 +18,7 @@
 package de.schildbach.wallet.ui;
 
 import android.app.Activity;
-import android.app.AlertDialog;
 import android.content.Context;
-import android.content.DialogInterface;
-import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.SharedPreferences.OnSharedPreferenceChangeListener;
 import android.graphics.Bitmap;
@@ -29,23 +26,20 @@ import android.os.Bundle;
 import android.preference.PreferenceManager;
 import android.support.v4.app.Fragment;
 import android.support.v4.app.FragmentActivity;
-import android.text.ClipboardManager;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.View.OnClickListener;
-import android.view.View.OnLongClickListener;
 import android.view.ViewGroup;
 import android.widget.ImageView;
 import android.widget.TextView;
 
 import com.google.bitcoin.core.Address;
-import com.google.bitcoin.core.AddressFormatException;
 import com.google.bitcoin.uri.BitcoinURI;
 
 import de.schildbach.wallet.Constants;
 import de.schildbach.wallet.WalletApplication;
+import de.schildbach.wallet.util.BitmapFragment;
 import de.schildbach.wallet.util.NfcTools;
-import de.schildbach.wallet.util.QrDialog;
 import de.schildbach.wallet.util.WalletUtils;
 import de.schildbach.wallet_test.R;
 
@@ -95,61 +89,11 @@ public final class WalletAddressFragment extends Fragment
 			}
 		});
 
-		bitcoinAddressButton.setOnLongClickListener(new OnLongClickListener()
-		{
-			public boolean onLongClick(final View v)
-			{
-				final Address address = application.determineSelectedAddress();
-
-				System.out.println("selected bitcoin address: " + address + (Constants.TEST ? " [testnet]" : ""));
-
-				new AlertDialog.Builder(activity).setItems(R.array.wallet_address_fragment_context, new DialogInterface.OnClickListener()
-				{
-					public void onClick(final DialogInterface dialog, final int which)
-					{
-						if (which == 0)
-							AddressBookActivity.start(activity, false);
-						else if (which == 1)
-							showQRCode();
-						else if (which == 2)
-							copyToClipboard(address.toString());
-						else if (which == 3)
-							share(address.toString());
-					}
-				}).show();
-
-				return true;
-			}
-
-			private void copyToClipboard(final String address)
-			{
-				ClipboardManager clipboardManager = (ClipboardManager) activity.getSystemService(Context.CLIPBOARD_SERVICE);
-				clipboardManager.setText(address);
-				((AbstractWalletActivity) activity).toast(R.string.wallet_address_fragment_clipboard_msg);
-			}
-
-			private void share(final String addressStr)
-			{
-				try
-				{
-					final Address address = new Address(Constants.NETWORK_PARAMETERS, addressStr);
-					final Intent intent = new Intent(Intent.ACTION_SEND);
-					intent.putExtra(Intent.EXTRA_TEXT, BitcoinURI.convertToBitcoinURI(address, null, null, null));
-					intent.setType("text/plain");
-					startActivity(Intent.createChooser(intent, getString(R.string.wallet_address_fragment_share_dialog_title)));
-				}
-				catch (final AddressFormatException x)
-				{
-					throw new RuntimeException(x);
-				}
-			}
-		});
-
 		bitcoinAddressQrView.setOnClickListener(new OnClickListener()
 		{
 			public void onClick(final View v)
 			{
-				showQRCode();
+				handleShowQRCode();
 			}
 		});
 
@@ -177,23 +121,6 @@ public final class WalletAddressFragment extends Fragment
 		super.onPause();
 	}
 
-	@Override
-	public void onDestroyView()
-	{
-		recycleBitmap();
-
-		super.onDestroyView();
-	}
-
-	private void recycleBitmap()
-	{
-		if (qrCodeBitmap != null)
-		{
-			qrCodeBitmap.recycle();
-			qrCodeBitmap = null;
-		}
-	}
-
 	private void updateView()
 	{
 		final Address selectedAddress = application.determineSelectedAddress();
@@ -207,8 +134,6 @@ public final class WalletAddressFragment extends Fragment
 
 			final String addressStr = BitcoinURI.convertToBitcoinURI(selectedAddress, null, null, null);
 
-			recycleBitmap();
-
 			final int size = (int) (256 * getResources().getDisplayMetrics().density);
 			qrCodeBitmap = WalletUtils.getQRCodeBitmap(addressStr, size);
 			bitcoinAddressQrView.setImageBitmap(qrCodeBitmap);
@@ -218,9 +143,9 @@ public final class WalletAddressFragment extends Fragment
 		}
 	}
 
-	private void showQRCode()
+	private void handleShowQRCode()
 	{
-		new QrDialog(getActivity(), qrCodeBitmap).show();
+		BitmapFragment.show(getFragmentManager(), qrCodeBitmap);
 	}
 
 	private final OnSharedPreferenceChangeListener prefsListener = new OnSharedPreferenceChangeListener()

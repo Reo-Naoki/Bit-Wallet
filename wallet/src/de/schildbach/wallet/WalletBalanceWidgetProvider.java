@@ -24,11 +24,15 @@ import android.appwidget.AppWidgetManager;
 import android.appwidget.AppWidgetProvider;
 import android.content.Context;
 import android.content.Intent;
+import android.text.Editable;
+import android.text.SpannableStringBuilder;
 import android.widget.RemoteViews;
 
 import com.google.bitcoin.core.Wallet;
 import com.google.bitcoin.core.Wallet.BalanceType;
 
+import de.schildbach.wallet.ui.RequestCoinsActivity;
+import de.schildbach.wallet.ui.SendCoinsActivity;
 import de.schildbach.wallet.ui.WalletActivity;
 import de.schildbach.wallet.util.WalletUtils;
 import de.schildbach.wallet_test.R;
@@ -44,17 +48,19 @@ public class WalletBalanceWidgetProvider extends AppWidgetProvider
 		final WalletApplication application = (WalletApplication) context.getApplicationContext();
 		final Wallet wallet = application.getWallet();
 		final BigInteger balance = wallet.getBalance(BalanceType.ESTIMATED);
-		final String balanceStr = WalletUtils.formatValue(balance);
+		final Editable balanceStr = new SpannableStringBuilder(WalletUtils.formatValue(balance));
+		WalletUtils.formatValue(balanceStr);
 
-		for (int i = 0; i < appWidgetIds.length; i++)
+		for (final int appWidgetId : appWidgetIds)
 		{
-			final int appWidgetId = appWidgetIds[i];
-
 			final RemoteViews views = new RemoteViews(context.getPackageName(), R.layout.wallet_balance_widget_content);
 			views.setTextViewText(R.id.widget_wallet_balance, balanceStr);
-			views.setImageViewResource(R.id.widget_app_icon, Constants.APP_ICON_RESID);
-			final Intent intent = new Intent(context, WalletActivity.class);
-			views.setOnClickPendingIntent(R.id.widget_frame, PendingIntent.getActivity(context, 0, intent, 0));
+			views.setOnClickPendingIntent(R.id.widget_button_balance,
+					PendingIntent.getActivity(context, 0, new Intent(context, WalletActivity.class), 0));
+			views.setOnClickPendingIntent(R.id.widget_button_send,
+					PendingIntent.getActivity(context, 0, new Intent(context, SendCoinsActivity.class), 0));
+			views.setOnClickPendingIntent(R.id.widget_button_request,
+					PendingIntent.getActivity(context, 0, new Intent(context, RequestCoinsActivity.class), 0));
 
 			AppWidgetManager.getInstance(context).updateAppWidget(appWidgetId, views);
 		}

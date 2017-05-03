@@ -18,19 +18,16 @@
 package de.schildbach.wallet.ui;
 
 import java.math.BigInteger;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 import android.content.Context;
 import android.content.res.Resources;
-import android.graphics.Typeface;
 import android.graphics.drawable.Drawable;
+import android.os.Bundle;
+import android.os.Parcelable;
 import android.text.Editable;
 import android.text.InputType;
 import android.text.SpannableStringBuilder;
 import android.text.TextWatcher;
-import android.text.style.RelativeSizeSpan;
-import android.text.style.StyleSpan;
 import android.util.AttributeSet;
 import android.view.Gravity;
 import android.view.KeyEvent;
@@ -58,6 +55,8 @@ public final class CurrencyAmountView extends FrameLayout
 		void changed();
 
 		void done();
+
+		void focusChanged(final boolean hasFocus);
 	}
 
 	private int significantColor, lessSignificantColor, errorColor;
@@ -67,55 +66,9 @@ public final class CurrencyAmountView extends FrameLayout
 	private boolean validateAmount = true;
 
 	private TextView textView;
-	private View chooseView;
+	private View contextButton;
 	private Listener listener;
 	private OnClickListener contextButtonClickListener;
-
-	private final class TextViewListener implements TextWatcher, OnFocusChangeListener, OnEditorActionListener
-	{
-		public void afterTextChanged(final Editable s)
-		{
-			// workaround for German keyboards
-			final String original = s.toString();
-			final String replaced = original.replace(',', '.');
-			if (!replaced.equals(original))
-			{
-				s.clear();
-				s.append(replaced);
-			}
-
-			updateSpans(s);
-		}
-
-		public void beforeTextChanged(final CharSequence s, final int start, final int count, final int after)
-		{
-		}
-
-		public void onTextChanged(final CharSequence s, final int start, final int before, final int count)
-		{
-			updateAppearance();
-			if (listener != null)
-				listener.changed();
-		}
-
-		public void onFocusChange(final View v, final boolean hasFocus)
-		{
-			if (!hasFocus)
-			{
-				final BigInteger amount = getAmount();
-				if (amount != null)
-					setAmount(amount);
-			}
-		}
-
-		public boolean onEditorAction(final TextView v, final int actionId, final KeyEvent event)
-		{
-			if (actionId == EditorInfo.IME_ACTION_DONE && listener != null)
-				listener.done();
-
-			return false;
-		}
-	}
 
 	public CurrencyAmountView(final Context context)
 	{
@@ -132,9 +85,9 @@ public final class CurrencyAmountView extends FrameLayout
 	private void init(final Context context)
 	{
 		final Resources resources = context.getResources();
-		significantColor = resources.getColor(R.color.significant);
-		lessSignificantColor = resources.getColor(R.color.less_significant);
-		errorColor = resources.getColor(R.color.error);
+		significantColor = resources.getColor(R.color.fg_significant);
+		lessSignificantColor = resources.getColor(R.color.fg_less_significant);
+		errorColor = resources.getColor(R.color.fg_error);
 		deleteButtonDrawable = resources.getDrawable(R.drawable.ic_input_delete);
 	}
 
@@ -145,18 +98,17 @@ public final class CurrencyAmountView extends FrameLayout
 
 		final Context context = getContext();
 
-		final TextViewListener textViewListener = new TextViewListener();
-
 		textView = (TextView) getChildAt(0);
 		textView.setInputType(InputType.TYPE_CLASS_NUMBER | InputType.TYPE_NUMBER_FLAG_DECIMAL);
-		textView.addTextChangedListener(textViewListener);
-		textView.setOnFocusChangeListener(textViewListener);
-		textView.setOnEditorActionListener(textViewListener);
 		textView.setHintTextColor(lessSignificantColor);
 		setHint(null);
 		setValidateAmount(textView instanceof EditText);
+		final TextViewListener textViewListener = new TextViewListener();
+		textView.addTextChangedListener(textViewListener);
+		textView.setOnFocusChangeListener(textViewListener);
+		textView.setOnEditorActionListener(textViewListener);
 
-		chooseView = new View(context)
+		contextButton = new View(context)
 		{
 			@Override
 			protected void onMeasure(final int wMeasureSpec, final int hMeasureSpec)
@@ -166,8 +118,8 @@ public final class CurrencyAmountView extends FrameLayout
 		};
 		final LayoutParams chooseViewParams = new LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
 		chooseViewParams.gravity = Gravity.RIGHT;
-		chooseView.setLayoutParams(chooseViewParams);
-		this.addView(chooseView);
+		contextButton.setLayoutParams(chooseViewParams);
+		this.addView(contextButton);
 
 		setCurrencyCode(Constants.CURRENCY_CODE_BITCOIN);
 
@@ -237,7 +189,7 @@ public final class CurrencyAmountView extends FrameLayout
 		else
 			hint = new SpannableStringBuilder("0.00");
 
-		updateSpans(hint);
+		WalletUtils.formatValue(hint);
 		textView.setHint(hint);
 	}
 
@@ -247,6 +199,8 @@ public final class CurrencyAmountView extends FrameLayout
 		super.setEnabled(enabled);
 
 		textView.setEnabled(enabled);
+
+		updateAppearance();
 	}
 
 	public void setTextColor(final int color)
@@ -254,25 +208,6 @@ public final class CurrencyAmountView extends FrameLayout
 		significantColor = color;
 
 		updateAppearance();
-	}
-
-	private static final Pattern P_SIGNIFICANT = Pattern.compile("^([-+]" + Constants.THIN_SPACE + ")?\\d*(\\.\\d{0,2})?");
-	private static Object SIGNIFICANT_SPAN = new StyleSpan(Typeface.BOLD);
-	private static Object UNSIGNIFICANT_SPAN = new RelativeSizeSpan(0.85f);
-
-	private static void updateSpans(final Editable s)
-	{
-		s.removeSpan(SIGNIFICANT_SPAN);
-		s.removeSpan(UNSIGNIFICANT_SPAN);
-
-		final Matcher m = P_SIGNIFICANT.matcher(s);
-		if (m.find())
-		{
-			final int pivot = m.group().length();
-			s.setSpan(SIGNIFICANT_SPAN, 0, pivot, 0);
-			if (s.length() > pivot)
-				s.setSpan(UNSIGNIFICANT_SPAN, pivot, s.length(), 0);
-		}
 	}
 
 	private boolean isValidAmount()
@@ -300,31 +235,109 @@ public final class CurrencyAmountView extends FrameLayout
 		public void onClick(final View v)
 		{
 			textView.setText(null);
+			textView.requestFocus();
 		}
 	};
 
 	private void updateAppearance()
 	{
+		final boolean enabled = textView.isEnabled();
+
+		contextButton.setEnabled(enabled);
+
 		final String amount = textView.getText().toString().trim();
 
-		if (textView.isEnabled() && amount.length() > 0)
+		if (enabled && amount.length() > 0)
 		{
 			textView.setCompoundDrawablesWithIntrinsicBounds(currencyCodeDrawable, null, deleteButtonDrawable, null);
-			chooseView.setOnClickListener(deleteClickListener);
+			contextButton.setOnClickListener(deleteClickListener);
 		}
-		else if (contextButtonDrawable != null)
+		else if (enabled && contextButtonDrawable != null)
 		{
 			textView.setCompoundDrawablesWithIntrinsicBounds(currencyCodeDrawable, null, contextButtonDrawable, null);
-			chooseView.setOnClickListener(contextButtonClickListener);
+			contextButton.setOnClickListener(contextButtonClickListener);
 		}
 		else
 		{
 			textView.setCompoundDrawablesWithIntrinsicBounds(currencyCodeDrawable, null, null, null);
-			chooseView.setOnClickListener(null);
+			contextButton.setOnClickListener(null);
 		}
 
-		chooseView.requestLayout();
+		contextButton.requestLayout();
 
 		textView.setTextColor(!validateAmount || isValidAmount() ? significantColor : errorColor);
+	}
+
+	@Override
+	protected Parcelable onSaveInstanceState()
+	{
+		final Bundle state = new Bundle();
+		state.putParcelable("super_state", super.onSaveInstanceState());
+		state.putSerializable("amount", getAmount());
+		return state;
+	}
+
+	@Override
+	protected void onRestoreInstanceState(final Parcelable state)
+	{
+		if (state instanceof Bundle)
+		{
+			final Bundle bundle = (Bundle) state;
+			super.onRestoreInstanceState(bundle.getParcelable("super_state"));
+			setAmount((BigInteger) bundle.getSerializable("amount"));
+		}
+		else
+		{
+			super.onRestoreInstanceState(state);
+		}
+	}
+
+	private final class TextViewListener implements TextWatcher, OnFocusChangeListener, OnEditorActionListener
+	{
+		public void afterTextChanged(final Editable s)
+		{
+			// workaround for German keyboards
+			final String original = s.toString();
+			final String replaced = original.replace(',', '.');
+			if (!replaced.equals(original))
+			{
+				s.clear();
+				s.append(replaced);
+			}
+
+			WalletUtils.formatValue(s);
+		}
+
+		public void beforeTextChanged(final CharSequence s, final int start, final int count, final int after)
+		{
+		}
+
+		public void onTextChanged(final CharSequence s, final int start, final int before, final int count)
+		{
+			updateAppearance();
+			if (listener != null)
+				listener.changed();
+		}
+
+		public void onFocusChange(final View v, final boolean hasFocus)
+		{
+			if (!hasFocus)
+			{
+				final BigInteger amount = getAmount();
+				if (amount != null)
+					setAmount(amount);
+			}
+
+			if (listener != null)
+				listener.focusChanged(hasFocus);
+		}
+
+		public boolean onEditorAction(final TextView v, final int actionId, final KeyEvent event)
+		{
+			if (actionId == EditorInfo.IME_ACTION_DONE && listener != null)
+				listener.done();
+
+			return false;
+		}
 	}
 }

@@ -28,18 +28,16 @@ import android.content.Intent;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
-import android.view.View;
-import android.view.View.OnClickListener;
 
+import com.actionbarsherlock.app.ActionBar;
 import com.google.bitcoin.core.ProtocolException;
 import com.google.bitcoin.core.ScriptException;
 import com.google.bitcoin.core.Transaction;
 import com.google.bitcoin.core.VerificationException;
 import com.google.bitcoin.core.Wallet;
 
-import de.schildbach.wallet.WalletApplication;
 import de.schildbach.wallet.Constants;
-import de.schildbach.wallet.util.ActionBarFragment;
+import de.schildbach.wallet.WalletApplication;
 import de.schildbach.wallet.util.Base43;
 import de.schildbach.wallet.util.NfcTools;
 import de.schildbach.wallet_test.R;
@@ -51,7 +49,6 @@ public final class TransactionActivity extends AbstractWalletActivity
 {
 	public static final String INTENT_EXTRA_TRANSACTION = "transaction";
 
-	private static final int GINGERBREAD_MR1 = 10; // API level 10
 	private static final String EXTRA_NDEF_MESSAGES = "android.nfc.extra.NDEF_MESSAGES"; // API level 10
 
 	private Object nfcManager;
@@ -74,17 +71,17 @@ public final class TransactionActivity extends AbstractWalletActivity
 
 		setContentView(R.layout.transaction_content);
 
-		final ActionBarFragment actionBar = getActionBar();
+		final ActionBar actionBar = getSupportActionBar();
 
-		actionBar.setPrimaryTitle(R.string.transaction_activity_title);
+		actionBar.setTitle(R.string.transaction_activity_title);
 
-		actionBar.setBack(new OnClickListener()
-		{
-			public void onClick(final View v)
-			{
-				finish();
-			}
-		});
+		// actionBar.setBack(new OnClickListener()
+		// {
+		// public void onClick(final View v)
+		// {
+		// finish();
+		// }
+		// });
 
 		handleIntent(getIntent());
 	}
@@ -156,7 +153,7 @@ public final class TransactionActivity extends AbstractWalletActivity
 				throw new RuntimeException(x);
 			}
 		}
-		else if (Build.VERSION.SDK_INT >= GINGERBREAD_MR1 && Constants.MIMETYPE_TRANSACTION.equals(intent.getType()))
+		else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.GINGERBREAD_MR1 && Constants.MIMETYPE_TRANSACTION.equals(intent.getType()))
 		{
 			final Object ndefMessage = intent.getParcelableArrayExtra(EXTRA_NDEF_MESSAGES)[0];
 			final byte[] payload = NfcTools.extractMimePayload(Constants.MIMETYPE_TRANSACTION, ndefMessage);

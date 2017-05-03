@@ -1,45 +1,14 @@
 <?xml version="1.0" encoding="utf-8"?>
 <PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android" >
 
-	<PreferenceCategory android:title="@string/preferences_about_title" >
+	<PreferenceCategory android:title="@string/preferences_title" >
 		<Preference
-			android:key="about_version"
-			android:title="Version" />
-		<Preference
-			android:summary="© 2011-2012, Andreas Schildbach"
-			android:title="Copyright" />
-		<Preference
-			android:key="about_license"
-			android:title="@string/preferences_license_title" />
-		<Preference
-			android:key="about_source"
-			android:title="Source Code" />
-		<Preference
-			android:key="about_credits_bitcoinj"
-			android:title="@string/preferences_credits_bitcoinj_title" />
-		<Preference
-			android:key="about_credits_zxing"
-			android:title="@string/preferences_credits_zxing_title" />
-		<Preference
-			android:key="about_credits_icon"
-			android:title="@string/preferences_credits_icon_title" />
-		<Preference
-			android:key="about_author_twitter"
-			android:summary="\@android_bitcoin"
-			android:title="@string/preferences_author_twitter_title" />
-		<Preference
-			android:key="about_author_googleplus"
-			android:summary="+Andreas Schildbach"
-			android:title="@string/preferences_author_googleplus_title" />
-		<Preference
-			android:key="about_market_app"
-			android:title="@string/preferences_credits_market_app_title" />
-		<Preference
-			android:key="about_market_publisher"
-			android:title="@string/preferences_credits_market_publisher_title" />
-	</PreferenceCategory>
-	<PreferenceCategory android:title="@string/preferences_prefs_title" >
+			android:icon="@drawable/ic_menu_warning"
+			android:summary="@string/preferences_warning_summary"
+			android:title="@string/preferences_warning_title" />
+
 		<CheckBoxPreference
+			android:defaultValue="true"
 			android:key="autosync"
 			android:summary="@string/preferences_autosync_summary"
 			android:title="@string/preferences_autosync_title" />
@@ -49,14 +18,22 @@
 			android:summary="@string/preferences_trusted_peer_summary"
 			android:title="@string/preferences_trusted_peer_title" />
 
-		<ListPreference
-			android:defaultValue="nop"
-			android:dialogTitle="@string/preferences_initiate_reset_dialog_title"
-			android:entries="@array/preferences_initiate_reset_entries"
-			android:entryValues="@array/preferences_initiate_reset_values"
+		<Preference
 			android:key="initiate_reset"
 			android:summary="@string/preferences_initiate_reset_summary"
 			android:title="@string/preferences_initiate_reset_title" />
+	</PreferenceCategory>
+	<PreferenceCategory android:title="Labs" >
+		<Preference
+			android:icon="@drawable/ic_menu_warning"
+			android:summary="This is all unfinished stuff. Use at your own risk!"
+			android:title="Warning" />
+
+		<CheckBoxPreference
+			android:defaultValue="false"
+			android:key="labs_transactions_details"
+			android:summary="Click on transaction, open overflow menu, select Transaction details."
+			android:title="Transaction details" />
 	</PreferenceCategory>
 
 </PreferenceScreen>

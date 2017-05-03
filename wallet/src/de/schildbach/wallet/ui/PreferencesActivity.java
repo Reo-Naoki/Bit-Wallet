@@ -17,97 +17,78 @@
 
 package de.schildbach.wallet.ui;
 
-import android.content.Intent;
-import android.net.Uri;
+import android.app.AlertDialog;
+import android.content.DialogInterface;
+import android.content.DialogInterface.OnClickListener;
 import android.os.Bundle;
 import android.preference.Preference;
-import android.preference.PreferenceActivity;
 import android.preference.PreferenceScreen;
+
+import com.actionbarsherlock.app.ActionBar;
+import com.actionbarsherlock.app.SherlockPreferenceActivity;
+import com.actionbarsherlock.view.MenuItem;
+
 import de.schildbach.wallet.WalletApplication;
-import de.schildbach.wallet.Constants;
 import de.schildbach.wallet_test.R;
 
 /**
  * @author Andreas Schildbach
  */
-public final class PreferencesActivity extends PreferenceActivity
+public final class PreferencesActivity extends SherlockPreferenceActivity
 {
-	private static final String KEY_ABOUT_VERSION = "about_version";
-	private static final String KEY_ABOUT_LICENSE = "about_license";
-	private static final String KEY_ABOUT_SOURCE = "about_source";
-	private static final String KEY_ABOUT_CREDITS_BITCOINJ = "about_credits_bitcoinj";
-	private static final String KEY_ABOUT_CREDITS_ZXING = "about_credits_zxing";
-	private static final String KEY_ABOUT_CREDITS_ICON = "about_credits_icon";
-	private static final String KEY_ABOUT_AUTHOR_TWITTER = "about_author_twitter";
-	private static final String KEY_ABOUT_AUTHOR_GOOGLEPLUS = "about_author_googleplus";
-	private static final String KEY_ABOUT_MARKET_APP = "about_market_app";
-	private static final String KEY_ABOUT_MARKET_PUBLISHER = "about_market_publisher";
+	private WalletApplication application;
+
+	private static final String PREFS_KEY_INITIATE_RESET = "initiate_reset";
 
 	@Override
-	protected void onCreate(Bundle savedInstanceState)
+	protected void onCreate(final Bundle savedInstanceState)
 	{
 		super.onCreate(savedInstanceState);
 
+		application = (WalletApplication) getApplication();
+
 		addPreferencesFromResource(R.xml.preferences);
 
-		findPreference(KEY_ABOUT_VERSION).setSummary(((WalletApplication) getApplication()).applicationVersionName());
-		findPreference(KEY_ABOUT_LICENSE).setSummary(Constants.LICENSE_URL);
-		findPreference(KEY_ABOUT_SOURCE).setSummary(Constants.SOURCE_URL);
-		findPreference(KEY_ABOUT_CREDITS_BITCOINJ).setSummary(Constants.CREDITS_BITCOINJ_URL);
-		findPreference(KEY_ABOUT_CREDITS_ZXING).setSummary(Constants.CREDITS_ZXING_URL);
-		findPreference(KEY_ABOUT_CREDITS_ICON).setSummary(Constants.CREDITS_ICON_URL);
-		findPreference(KEY_ABOUT_MARKET_APP).setSummary(String.format(Constants.MARKET_APP_URL, getPackageName()));
-		findPreference(KEY_ABOUT_MARKET_PUBLISHER).setSummary(Constants.MARKET_PUBLISHER_URL);
+		final ActionBar actionBar = getSupportActionBar();
+		actionBar.setTitle(R.string.preferences_title);
+		actionBar.setDisplayHomeAsUpEnabled(true);
+	}
+
+	@Override
+	public boolean onOptionsItemSelected(final MenuItem item)
+	{
+		switch (item.getItemId())
+		{
+			case android.R.id.home:
+				finish();
+				return true;
+		}
+
+		return super.onOptionsItemSelected(item);
 	}
 
 	@Override
 	public boolean onPreferenceTreeClick(final PreferenceScreen preferenceScreen, final Preference preference)
 	{
 		final String key = preference.getKey();
-		if (KEY_ABOUT_LICENSE.equals(key))
+
+		if (PREFS_KEY_INITIATE_RESET.equals(key))
 		{
-			startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse(Constants.LICENSE_URL)));
-			finish();
-		}
-		else if (KEY_ABOUT_SOURCE.equals(key))
-		{
-			startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse(Constants.SOURCE_URL)));
-			finish();
-		}
-		else if (KEY_ABOUT_CREDITS_BITCOINJ.equals(key))
-		{
-			startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse(Constants.CREDITS_BITCOINJ_URL)));
-			finish();
-		}
-		else if (KEY_ABOUT_CREDITS_ZXING.equals(key))
-		{
-			startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse(Constants.CREDITS_ZXING_URL)));
-			finish();
-		}
-		else if (KEY_ABOUT_CREDITS_ICON.equals(key))
-		{
-			startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse(Constants.CREDITS_ICON_URL)));
-			finish();
-		}
-		else if (KEY_ABOUT_AUTHOR_TWITTER.equals(key))
-		{
-			startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse(Constants.AUTHOR_TWITTER_URL)));
-			finish();
-		}
-		else if (KEY_ABOUT_AUTHOR_GOOGLEPLUS.equals(key))
-		{
-			startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse(Constants.AUTHOR_GOOGLEPLUS_URL)));
-			finish();
-		}
-		else if (KEY_ABOUT_MARKET_APP.equals(key))
-		{
-			startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse(String.format(Constants.MARKET_APP_URL, getPackageName()))));
-			finish();
-		}
-		else if (KEY_ABOUT_MARKET_PUBLISHER.equals(key))
-		{
-			startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse(Constants.MARKET_PUBLISHER_URL)));
-			finish();
+			final AlertDialog.Builder dialog = new AlertDialog.Builder(this);
+			dialog.setTitle(R.string.preferences_initiate_reset_title);
+			dialog.setMessage(R.string.preferences_initiate_reset_dialog_message);
+			dialog.setPositiveButton(R.string.preferences_initiate_reset_dialog_positive, new OnClickListener()
+			{
+				public void onClick(final DialogInterface dialog, final int which)
+				{
+					application.resetBlockchain();
+					finish();
+				}
+			});
+			dialog.setNegativeButton(R.string.preferences_initiate_reset_dialog_negative, null);
+			dialog.show();
+
+			return true;
 		}
 
 		return false;

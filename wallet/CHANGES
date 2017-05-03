@@ -1,0 +1,110 @@
+2.36
+
+* fixed exception when requesting coins on below Ice Cream Sandwich (Android 4.0)
+
+2.35
+
+* lots of small improvements and bugfixes
+
+2.34
+
+* embed qr code scanner for enhanced security
+
+2.33
+
+* fixed error reporting
+* minor UI enhancements
+
+2.32
+
+* can import unencrypted private keys
+* collect logfile for crash report on Jelly Bean (Android 4.1) and above
+
+2.31
+
+* now requires Froyo (Android 2.2) or later
+
+2.3
+
+* import private keys from external storage
+* export private keys to external storage
+
+2.24
+
+* migrated testnet to testnet3 (make sure to reset blockchain after upgrade)
+* fixed various crashes when being offline
+
+2.23
+
+* fixed updating of transaction list
+* fixed stuck connectivity indicator
+
+2.22
+
+* proper handling of coinbase transactions
+* watch transaction propagation (build-up of confidence) when sending coins
+* based on bitcoinj 0.6
+* blockchain can be reset without exiting the app
+
+2.21
+
+* low fee warning when sending coins
+
+2.20
+
+* bugfix
+
+2.19
+
+* bugfixes
+* based on BitCoinJ 0.5.2
+
+2.18
+
+* send and request buttons in app widget
+* bugfixes
+
+2.17
+
+* bugfixes
+
+2.16
+
+* bugfixes
+
+2.15
+
+* exponentially backoff autosync frequency
+* updated French, Spanish, Swedish and Turkish translations
+
+2.14
+
+* tries to stay on WIFI while autosyncing, but no guarantees (yet)
+
+2.13
+
+* bugfixes
+* based on BitCoinJ 0.5.1
+
+2.1
+
+* based on BitCoinJ 0.5.0
+* lots of UI work
+* changes how long the P2P network stays connected
+
+2.01
+
+* bugfixes
+
+2.0
+
+* Turkish translation
+
+1.55
+
+* unified address book for sending and receiving addresses
+
+1.54
+
+* migrates wallets to protobuf format
+* should be more stable, faster and future proof

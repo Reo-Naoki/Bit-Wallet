@@ -34,8 +34,10 @@ public class CircularProgressView extends View
 {
 	private int width;
 	private int height;
-	private int progress = 0;
-	private int maxProgress = 7;
+	private int progress = 1;
+	private int maxProgress = 1;
+	private int size = 1;
+	private int maxSize = 1;
 	private final Path path = new Path();
 	private final Paint fillPaint = new Paint();
 	private final Paint strokePaint = new Paint();
@@ -65,9 +67,10 @@ public class CircularProgressView extends View
 		canvas.drawPath(path, strokePaint);
 	}
 
-	public void setColor(final int color)
+	public void setColors(final int fillColor, final int strokeColor)
 	{
-		fillPaint.setColor(color);
+		fillPaint.setColor(fillColor);
+		strokePaint.setColor(strokeColor);
 		postInvalidate();
 	}
 
@@ -87,6 +90,22 @@ public class CircularProgressView extends View
 		postInvalidate();
 	}
 
+	public void setSize(final int size)
+	{
+		this.size = size;
+
+		updatePath(getWidth(), getHeight());
+		postInvalidate();
+	}
+
+	public void setMaxSize(final int maxSize)
+	{
+		this.maxSize = maxSize;
+
+		updatePath(getWidth(), getHeight());
+		postInvalidate();
+	}
+
 	@Override
 	protected void onSizeChanged(final int w, final int h, final int oldw, final int oldh)
 	{
@@ -97,6 +116,9 @@ public class CircularProgressView extends View
 
 	private void updatePath(final int w, final int h)
 	{
+		final float maxAbsSize = Math.min(w, h) / 2f;
+		final float absSize = size < maxSize ? maxAbsSize * size / maxSize : maxAbsSize - 1;
+
 		path.reset();
 
 		if (progress == 0)
@@ -106,14 +128,16 @@ public class CircularProgressView extends View
 		else if (progress < maxProgress)
 		{
 			final float angle = progress * 360 / maxProgress;
+			final float x = w / 2f;
+			final float y = h / 2f;
 
-			path.moveTo(w / 2f, h / 2f);
-			path.arcTo(new RectF(1, 1, w - 1, h - 1), 270, angle);
+			path.moveTo(x, y);
+			path.arcTo(new RectF(x - absSize, y - absSize, x + absSize, y + absSize), 270, angle);
 			path.close();
 		}
 		else
 		{
-			path.addCircle(w / 2f, h / 2f, (w / 2f) - 1, Direction.CW);
+			path.addCircle(w / 2f, h / 2f, absSize, Direction.CW);
 		}
 	}
 

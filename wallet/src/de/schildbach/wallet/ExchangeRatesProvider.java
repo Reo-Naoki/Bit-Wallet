@@ -49,6 +49,9 @@ public class ExchangeRatesProvider extends ContentProvider
 	public static final String KEY_EXCHANGE_RATE = "exchange_rate";
 
 	private Map<String, Double> exchangeRates = null;
+	private long lastUpdated = 0;
+
+	private static final int UPDATE_FREQ_MS = 60 * 60 * 1000;
 
 	@Override
 	public boolean onCreate()
@@ -59,12 +62,20 @@ public class ExchangeRatesProvider extends ContentProvider
 	@Override
 	public Cursor query(final Uri uri, final String[] projection, final String selection, final String[] selectionArgs, final String sortOrder)
 	{
-		if (exchangeRates == null)
+		final long now = System.currentTimeMillis();
+
+		if (exchangeRates == null || now - lastUpdated > UPDATE_FREQ_MS)
 		{
-			exchangeRates = getExchangeRates();
-			if (exchangeRates == null)
-				return null;
+			final Map<String, Double> newExchangeRates = getExchangeRates();
+			if (newExchangeRates != null)
+			{
+				exchangeRates = newExchangeRates;
+				lastUpdated = now;
+			}
 		}
+
+		if (exchangeRates == null)
+			return null;
 
 		final MatrixCursor cursor = new MatrixCursor(new String[] { BaseColumns._ID, KEY_CURRENCY_CODE, KEY_EXCHANGE_RATE });
 
@@ -117,32 +128,41 @@ public class ExchangeRatesProvider extends ContentProvider
 			// http://bitcoincharts.com/t/weighted_prices.json
 
 			connection.connect();
-			final Reader is = new InputStreamReader(new BufferedInputStream(connection.getInputStream()));
 			final StringBuilder content = new StringBuilder();
-			IOUtils.copy(is, content);
-			is.close();
 
-			final Map<String, Double> rates = new TreeMap<String, Double>();
-
-			final JSONObject head = new JSONObject(content.toString());
-			for (final Iterator<String> i = head.keys(); i.hasNext();)
+			Reader reader = null;
+			try
 			{
-				final String currencyCode = i.next();
-				if (!"timestamp".equals(currencyCode))
+				reader = new InputStreamReader(new BufferedInputStream(connection.getInputStream(), 1024));
+				IOUtils.copy(reader, content);
+
+				final Map<String, Double> rates = new TreeMap<String, Double>();
+
+				final JSONObject head = new JSONObject(content.toString());
+				for (final Iterator<String> i = head.keys(); i.hasNext();)
 				{
-					final JSONObject o = head.getJSONObject(currencyCode);
-					double rate = o.optDouble("24h", 0);
-					if (rate == 0)
-						rate = o.optDouble("7d", 0);
-					if (rate == 0)
-						rate = o.optDouble("30d", 0);
+					final String currencyCode = i.next();
+					if (!"timestamp".equals(currencyCode))
+					{
+						final JSONObject o = head.getJSONObject(currencyCode);
+						double rate = o.optDouble("24h", 0);
+						if (rate == 0)
+							rate = o.optDouble("7d", 0);
+						if (rate == 0)
+							rate = o.optDouble("30d", 0);
 
-					if (rate != 0)
-						rates.put(currencyCode, rate);
+						if (rate != 0)
+							rates.put(currencyCode, rate);
+					}
 				}
-			}
 
-			return rates;
+				return rates;
+			}
+			finally
+			{
+				if (reader != null)
+					reader.close();
+			}
 		}
 		catch (final IOException x)
 		{

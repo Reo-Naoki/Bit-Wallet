@@ -21,6 +21,7 @@ import java.math.BigDecimal;
 import java.math.BigInteger;
 
 import android.app.Activity;
+import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.res.Configuration;
 import android.database.Cursor;
@@ -30,8 +31,6 @@ import android.os.Bundle;
 import android.os.Handler;
 import android.preference.PreferenceManager;
 import android.support.v4.app.Fragment;
-import android.support.v4.app.FragmentManager;
-import android.support.v4.app.FragmentTransaction;
 import android.support.v4.app.LoaderManager;
 import android.support.v4.content.CursorLoader;
 import android.support.v4.content.Loader;
@@ -42,13 +41,14 @@ import android.view.ViewGroup;
 import android.widget.TextView;
 
 import com.google.bitcoin.core.AbstractWalletEventListener;
+import com.google.bitcoin.core.Transaction;
 import com.google.bitcoin.core.Wallet;
 import com.google.bitcoin.core.Wallet.BalanceType;
 import com.google.bitcoin.core.WalletEventListener;
 
-import de.schildbach.wallet.WalletApplication;
 import de.schildbach.wallet.Constants;
 import de.schildbach.wallet.ExchangeRatesProvider;
+import de.schildbach.wallet.WalletApplication;
 import de.schildbach.wallet.util.WalletUtils;
 import de.schildbach.wallet_test.R;
 
@@ -67,6 +67,12 @@ public final class WalletBalanceFragment extends Fragment implements LoaderManag
 
 	private final WalletEventListener walletEventListener = new AbstractWalletEventListener()
 	{
+		@Override
+		public void onTransactionConfidenceChanged(final Wallet wallet, final Transaction tx)
+		{
+			// swallow
+		}
+
 		@Override
 		public void onChange()
 		{
@@ -114,14 +120,7 @@ public final class WalletBalanceFragment extends Fragment implements LoaderManag
 			{
 				public void onClick(final View v)
 				{
-					final FragmentManager fm = getFragmentManager();
-					final FragmentTransaction ft = fm.beginTransaction();
-					ft.hide(fm.findFragmentById(R.id.wallet_address_fragment));
-					ft.hide(fm.findFragmentById(R.id.wallet_transactions_fragment));
-					ft.show(fm.findFragmentById(R.id.exchange_rates_fragment));
-					ft.setTransition(FragmentTransaction.TRANSIT_FRAGMENT_OPEN);
-					ft.addToBackStack(null);
-					ft.commit();
+					startActivity(new Intent(getActivity(), ExchangeRatesActivity.class));
 				}
 			});
 		}
@@ -186,10 +185,11 @@ public final class WalletBalanceFragment extends Fragment implements LoaderManag
 			{
 				final String exchangeCurrency = prefs.getString(Constants.PREFS_KEY_EXCHANGE_CURRENCY, Constants.DEFAULT_EXCHANGE_CURRENCY);
 				final BigInteger balance = wallet.getBalance(BalanceType.ESTIMATED);
-				final BigInteger valueLocal = new BigDecimal(balance).multiply(new BigDecimal(exchangeRate)).toBigInteger();
+				final BigDecimal bdExchangeRate = new BigDecimal(exchangeRate);
+				final BigInteger localValue = WalletUtils.localValue(balance, bdExchangeRate);
 				viewBalanceLocal.setVisibility(View.VISIBLE);
 				viewBalanceLocal.setText(getString(R.string.wallet_balance_fragment_local_value, exchangeCurrency,
-						WalletUtils.formatValue(valueLocal)));
+						WalletUtils.formatValue(localValue)));
 				if (Constants.TEST)
 					viewBalanceLocal.setPaintFlags(viewBalanceLocal.getPaintFlags() | Paint.STRIKE_THRU_TEXT_FLAG);
 			}

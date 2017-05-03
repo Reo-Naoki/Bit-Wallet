@@ -17,17 +17,42 @@
 
 package de.schildbach.wallet.util;
 
+import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileFilter;
+import java.io.FileReader;
+import java.io.IOException;
+import java.io.Writer;
+import java.math.BigDecimal;
 import java.math.BigInteger;
+import java.text.DateFormat;
+import java.text.ParseException;
+import java.util.Date;
 import java.util.Hashtable;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Locale;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import android.graphics.Bitmap;
 import android.graphics.Color;
+import android.graphics.Typeface;
 import android.text.Editable;
 import android.text.Spannable;
 import android.text.SpannableStringBuilder;
+import android.text.style.RelativeSizeSpan;
+import android.text.style.StyleSpan;
 import android.text.style.TypefaceSpan;
 
 import com.google.bitcoin.core.Address;
+import com.google.bitcoin.core.AddressFormatException;
+import com.google.bitcoin.core.DumpedPrivateKey;
+import com.google.bitcoin.core.ECKey;
+import com.google.bitcoin.core.ScriptException;
+import com.google.bitcoin.core.Transaction;
+import com.google.bitcoin.core.TransactionInput;
+import com.google.bitcoin.core.TransactionOutput;
 import com.google.bitcoin.core.Utils;
 import com.google.zxing.BarcodeFormat;
 import com.google.zxing.EncodeHintType;
@@ -50,6 +75,7 @@ public class WalletUtils
 		try
 		{
 			final Hashtable<EncodeHintType, Object> hints = new Hashtable<EncodeHintType, Object>();
+			hints.put(EncodeHintType.MARGIN, 0);
 			hints.put(EncodeHintType.ERROR_CORRECTION, ErrorCorrectionLevel.H);
 			final BitMatrix result = QR_CODE_WRITER.encode(url, BarcodeFormat.QR_CODE, size, size, hints);
 
@@ -82,9 +108,19 @@ public class WalletUtils
 		return formatAddress(address.toString(), groupSize, lineSize);
 	}
 
+	public static Editable formatAddress(final String prefix, final Address address, final int groupSize, final int lineSize)
+	{
+		return formatAddress(prefix, address.toString(), groupSize, lineSize);
+	}
+
 	public static Editable formatAddress(final String address, final int groupSize, final int lineSize)
 	{
-		final SpannableStringBuilder builder = new SpannableStringBuilder();
+		return formatAddress(null, address, groupSize, lineSize);
+	}
+
+	public static Editable formatAddress(final String prefix, final String address, final int groupSize, final int lineSize)
+	{
+		final SpannableStringBuilder builder = prefix != null ? new SpannableStringBuilder(prefix) : new SpannableStringBuilder();
 
 		final int len = address.length();
 		for (int i = 0; i < len; i += groupSize)
@@ -96,7 +132,7 @@ public class WalletUtils
 			builder.setSpan(new TypefaceSpan("monospace"), builder.length() - part.length(), builder.length(), Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
 			if (end < len)
 			{
-				final boolean endOfLine = end % lineSize == 0;
+				final boolean endOfLine = lineSize > 0 && end % lineSize == 0;
 				builder.append(endOfLine ? "\n" : Constants.THIN_SPACE);
 			}
 		}
@@ -120,10 +156,161 @@ public class WalletUtils
 		final int cents = absValue.remainder(Utils.COIN).intValue();
 
 		if (cents % 1000000 == 0)
-			return String.format("%s%d.%02d", sign, coins, cents / 1000000);
+			return String.format(Locale.US, "%s%d.%02d", sign, coins, cents / 1000000);
 		else if (cents % 10000 == 0)
-			return String.format("%s%d.%04d", sign, coins, cents / 10000);
+			return String.format(Locale.US, "%s%d.%04d", sign, coins, cents / 10000);
 		else
-			return String.format("%s%d.%08d", sign, coins, cents);
+			return String.format(Locale.US, "%s%d.%08d", sign, coins, cents);
 	}
+
+	private static final Pattern P_SIGNIFICANT = Pattern.compile("^([-+]" + Constants.THIN_SPACE + ")?\\d*(\\.\\d{0,2})?");
+	private static Object SIGNIFICANT_SPAN = new StyleSpan(Typeface.BOLD);
+	private static Object UNSIGNIFICANT_SPAN = new RelativeSizeSpan(0.85f);
+
+	public static void formatValue(final Editable s)
+	{
+		s.removeSpan(SIGNIFICANT_SPAN);
+		s.removeSpan(UNSIGNIFICANT_SPAN);
+
+		final Matcher m = P_SIGNIFICANT.matcher(s);
+		if (m.find())
+		{
+			final int pivot = m.group().length();
+			s.setSpan(SIGNIFICANT_SPAN, 0, pivot, 0);
+			if (s.length() > pivot)
+				s.setSpan(UNSIGNIFICANT_SPAN, pivot, s.length(), 0);
+		}
+	}
+
+	private static final BigDecimal LOCAL_VALUE_PRECISION = new BigDecimal(new BigInteger("10000", 10));
+
+	public static BigInteger localValue(final BigInteger btcValue, final BigDecimal exchangeRate)
+	{
+		final BigDecimal value = new BigDecimal(btcValue).multiply(exchangeRate);
+		final BigDecimal remainder = value.remainder(LOCAL_VALUE_PRECISION);
+		return value.subtract(remainder).toBigInteger();
+	}
+
+	public static Address getFromAddress(final Transaction tx)
+	{
+		try
+		{
+			for (final TransactionInput input : tx.getInputs())
+			{
+				return input.getFromAddress();
+			}
+
+			throw new IllegalStateException();
+		}
+		catch (final ScriptException x)
+		{
+			// this will happen on inputs connected to coinbase transactions
+			return null;
+		}
+	}
+
+	public static Address getToAddress(final Transaction tx)
+	{
+		try
+		{
+			for (final TransactionOutput output : tx.getOutputs())
+			{
+				return output.getScriptPubKey().getToAddress();
+			}
+
+			throw new IllegalStateException();
+		}
+		catch (final ScriptException x)
+		{
+			return null;
+		}
+	}
+
+	public static void writeKeys(final Writer out, final List<ECKey> keys) throws IOException
+	{
+		final DateFormat format = Iso8601Format.newDateTimeFormatT();
+
+		out.write("# KEEP YOUR PRIVATE KEYS SAFE! Anyone who can read this can spend your Bitcoins.\n");
+
+		for (final ECKey key : keys)
+		{
+			out.write(key.getPrivateKeyEncoded(Constants.NETWORK_PARAMETERS).toString());
+			if (key.getCreationTimeSeconds() != 0)
+			{
+				out.write(' ');
+				out.write(format.format(new Date(key.getCreationTimeSeconds() * 1000)));
+			}
+			out.write('\n');
+		}
+	}
+
+	public static List<ECKey> readKeys(final BufferedReader in) throws IOException
+	{
+		try
+		{
+			final DateFormat format = Iso8601Format.newDateTimeFormatT();
+
+			final List<ECKey> keys = new LinkedList<ECKey>();
+
+			while (true)
+			{
+				final String line = in.readLine();
+				if (line == null)
+					break; // eof
+				if (line.length() == 0 || line.charAt(0) == '#')
+					continue; // skip comment
+
+				final String[] parts = line.split(" ");
+
+				final ECKey key = new DumpedPrivateKey(Constants.NETWORK_PARAMETERS, parts[0]).getKey();
+				key.setCreationTimeSeconds(parts.length >= 2 ? format.parse(parts[1]).getTime() / 1000 : 0);
+
+				keys.add(key);
+			}
+
+			return keys;
+		}
+		catch (final AddressFormatException x)
+		{
+			throw new IOException("cannot read keys: " + x);
+		}
+		catch (final ParseException x)
+		{
+			throw new IOException("cannot read keys: " + x);
+		}
+	}
+
+	public static final FileFilter KEYS_FILE_FILTER = new FileFilter()
+	{
+		public boolean accept(final File file)
+		{
+			BufferedReader reader = null;
+
+			try
+			{
+				reader = new BufferedReader(new FileReader(file));
+				WalletUtils.readKeys(reader);
+
+				return true;
+			}
+			catch (final IOException x)
+			{
+				return false;
+			}
+			finally
+			{
+				if (reader != null)
+				{
+					try
+					{
+						reader.close();
+					}
+					catch (final IOException x)
+					{
+						x.printStackTrace();
+					}
+				}
+			}
+		}
+	};
 }
