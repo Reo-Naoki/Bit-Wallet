@@ -2,16 +2,13 @@
 
 <resources>
 
-	<string name="app_name">Bitcoin Кошелёк</string>
 	<string name="toast_wallet_reset">Кошелёк был сброшен,\nна восстановление требуется какое-то время</string>
 
-	<string name="blockchain_state_disclaimer">Используйте на свой риск. Ознакомьтесь с заметками по безопасности.</string>
+	<string name="wallet_disclaimer">Используйте на свой риск. Ознакомьтесь с заметками по безопасности.</string>
 	<string name="wallet_address_fragment_your">Ваш Bitcoin-адрес:</string>
 	<string name="wallet_address_fragment_clipboard_msg">Bitcoin-адрес был скопирован в буфер обмена</string>
-	<string name="wallet_address_fragment_share_dialog_title">Распространить Bitcoin-адрес…</string>
 	<string name="wallet_addresses_fragment_add_dialog_title">Добавить Bitcoin-адрес</string>
 	<string name="wallet_addresses_fragment_add_dialog_message">Bitcoin-адреса не могут быть удалены. Хотите добавить новый адрес в Ваш кошелёк?</string>
-	<string name="wallet_balance_fragment_local_value">стоимостью примерно %1$s %2$s</string>
 	<string name="exchange_rates_fragment_empty_text">Не удалось загрузить обменный курс</string>
 	<string name="wallet_transactions_fragment_tab_received">Получено</string>
 	<string name="wallet_transactions_fragment_tab_all">Все</string>
@@ -33,17 +30,13 @@
 	<string name="send_coins_fragment_available_label">Доступно для отправки</string>
 	<string name="send_coins_fragment_pending">(BTC %s ожидают подтверждения)</string>
 	<string name="send_coins_fragment_amount_label">Сумма оплаты</string>
-	<string name="send_coins_fragment_fee_label">Комиссия (опционально)</string>
 	<string name="send_coins_fragment_button_send">Отправить</string>
 	<string name="send_coins_sending_msg">Отправка…</string>
-	<string name="send_coins_add_address_dialog_title">Получатель ещё не добавлен в адресную книгу.\n\nЖелаете ли добавить адрес?</string>
-	<string name="send_coins_add_address_dialog_button_add">Добавить адрес</string>
 	<string name="send_coins_error_msg">Проблема с отправкой монет!</string>
-	<string name="send_coins_success_msg">BTC %s отправлено!</string>
 
 	<string name="request_coins_activity_title">Запросить Bitcoin-монеты</string>
 	<string name="request_coins_fragment_amount_label">Запрашиваемая сумма (опционально)</string>
-	<string name="request_coins_fragment_qr_label">Пусть отправитель сканирует этот QR-код:</string>
+	<string name="request_coins_fragment_qr_label">Пусть отправитель сканирует этот код.</string>
 	<string name="request_coins_fragment_nfc_enabled">Или коснитесь устройством другого с поддержкой NFC.</string>
 	<string name="request_coins_clipboard_msg">Запрос получения Bitcoin-монет скопирован</string>
 	<string name="request_coins_share_dialog_title">Распространить запрос Bitcoin-монет…</string>
@@ -64,7 +57,7 @@
 
 	<string name="about_title">О программе</string>
 	<string name="about_license_title">Лицензия</string>
-	<string name="about_credits_bitcoinj_title">"Это приложение использует 'bitcoinj'"</string>
+	<string name="about_credits_bitcoinj_title">Это приложение использует bitcoinj %s</string>
 	<string name="about_credits_zxing_title">"Это приложение использует 'zxing'"</string>
 	<string name="about_credits_icon_title">"Это приложение использует иконку от 'bitboy'"</string>
 	<string name="about_author_twitter_title">Автор в Twitter</string>

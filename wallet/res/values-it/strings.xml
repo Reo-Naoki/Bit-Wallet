@@ -2,16 +2,13 @@
 
 <resources>
 
-	<string name="app_name">Bitcoin Wallet</string>
 	<string name="toast_wallet_reset">Il portafoglio è stato reinizializzato,\noccorrerà del tempo per ripristinarlo</string>
 
-	<string name="blockchain_state_disclaimer">Usatela a vostro rischio e pericolo. Leggete i dettagli nelle note di sicurezza.</string>
+	<string name="wallet_disclaimer">Usatela a vostro rischio e pericolo. Leggete i dettagli nelle &lt;u>note di sicurezza&lt;/u>.</string>
 	<string name="wallet_address_fragment_your">Il tuo indirizzo Bitcoin:</string>
 	<string name="wallet_address_fragment_clipboard_msg">Indirizzo Bitcoin copiato nella clipboard</string>
-	<string name="wallet_address_fragment_share_dialog_title">Condividi il tuo indirizzo Bitcoin…</string>
 	<string name="wallet_addresses_fragment_add_dialog_title">Aggiungi un indirizzo Bitcoin</string>
 	<string name="wallet_addresses_fragment_add_dialog_message">Gli indirizzi Bitcoin non possono essere cancellati. Ne vuoi aggiungere uno nuovo?</string>
-	<string name="wallet_balance_fragment_local_value">del valore di circa %1$s %2$s</string>
 	<string name="exchange_rates_fragment_empty_text">Impossibile acquisire quotazioni di cambio</string>
 	<string name="wallet_transactions_fragment_tab_received">Ricevuto</string>
 	<string name="wallet_transactions_fragment_tab_all">Entrambi</string>
@@ -34,17 +31,13 @@
 	<string name="send_coins_fragment_available_label">Disponibili</string>
 	<string name="send_coins_fragment_pending">(%s BTC in attesa di conferma)</string>
 	<string name="send_coins_fragment_amount_label">Importo da pagare</string>
-	<string name="send_coins_fragment_fee_label">Commissione (opzionale)</string>
 	<string name="send_coins_fragment_button_send">Invia</string>
 	<string name="send_coins_sending_msg">Invio in corso…</string>
-	<string name="send_coins_add_address_dialog_title">Il destinatario non è ancora presente in rubrica.\n\nVuoi aggiungerlo?</string>
-	<string name="send_coins_add_address_dialog_button_add">Aggiungi indirizzo</string>
 	<string name="send_coins_error_msg">"Problemi durante l'invio dei Bitcoins!"</string>
-	<string name="send_coins_success_msg">%s BTC inviati!</string>
 
 	<string name="request_coins_activity_title">Richiedi Bitcoins</string>
 	<string name="request_coins_fragment_amount_label">Importo richiesto (opzionale)</string>
-	<string name="request_coins_fragment_qr_label">Fai rilevare questo codice QR al mittente:</string>
+	<string name="request_coins_fragment_qr_label">Fai rilevare questo codice al mittente.</string>
 	<string name="request_coins_fragment_nfc_enabled">Oppure tocca con un dispositivo NFC.</string>
 	<string name="request_coins_clipboard_msg">Richiesta Bitcoin copiata negli appunti</string>
 	<string name="request_coins_share_dialog_title">Condividi richiesta di Bitcoins…</string>
@@ -65,7 +58,7 @@
 
 	<string name="about_title">Informazioni</string>
 	<string name="about_license_title">Licenza</string>
-	<string name="about_credits_bitcoinj_title">"Questa applicazione fa uso di 'bitcoinj'"</string>
+	<string name="about_credits_bitcoinj_title">Questa applicazione fa uso di bitcoinj %s</string>
 	<string name="about_credits_zxing_title">"Questa applicazione fa uso di 'zxing'"</string>
 	<string name="about_credits_icon_title">"Questa applicazione fa uso di una icona di 'bitboy'"</string>
 	<string name="about_author_twitter_title">"L'autore su Twitter"</string>

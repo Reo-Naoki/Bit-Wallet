@@ -1,5 +1,5 @@
 /*
- * Copyright 2011-2012 the original author or authors.
+ * Copyright 2011-2013 the original author or authors.
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -19,7 +19,6 @@ package de.schildbach.wallet.ui;
 
 import java.io.BufferedReader;
 import java.io.File;
-import java.io.FileFilter;
 import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
@@ -29,13 +28,23 @@ import java.io.Reader;
 import java.io.StringReader;
 import java.io.StringWriter;
 import java.io.Writer;
+import java.net.HttpURLConnection;
 import java.net.URL;
-import java.net.URLConnection;
-import java.util.ArrayList;
-import java.util.Arrays;
+import java.net.UnknownHostException;
+import java.security.KeyStore;
+import java.text.DateFormat;
+import java.util.Collections;
+import java.util.Comparator;
 import java.util.Date;
+import java.util.LinkedList;
 import java.util.List;
+import java.util.TimeZone;
 
+import javax.net.ssl.HttpsURLConnection;
+import javax.net.ssl.SSLContext;
+import javax.net.ssl.TrustManagerFactory;
+
+import android.app.Activity;
 import android.app.AlertDialog;
 import android.app.Dialog;
 import android.content.DialogInterface;
@@ -43,34 +52,31 @@ import android.content.DialogInterface.OnCancelListener;
 import android.content.DialogInterface.OnClickListener;
 import android.content.Intent;
 import android.content.IntentFilter;
+import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
+import android.content.res.Resources;
 import android.net.Uri;
 import android.os.Bundle;
 import android.os.Environment;
-import android.text.Editable;
-import android.text.TextWatcher;
+import android.preference.PreferenceManager;
+import android.text.format.DateUtils;
+import android.util.Log;
 import android.view.View;
-import android.view.Window;
-import android.webkit.WebView;
-import android.widget.AdapterView;
-import android.widget.AdapterView.OnItemSelectedListener;
-import android.widget.Button;
+import android.view.ViewGroup;
 import android.widget.CheckBox;
 import android.widget.EditText;
 import android.widget.Spinner;
 import android.widget.TextView;
 
-import com.actionbarsherlock.app.ActionBar;
 import com.actionbarsherlock.view.Menu;
 import com.actionbarsherlock.view.MenuItem;
 import com.google.bitcoin.core.ECKey;
 import com.google.bitcoin.core.Wallet;
 
 import de.schildbach.wallet.Constants;
-import de.schildbach.wallet.service.BlockchainService;
-import de.schildbach.wallet.service.BlockchainServiceImpl;
+import de.schildbach.wallet.WalletApplication;
+import de.schildbach.wallet.util.CrashReporter;
 import de.schildbach.wallet.util.EncryptionUtils;
-import de.schildbach.wallet.util.ErrorReporter;
 import de.schildbach.wallet.util.Iso8601Format;
 import de.schildbach.wallet.util.WalletUtils;
 import de.schildbach.wallet_test.R;
@@ -80,24 +86,31 @@ import de.schildbach.wallet_test.R;
  */
 public final class WalletActivity extends AbstractWalletActivity
 {
-	private static final int DIALOG_HELP = 0;
-	public static final int DIALOG_SAFETY = 1;
-	private static final int DIALOG_IMPORT_KEYS = 2;
-	private static final int DIALOG_EXPORT_KEYS = 3;
+	private static final int DIALOG_IMPORT_KEYS = 0;
+	private static final int DIALOG_EXPORT_KEYS = 1;
+	private static final int DIALOG_ALERT_OLD_SDK = 2;
+
+	private WalletApplication application;
+	private Wallet wallet;
+	private SharedPreferences prefs;
+
+	private static final int REQUEST_CODE_SCAN = 0;
+
+	private static final String TAG = WalletActivity.class.getSimpleName();
 
 	@Override
 	protected void onCreate(final Bundle savedInstanceState)
 	{
 		super.onCreate(savedInstanceState);
 
-		ErrorReporter.getInstance().check(this);
+		application = getWalletApplication();
+		wallet = application.getWallet();
+		prefs = PreferenceManager.getDefaultSharedPreferences(this);
 
 		setContentView(R.layout.wallet_content);
 
-		final ActionBar actionBar = getSupportActionBar();
-		actionBar.setTitle(R.string.app_name);
-
-		checkVersionAndTimeskewAlert();
+		if (savedInstanceState == null)
+			checkAlerts();
 
 		touchLastUsed();
 	}
@@ -107,9 +120,16 @@ public final class WalletActivity extends AbstractWalletActivity
 	{
 		super.onResume();
 
-		startService(new Intent(BlockchainService.ACTION_CANCEL_COINS_RECEIVED, null, this, BlockchainServiceImpl.class));
+		getWalletApplication().startBlockchainService(true);
 
 		checkLowStorageAlert();
+	}
+
+	@Override
+	public void onActivityResult(final int requestCode, final int resultCode, final Intent intent)
+	{
+		if (requestCode == REQUEST_CODE_SCAN && resultCode == Activity.RESULT_OK)
+			SendCoinsActivity.start(this, intent.getStringExtra(ScanActivity.INTENT_EXTRA_RESULT));
 	}
 
 	@Override
@@ -128,10 +148,14 @@ public final class WalletActivity extends AbstractWalletActivity
 	{
 		super.onPrepareOptionsMenu(menu);
 
+		final Resources res = getResources();
 		final String externalStorageState = Environment.getExternalStorageState();
+
+		menu.findItem(R.id.wallet_options_exchange_rates).setVisible(res.getBoolean(R.bool.show_exchange_rates_option));
 		menu.findItem(R.id.wallet_options_import_keys).setEnabled(
 				Environment.MEDIA_MOUNTED.equals(externalStorageState) || Environment.MEDIA_MOUNTED_READ_ONLY.equals(externalStorageState));
 		menu.findItem(R.id.wallet_options_export_keys).setEnabled(Environment.MEDIA_MOUNTED.equals(externalStorageState));
+		menu.findItem(R.id.wallet_options_disconnect).setVisible(prefs.getBoolean(Constants.PREFS_KEY_CONNECTIVITY_NOTIFICATION, false));
 
 		return true;
 	}
@@ -142,11 +166,15 @@ public final class WalletActivity extends AbstractWalletActivity
 		switch (item.getItemId())
 		{
 			case R.id.wallet_options_request:
-				startActivity(new Intent(this, RequestCoinsActivity.class));
+				handleRequestCoins();
 				return true;
 
 			case R.id.wallet_options_send:
-				startActivity(new Intent(this, SendCoinsActivity.class));
+				handleSendCoins();
+				return true;
+
+			case R.id.wallet_options_scan:
+				handleScan();
 				return true;
 
 			case R.id.wallet_options_address_book:
@@ -157,8 +185,8 @@ public final class WalletActivity extends AbstractWalletActivity
 				startActivity(new Intent(this, ExchangeRatesActivity.class));
 				return true;
 
-			case R.id.wallet_options_peer_monitor:
-				startActivity(new Intent(this, PeerMonitorActivity.class));
+			case R.id.wallet_options_network_monitor:
+				startActivity(new Intent(this, NetworkMonitorActivity.class));
 				return true;
 
 			case R.id.wallet_options_import_keys:
@@ -166,7 +194,7 @@ public final class WalletActivity extends AbstractWalletActivity
 				return true;
 
 			case R.id.wallet_options_export_keys:
-				showDialog(DIALOG_EXPORT_KEYS);
+				handleExportKeys();
 				return true;
 
 			case R.id.wallet_options_disconnect:
@@ -182,27 +210,44 @@ public final class WalletActivity extends AbstractWalletActivity
 				return true;
 
 			case R.id.wallet_options_safety:
-				showDialog(DIALOG_SAFETY);
+				HelpDialogFragment.page(getSupportFragmentManager(), "safety");
 				return true;
 
 			case R.id.wallet_options_donate:
-				final Intent intent = new Intent(this, SendCoinsActivity.class);
-				intent.putExtra(SendCoinsActivity.INTENT_EXTRA_ADDRESS, Constants.DONATION_ADDRESS);
-				intent.putExtra(SendCoinsActivity.INTENT_EXTRA_ADDRESS_LABEL, getString(R.string.wallet_donate_address_label));
-				startActivity(intent);
+				SendCoinsActivity.start(this, Constants.DONATION_ADDRESS, getString(R.string.wallet_donate_address_label), null);
 				return true;
 
 			case R.id.wallet_options_help:
-				showDialog(DIALOG_HELP);
+				HelpDialogFragment.page(getSupportFragmentManager(), "help");
 				return true;
 		}
 
 		return super.onOptionsItemSelected(item);
 	}
 
+	public void handleRequestCoins()
+	{
+		startActivity(new Intent(this, RequestCoinsActivity.class));
+	}
+
+	public void handleSendCoins()
+	{
+		startActivity(new Intent(this, SendCoinsActivity.class));
+	}
+
+	public void handleScan()
+	{
+		startActivityForResult(new Intent(this, ScanActivity.class), REQUEST_CODE_SCAN);
+	}
+
+	public void handleExportKeys()
+	{
+		showDialog(DIALOG_EXPORT_KEYS);
+	}
+
 	private void handleDisconnect()
 	{
-		stopService(new Intent(this, BlockchainServiceImpl.class));
+		getWalletApplication().stopBlockchainService();
 		finish();
 	}
 
@@ -213,10 +258,8 @@ public final class WalletActivity extends AbstractWalletActivity
 			return createImportKeysDialog();
 		else if (id == DIALOG_EXPORT_KEYS)
 			return createExportKeysDialog();
-		else if (id == DIALOG_HELP)
-			return createWebViewDialog("file:///android_asset/help" + languagePrefix() + ".html");
-		else if (id == DIALOG_SAFETY)
-			return createWebViewDialog("file:///android_asset/safety" + languagePrefix() + ".html");
+		else if (id == DIALOG_ALERT_OLD_SDK)
+			return createAlertOldSdkDialog();
 		else
 			throw new IllegalArgumentException();
 	}
@@ -232,17 +275,15 @@ public final class WalletActivity extends AbstractWalletActivity
 
 	private Dialog createImportKeysDialog()
 	{
-		final View view = getLayoutInflater().inflate(R.layout.wallet_import_keys_dialog, null);
-		final TextView messageView = (TextView) view.findViewById(R.id.wallet_import_keys_message);
-		messageView.setText(getString(R.string.wallet_import_keys_dialog_message, Constants.EXTERNAL_WALLET_BACKUP_DIR));
-		final Spinner fileView = (Spinner) view.findViewById(R.id.wallet_import_keys_file);
-		final EditText passwordView = (EditText) view.findViewById(R.id.wallet_import_keys_password);
+		final View view = getLayoutInflater().inflate(R.layout.import_keys_from_storage_dialog, null);
+		final Spinner fileView = (Spinner) view.findViewById(R.id.import_keys_from_storage_file);
+		final EditText passwordView = (EditText) view.findViewById(R.id.import_keys_from_storage_password);
 
 		final AlertDialog.Builder builder = new AlertDialog.Builder(this);
 		builder.setInverseBackgroundForced(true);
-		builder.setTitle(R.string.wallet_import_keys_dialog_title);
+		builder.setTitle(R.string.import_keys_dialog_title);
 		builder.setView(view);
-		builder.setPositiveButton(R.string.wallet_import_keys_dialog_button_import, new OnClickListener()
+		builder.setPositiveButton(R.string.import_keys_dialog_button_import, new OnClickListener()
 		{
 			public void onClick(final DialogInterface dialog, final int which)
 			{
@@ -275,41 +316,99 @@ public final class WalletActivity extends AbstractWalletActivity
 	{
 		final AlertDialog alertDialog = (AlertDialog) dialog;
 
-		final File[] files = Constants.EXTERNAL_WALLET_BACKUP_DIR.listFiles(new FileFilter()
+		final List<File> files = new LinkedList<File>();
+
+		// external storage
+		if (Constants.EXTERNAL_WALLET_BACKUP_DIR.exists() && Constants.EXTERNAL_WALLET_BACKUP_DIR.isDirectory())
+			for (final File file : Constants.EXTERNAL_WALLET_BACKUP_DIR.listFiles())
+				if (WalletUtils.KEYS_FILE_FILTER.accept(file) || EncryptionUtils.OPENSSL_FILE_FILTER.accept(file))
+					files.add(file);
+
+		// internal storage
+		for (final String filename : fileList())
+			if (filename.startsWith(Constants.WALLET_KEY_BACKUP_BASE58 + '.'))
+				files.add(new File(getFilesDir(), filename));
+
+		// sort
+		Collections.sort(files, new Comparator<File>()
 		{
-			public boolean accept(final File file)
+			public int compare(final File lhs, final File rhs)
 			{
-				return WalletUtils.KEYS_FILE_FILTER.accept(file) || EncryptionUtils.OPENSSL_FILE_FILTER.accept(file);
+				return lhs.getName().compareToIgnoreCase(rhs.getName());
 			}
 		});
-		Arrays.sort(files);
-		final FileAdapter adapter = new FileAdapter(this, files);
 
-		final Spinner fileView = (Spinner) alertDialog.findViewById(R.id.wallet_import_keys_file);
+		final FileAdapter adapter = new FileAdapter(this, files)
+		{
+			@Override
+			public View getDropDownView(final int position, View row, final ViewGroup parent)
+			{
+				final File file = getItem(position);
+				final boolean isExternal = Constants.EXTERNAL_WALLET_BACKUP_DIR.equals(file.getParentFile());
+				final boolean isEncrypted = EncryptionUtils.OPENSSL_FILE_FILTER.accept(file);
+
+				if (row == null)
+					row = inflater.inflate(R.layout.wallet_import_keys_file_row, null);
+
+				final TextView filenameView = (TextView) row.findViewById(R.id.wallet_import_keys_file_row_filename);
+				filenameView.setText(file.getName());
+
+				final TextView securityView = (TextView) row.findViewById(R.id.wallet_import_keys_file_row_security);
+				final String encryptedStr = context.getString(isEncrypted ? R.string.import_keys_dialog_file_security_encrypted
+						: R.string.import_keys_dialog_file_security_unencrypted);
+				final String storageStr = context.getString(isExternal ? R.string.import_keys_dialog_file_security_external
+						: R.string.import_keys_dialog_file_security_internal);
+				securityView.setText(encryptedStr + ", " + storageStr);
+
+				final TextView createdView = (TextView) row.findViewById(R.id.wallet_import_keys_file_row_created);
+				createdView
+						.setText(context.getString(isExternal ? R.string.import_keys_dialog_file_created_manual
+								: R.string.import_keys_dialog_file_created_automatic, DateUtils.getRelativeTimeSpanString(context,
+								file.lastModified(), true)));
+
+				return row;
+			}
+		};
+
+		final Spinner fileView = (Spinner) alertDialog.findViewById(R.id.import_keys_from_storage_file);
 		fileView.setAdapter(adapter);
 		fileView.setEnabled(!adapter.isEmpty());
 
-		final EditText passwordView = (EditText) alertDialog.findViewById(R.id.wallet_import_keys_password);
+		final EditText passwordView = (EditText) alertDialog.findViewById(R.id.import_keys_from_storage_password);
 		passwordView.setText(null);
 
-		final DialogButtonEnablerListener dialogButtonEnabler = new DialogButtonEnablerListener(fileView, passwordView, alertDialog);
+		final ImportDialogButtonEnablerListener dialogButtonEnabler = new ImportDialogButtonEnablerListener(passwordView, alertDialog)
+		{
+			@Override
+			protected boolean hasFile()
+			{
+				return fileView.getSelectedItem() != null;
+			}
+
+			@Override
+			protected boolean needsPassword()
+			{
+				final File selectedFile = (File) fileView.getSelectedItem();
+				return selectedFile != null ? EncryptionUtils.OPENSSL_FILE_FILTER.accept(selectedFile) : false;
+			}
+		};
 		passwordView.addTextChangedListener(dialogButtonEnabler);
 		fileView.setOnItemSelectedListener(dialogButtonEnabler);
 
-		final CheckBox showView = (CheckBox) alertDialog.findViewById(R.id.wallet_import_keys_show);
+		final CheckBox showView = (CheckBox) alertDialog.findViewById(R.id.import_keys_from_storage_show);
 		showView.setOnCheckedChangeListener(new ShowPasswordCheckListener(passwordView));
 	}
 
 	private Dialog createExportKeysDialog()
 	{
-		final View view = getLayoutInflater().inflate(R.layout.wallet_export_keys_dialog, null);
-		final EditText passwordView = (EditText) view.findViewById(R.id.wallet_export_keys_password);
+		final View view = getLayoutInflater().inflate(R.layout.export_keys_dialog, null);
+		final EditText passwordView = (EditText) view.findViewById(R.id.export_keys_dialog_password);
 
 		final AlertDialog.Builder builder = new AlertDialog.Builder(this);
 		builder.setInverseBackgroundForced(true);
-		builder.setTitle(R.string.wallet_export_keys_dialog_title);
+		builder.setTitle(R.string.export_keys_dialog_title);
 		builder.setView(view);
-		builder.setPositiveButton(R.string.wallet_export_keys_dialog_button_export, new OnClickListener()
+		builder.setPositiveButton(R.string.export_keys_dialog_button_export, new OnClickListener()
 		{
 			public void onClick(final DialogInterface dialog, final int which)
 			{
@@ -343,88 +442,32 @@ public final class WalletActivity extends AbstractWalletActivity
 	{
 		final AlertDialog alertDialog = (AlertDialog) dialog;
 
-		final EditText passwordView = (EditText) alertDialog.findViewById(R.id.wallet_export_keys_password);
+		final EditText passwordView = (EditText) alertDialog.findViewById(R.id.export_keys_dialog_password);
 		passwordView.setText(null);
 
-		final DialogButtonEnablerListener dialogButtonEnabler = new DialogButtonEnablerListener(null, passwordView, alertDialog);
+		final ImportDialogButtonEnablerListener dialogButtonEnabler = new ImportDialogButtonEnablerListener(passwordView, alertDialog);
 		passwordView.addTextChangedListener(dialogButtonEnabler);
 
-		final CheckBox showView = (CheckBox) alertDialog.findViewById(R.id.wallet_export_keys_show);
+		final CheckBox showView = (CheckBox) alertDialog.findViewById(R.id.export_keys_dialog_show);
 		showView.setOnCheckedChangeListener(new ShowPasswordCheckListener(passwordView));
 	}
 
-	private Dialog createWebViewDialog(final String url)
+	private Dialog createAlertOldSdkDialog()
 	{
-		final WebView webView = new WebView(this);
-		webView.loadUrl(url);
-
-		final Dialog dialog = new Dialog(WalletActivity.this);
-		dialog.requestWindowFeature(Window.FEATURE_NO_TITLE);
-		dialog.setContentView(webView);
-		dialog.setCanceledOnTouchOutside(true);
-
-		return dialog;
-	}
-
-	private static final class DialogButtonEnablerListener implements TextWatcher, OnItemSelectedListener
-	{
-		private final Spinner fileView;
-		private final TextView passwordView;
-		private final AlertDialog dialog;
-
-		public DialogButtonEnablerListener(final Spinner fileView, final TextView passwordView, final AlertDialog dialog)
+		final AlertDialog.Builder builder = new AlertDialog.Builder(this);
+		builder.setIcon(android.R.drawable.ic_dialog_alert);
+		builder.setTitle(R.string.wallet_old_sdk_dialog_title);
+		builder.setMessage(R.string.wallet_old_sdk_dialog_message);
+		builder.setPositiveButton(R.string.button_ok, null);
+		builder.setNegativeButton(R.string.button_dismiss, new DialogInterface.OnClickListener()
 		{
-			this.fileView = fileView;
-			this.passwordView = passwordView;
-			this.dialog = dialog;
-
-			handle();
-		}
-
-		public void onItemSelected(final AdapterView<?> parent, final View view, final int position, final long id)
-		{
-			handle();
-		}
-
-		public void onNothingSelected(final AdapterView<?> parent)
-		{
-			handle();
-		}
-
-		public void afterTextChanged(final Editable s)
-		{
-			handle();
-		}
-
-		public void beforeTextChanged(final CharSequence s, final int start, final int count, final int after)
-		{
-		}
-
-		public void onTextChanged(final CharSequence s, final int start, final int before, final int count)
-		{
-		}
-
-		public void handle()
-		{
-			final boolean hasFile;
-			final boolean needsPassword;
-			if (fileView != null)
+			public void onClick(final DialogInterface dialog, final int id)
 			{
-				final File selectedFile = (File) fileView.getSelectedItem();
-				hasFile = selectedFile != null;
-				needsPassword = hasFile ? EncryptionUtils.OPENSSL_FILE_FILTER.accept(selectedFile) : true;
+				prefs.edit().putBoolean(Constants.PREFS_KEY_ALERT_OLD_SDK_DISMISSED, true).commit();
+				finish();
 			}
-			else
-			{
-				hasFile = true;
-				needsPassword = true;
-			}
-
-			final boolean hasPassword = passwordView.getText().toString().trim().length() > 0;
-
-			final Button button = dialog.getButton(DialogInterface.BUTTON_POSITIVE);
-			button.setEnabled(hasFile && (!needsPassword || hasPassword));
-		}
+		});
+		return builder.create();
 	}
 
 	private void checkLowStorageAlert()
@@ -449,63 +492,177 @@ public final class WalletActivity extends AbstractWalletActivity
 		}
 	}
 
-	private void checkVersionAndTimeskewAlert()
+	private void checkAlerts()
 	{
 		new Thread()
 		{
+			private static final int TIMEOUT_MS = 15 * (int) DateUtils.SECOND_IN_MILLIS;
+
 			@Override
 			public void run()
 			{
+				final int versionCode = getWalletApplication().applicationVersionCode();
+				final String versionName = getWalletApplication().applicationVersionName();
+				final int versionNameSplit = versionName.indexOf('-');
+				final String base = Constants.VERSION_URL + (versionNameSplit >= 0 ? versionName.substring(versionNameSplit) : "");
+				final String url = base + "?current=" + versionCode;
+
+				HttpURLConnection connection = null;
+
 				try
 				{
-					final int versionCode = getWalletApplication().applicationVersionCode();
-					final URLConnection connection = new URL(Constants.VERSION_URL + "?current=" + versionCode).openConnection();
-					connection.connect();
-					final long serverTime = connection.getHeaderFieldDate("Date", 0);
-					final InputStream is = connection.getInputStream();
-					final BufferedReader reader = new BufferedReader(new InputStreamReader(is), 64);
-					final int serverVersionCode = Integer.parseInt(reader.readLine().trim().split("\\s+")[0]);
-					reader.close();
+					connection = (HttpURLConnection) new URL(url).openConnection();
 
-					if (serverTime > 0)
+					if (connection instanceof HttpsURLConnection)
 					{
-						final long diffMinutes = Math.abs((System.currentTimeMillis() - serverTime) / 1000 / 60);
+						final InputStream keystoreInputStream = getAssets().open("ssl-keystore");
 
-						if (diffMinutes >= 60)
+						final KeyStore keystore = KeyStore.getInstance("BKS");
+						keystore.load(keystoreInputStream, "password".toCharArray());
+						keystoreInputStream.close();
+
+						final TrustManagerFactory tmf = TrustManagerFactory.getInstance("X509");
+						tmf.init(keystore);
+
+						final SSLContext sslContext = SSLContext.getInstance("TLS");
+						sslContext.init(null, tmf.getTrustManagers(), null);
+
+						((HttpsURLConnection) connection).setSSLSocketFactory(sslContext.getSocketFactory());
+					}
+
+					connection.setConnectTimeout(TIMEOUT_MS);
+					connection.setReadTimeout(TIMEOUT_MS);
+					connection.connect();
+
+					if (connection.getResponseCode() == HttpURLConnection.HTTP_OK)
+					{
+						final long serverTime = connection.getDate();
+						final BufferedReader reader = new BufferedReader(new InputStreamReader(connection.getInputStream()), 64);
+						final int serverVersionCode = Integer.parseInt(reader.readLine().trim().split("\\s+")[0]);
+						reader.close();
+
+						Log.i(TAG, "according to \"" + url + "\", strongly recommended minimum app version is " + serverVersionCode);
+
+						if (serverTime > 0)
+						{
+							final long diffMinutes = Math.abs((System.currentTimeMillis() - serverTime) / DateUtils.MINUTE_IN_MILLIS);
+
+							if (diffMinutes >= 60)
+							{
+								Log.i(TAG, "according to \"" + url + "\", system clock is off by " + diffMinutes + " minutes");
+
+								runOnUiThread(new Runnable()
+								{
+									public void run()
+									{
+										if (!isFinishing())
+											timeskewAlert(diffMinutes);
+									}
+								});
+
+								return;
+							}
+						}
+
+						if (serverVersionCode > versionCode)
 						{
 							runOnUiThread(new Runnable()
 							{
 								public void run()
 								{
 									if (!isFinishing())
-										timeskewAlert(diffMinutes);
+										versionAlert(serverVersionCode);
 								}
 							});
 
 							return;
 						}
 					}
-
-					if (serverVersionCode > versionCode)
-					{
-						runOnUiThread(new Runnable()
-						{
-							public void run()
-							{
-								if (!isFinishing())
-									versionAlert(serverVersionCode);
-							}
-						});
-
-						return;
-					}
+				}
+				catch (final UnknownHostException x)
+				{
+					// swallow
+					x.printStackTrace();
 				}
 				catch (final Exception x)
 				{
-					x.printStackTrace();
+					CrashReporter.saveBackgroundTrace(new RuntimeException(url, x));
+				}
+				finally
+				{
+					if (connection != null)
+						connection.disconnect();
 				}
 			}
 		}.start();
+
+		if (CrashReporter.hasSavedCrashTrace())
+		{
+			final StringBuilder stackTrace = new StringBuilder();
+			final StringBuilder applicationLog = new StringBuilder();
+
+			try
+			{
+				CrashReporter.appendSavedCrashTrace(stackTrace);
+				CrashReporter.appendSavedCrashApplicationLog(applicationLog);
+			}
+			catch (final IOException x)
+			{
+				x.printStackTrace();
+			}
+
+			final ReportIssueDialogBuilder dialog = new ReportIssueDialogBuilder(this, R.string.report_issue_dialog_title_crash,
+					R.string.report_issue_dialog_message_crash)
+			{
+				@Override
+				protected CharSequence subject()
+				{
+					return Constants.REPORT_SUBJECT_CRASH + " " + application.applicationVersionName();
+				}
+
+				@Override
+				protected CharSequence collectApplicationInfo() throws IOException
+				{
+					final StringBuilder applicationInfo = new StringBuilder();
+					CrashReporter.appendApplicationInfo(applicationInfo, application);
+					return applicationInfo;
+				}
+
+				@Override
+				protected CharSequence collectStackTrace() throws IOException
+				{
+					if (stackTrace.length() > 0)
+						return stackTrace;
+					else
+						return null;
+				}
+
+				@Override
+				protected CharSequence collectDeviceInfo() throws IOException
+				{
+					final StringBuilder deviceInfo = new StringBuilder();
+					CrashReporter.appendDeviceInfo(deviceInfo, WalletActivity.this);
+					return deviceInfo;
+				}
+
+				@Override
+				protected CharSequence collectApplicationLog() throws IOException
+				{
+					if (applicationLog.length() > 0)
+						return applicationLog;
+					else
+						return null;
+				}
+
+				@Override
+				protected CharSequence collectWalletDump()
+				{
+					return wallet.toString(false, null);
+				}
+			};
+
+			dialog.show();
+		}
 	}
 
 	private void timeskewAlert(final long diffMinutes)
@@ -608,38 +765,51 @@ public final class WalletActivity extends AbstractWalletActivity
 			final List<ECKey> importedKeys = WalletUtils.readKeys(keyReader);
 			keyReader.close();
 
-			final Wallet wallet = getWalletApplication().getWallet();
-			int importCount = 0;
-			k: for (final ECKey importedKey : importedKeys)
-			{
-				for (final ECKey key : wallet.getKeys())
-					if (importedKey.equals(key))
-						continue k;
-
-				wallet.addKey(importedKey);
-				importCount++;
-			}
+			final int numKeysToImport = importedKeys.size();
+			final int numKeysImported = wallet.addKeys(importedKeys);
 
 			final AlertDialog.Builder dialog = new AlertDialog.Builder(this);
 			dialog.setInverseBackgroundForced(true);
-			dialog.setMessage(getString(R.string.wallet_import_keys_dialog_success, importCount));
-			dialog.setPositiveButton(R.string.wallet_import_keys_dialog_button_reset_blockchain, new DialogInterface.OnClickListener()
+			final StringBuilder message = new StringBuilder();
+			if (numKeysImported > 0)
+				message.append(getString(R.string.import_keys_dialog_success_imported, numKeysImported));
+			if (numKeysImported < numKeysToImport)
 			{
-				public void onClick(final DialogInterface dialog, final int id)
+				if (message.length() > 0)
+					message.append('\n');
+				message.append(getString(R.string.import_keys_dialog_success_existing, numKeysToImport - numKeysImported));
+			}
+			if (numKeysImported > 0)
+			{
+				if (message.length() > 0)
+					message.append("\n\n");
+				message.append(getString(R.string.import_keys_dialog_success_reset));
+			}
+			dialog.setMessage(message);
+			if (numKeysImported > 0)
+			{
+				dialog.setPositiveButton(R.string.import_keys_dialog_button_reset_blockchain, new DialogInterface.OnClickListener()
 				{
-					getWalletApplication().resetBlockchain();
-					finish();
-				}
-			});
-			dialog.setNegativeButton(R.string.button_dismiss, null);
+					public void onClick(final DialogInterface dialog, final int id)
+					{
+						getWalletApplication().resetBlockchain();
+						finish();
+					}
+				});
+				dialog.setNegativeButton(R.string.button_dismiss, null);
+			}
+			else
+			{
+				dialog.setNeutralButton(R.string.button_dismiss, null);
+			}
 			dialog.show();
 		}
 		catch (final IOException x)
 		{
 			new AlertDialog.Builder(this).setInverseBackgroundForced(true).setIcon(android.R.drawable.ic_dialog_alert)
-					.setTitle(R.string.wallet_import_export_keys_dialog_failure_title)
-					.setMessage(getString(R.string.wallet_import_keys_dialog_failure, x.getMessage()))
-					.setNeutralButton(R.string.button_dismiss, null).show();
+					.setTitle(R.string.import_export_keys_dialog_failure_title)
+					.setMessage(getString(R.string.import_keys_dialog_failure, x.getMessage())).setNeutralButton(R.string.button_dismiss, null)
+					.show();
 
 			x.printStackTrace();
 		}
@@ -650,11 +820,12 @@ public final class WalletActivity extends AbstractWalletActivity
 		try
 		{
 			Constants.EXTERNAL_WALLET_BACKUP_DIR.mkdirs();
+			final DateFormat dateFormat = Iso8601Format.newDateFormat();
+			dateFormat.setTimeZone(TimeZone.getDefault());
 			final File file = new File(Constants.EXTERNAL_WALLET_BACKUP_DIR, Constants.EXTERNAL_WALLET_KEY_BACKUP + "-"
-					+ Iso8601Format.newDateFormat().format(new Date()));
+					+ dateFormat.format(new Date()));
 
-			final Wallet wallet = getWalletApplication().getWallet();
-			final ArrayList<ECKey> keys = wallet.keychain;
+			final List<ECKey> keys = wallet.getKeys();
 
 			final StringWriter plainOut = new StringWriter();
 			WalletUtils.writeKeys(plainOut, keys);
@@ -667,17 +838,38 @@ public final class WalletActivity extends AbstractWalletActivity
 			cipherOut.write(cipherText);
 			cipherOut.close();
 
-			new AlertDialog.Builder(this).setInverseBackgroundForced(true).setMessage(getString(R.string.wallet_export_keys_dialog_success, file))
-					.setNeutralButton(R.string.button_dismiss, null).show();
+			final AlertDialog.Builder dialog = new AlertDialog.Builder(this).setInverseBackgroundForced(true).setMessage(
+					getString(R.string.export_keys_dialog_success, file));
+			dialog.setPositiveButton(R.string.export_keys_dialog_button_archive, new OnClickListener()
+			{
+				public void onClick(final DialogInterface dialog, final int which)
+				{
+					mailPrivateKeys(file);
+				}
+			});
+			dialog.setNegativeButton(R.string.button_dismiss, null);
+			dialog.show();
 		}
 		catch (final IOException x)
 		{
 			new AlertDialog.Builder(this).setInverseBackgroundForced(true).setIcon(android.R.drawable.ic_dialog_alert)
-					.setTitle(R.string.wallet_import_export_keys_dialog_failure_title)
-					.setMessage(getString(R.string.wallet_export_keys_dialog_failure, x.getMessage()))
-					.setNeutralButton(R.string.button_dismiss, null).show();
+					.setTitle(R.string.import_export_keys_dialog_failure_title)
+					.setMessage(getString(R.string.export_keys_dialog_failure, x.getMessage())).setNeutralButton(R.string.button_dismiss, null)
+					.show();
 
 			x.printStackTrace();
 		}
+	}
+
+	private void mailPrivateKeys(final File file)
+	{
+		final Intent intent = new Intent(Intent.ACTION_SEND);
+		intent.putExtra(Intent.EXTRA_SUBJECT, getString(R.string.export_keys_dialog_mail_subject));
+		intent.putExtra(Intent.EXTRA_TEXT,
+				getString(R.string.export_keys_dialog_mail_text) + "\n\n" + String.format(Constants.WEBMARKET_APP_URL, getPackageName()) + "\n\n"
+						+ Constants.SOURCE_URL + '\n');
+		intent.setType("x-bitcoin/private-keys");
+		intent.putExtra(Intent.EXTRA_STREAM, Uri.fromFile(file));
+		startActivity(Intent.createChooser(intent, getString(R.string.export_keys_dialog_mail_intent_chooser)));
 	}
 }

@@ -1,23 +1,20 @@
 <?xml version='1.0' encoding='UTF-8'?>
 <resources>
 
-	<string name="app_name">Bitcoin Cüzdanı</string>
 	<string name="toast_wallet_reset">Cüzdan sıfırlanmış,\ntamamlanması belli bir süre alacaktır.</string>
-	<string name="blockchain_state_disclaimer">Tüm riski siz üstlenmiş olursunuz. Güvenlik notlarını okuyunuz.</string>
-	<string name="blockchain_state_message_hours">Blok zinciri %1$s, %2$d saat geride</string>
-	<string name="blockchain_state_message_days">Blok zinciri %1$s, %2$d gün geride</string>
-	<string name="blockchain_state_message_weeks">Blok zinciri %1$s, %2$d hafta geride</string>
-	<string name="blockchain_state_message_downloading">indiriliyor</string>
-	<string name="blockchain_state_message_stalled">durakladı</string>
-	<string name="blockchain_state_message_problem_storage">Blok zinciri indirilmiyor: kayıt problemi</string>
-	<string name="blockchain_state_message_problem_power">Blok zinciri indirilmiyor: pil problemi</string>
-	<string name="blockchain_state_message_problem_network">Blok zinciri indirilmiyor: şebeke problemi</string>
+	<string name="wallet_disclaimer">Tüm riski siz üstlenmiş olursunuz. Güvenlik notlarını okuyunuz.</string>
+	<string name="blockchain_state_progress_hours">Blok zinciri %1$s, %2$d saat geride</string>
+	<string name="blockchain_state_progress_days">Blok zinciri %1$s, %2$d gün geride</string>
+	<string name="blockchain_state_progress_weeks">Blok zinciri %1$s, %2$d hafta geride</string>
+	<string name="blockchain_state_progress_months">Blok zinciri %1$s, %2$d ay geride</string>
+	<string name="blockchain_state_progress_downloading">indiriliyor</string>
+	<string name="blockchain_state_progress_stalled">durakladı</string>
+	<string name="blockchain_state_progress_problem_storage">Blok zinciri indirilmiyor: kayıt problemi</string>
+	<string name="blockchain_state_progress_problem_network">Blok zinciri indirilmiyor: şebeke problemi</string>
 	<string name="wallet_address_fragment_your">Bitcoin adresiniz:</string>
 	<string name="wallet_address_fragment_clipboard_msg">Bitcoin adresi panoya kopyalandı</string>
-	<string name="wallet_address_fragment_share_dialog_title">Bitcoin adresinizi paylaşın…</string>
 	<string name="wallet_addresses_fragment_add_dialog_title">Bitcoin adresi ekle</string>
 	<string name="wallet_addresses_fragment_add_dialog_message">Bitcoin adresleri silinemez. Cüzdanınıza yeni bir adres eklemek istediğinizden emin misiniz?</string>
-	<string name="wallet_balance_fragment_local_value">değeri yaklaşık %1$s %2$s</string>
 	<string name="exchange_rates_fragment_empty_text">Döviz kurları yüklenemedi</string>
 	<string name="exchange_rates_context_set_as_default_title">Varsayılan döviz olarak ayarla</string>
 	<string name="wallet_transactions_fragment_tab_received">Alınan</string>
@@ -26,7 +23,6 @@
 	<string name="wallet_transactions_fragment_empty_text_received">Şimdiye kadar hiçbir Bitcoin alınmadı</string>
 	<string name="wallet_transactions_fragment_empty_text_sent">Şimdiye kadar hiçbir Bitcoin gönderilmedi</string>
 	<string name="wallet_transactions_fragment_coinbase">oluşturulan</string>
-	<string name="wallet_transactions_context_edit_address_title">Adres ilâve et/düzenle</string>
 	<string name="wallet_transactions_context_show_transaction_title">Muamele detayları</string>
 	<string name="wallet_options_disconnect">Bağlantıyı kes</string>
 	<string name="wallet_options_safety">Güvenlik notları</string>
@@ -53,22 +49,17 @@
 	<string name="send_coins_fragment_pending">(%s BTC teyit bekliyor)</string>
 	<string name="send_coins_fragment_amount_label">Ödenecek miktar</string>
 	<string name="send_coins_fragment_amount_error">Geçersiz miktar!</string>
-	<string name="send_coins_fragment_fee_label">ücret (seçime dayalı)</string>
 	<string name="send_coins_fragment_button_send">Gönder</string>
 	<string name="send_coins_fragment_button_back">Geri</string>
 	<string name="send_coins_sending_msg">Gönderiliyor…</string>
 	<string name="send_coins_sent_msg">Gönderildi!</string>
-	<string name="send_coins_add_address_dialog_title">Alıcı henüz adres defterinizde bulunmamaktadır.\n\nAdresini eklemek ister misiniz?</string>
-	<string name="send_coins_add_address_dialog_button_add">Adres ekle</string>
 	<string name="send_coins_error_msg">Bitcoin gönderimi sırasında problem oluştu!</string>
-	<string name="send_coins_success_msg">%s BTC gönderildi!</string>
-	<string name="send_coins_options_scan_title">Tara</string>
 	<string name="send_coins_address_context_clear_title">Yeni adres gir</string>
 	<string name="request_coins_activity_title">Bitcoin talebi</string>
 	<string name="request_coins_fragment_address_label">Talep için kullanılacak adres</string>
 	<string name="request_coins_fragment_include_address_label">adrese etiket iliştir</string>
 	<string name="request_coins_fragment_amount_label">Talep edilen miktar (seçime dayalı)</string>
-	<string name="request_coins_fragment_qr_label">Gönderici tarafından taranacak QR kodu:</string>
+	<string name="request_coins_fragment_qr_label">Gönderici tarafından taranacak kodu.</string>
 	<string name="request_coins_fragment_nfc_enabled">Veya NFC destekleyen bir cihazla dokunmak.</string>
 	<string name="request_coins_clipboard_msg">Bitcoin talebi panoya kopyalandı</string>
 	<string name="request_coins_share_dialog_title">Bitcoin talebini yayınla…</string>
@@ -107,11 +98,10 @@
 	<string name="transaction_fragment_length_label">Uzunluk</string>
 	<string name="amount_calculator_dialog_title">Döviz hesaplayıcı</string>
 	<string name="amount_calculator_dialog_button_use">Kullan</string>
-	<string name="peer_monitor_activity_title">Eş izleyicisi</string>
 	<string name="peer_list_fragment_empty">Hiçbir eş bağlı değil</string>
 	<string name="about_title">Hakkında</string>
 	<string name="about_license_title">Lisans</string>
-	<string name="about_credits_bitcoinj_title">Bu uygulama \'bitcoinj\' kullanmaktadır</string>
+	<string name="about_credits_bitcoinj_title">Bu uygulama bitcoinj %s kullanmaktadır</string>
 	<string name="about_credits_zxing_title">Bu uygulama \'zxing\' kullanmaktadır</string>
 	<string name="about_credits_icon_title">Bu uygulama \'bitboy\' tarafından oluşturulan bir ikon kullanır</string>
 	<string name="about_author_twitter_title">Geliştiricinin Twitter sayfası</string>
@@ -134,6 +124,8 @@
 	<string name="button_set_as_default">Varsayılan olarak ayarla</string>
 	<string name="button_request_coins">Bitcoin talep et</string>
 	<string name="button_send_coins">Bitcoin gönder</string>
+	<string name="button_edit_address">Adres ilâve et/düzenle</string>
+	<string name="button_scan">Tara</string>
 	<string name="time_today">bugün</string>
 	<string name="address_unlabeled">(etiketsiz)</string>
 

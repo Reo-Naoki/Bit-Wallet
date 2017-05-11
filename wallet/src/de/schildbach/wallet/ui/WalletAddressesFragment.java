@@ -1,5 +1,5 @@
 /*
- * Copyright 2011-2012 the original author or authors.
+ * Copyright 2011-2013 the original author or authors.
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -18,18 +18,22 @@
 package de.schildbach.wallet.ui;
 
 import java.util.Date;
+import java.util.List;
 
 import android.app.Activity;
 import android.app.AlertDialog;
 import android.content.ContentResolver;
 import android.content.Context;
 import android.content.DialogInterface;
+import android.content.Intent;
 import android.content.SharedPreferences;
 import android.database.ContentObserver;
+import android.net.Uri;
 import android.os.Bundle;
 import android.os.Handler;
 import android.preference.PreferenceManager;
 import android.text.ClipboardManager;
+import android.text.format.DateUtils;
 import android.view.View;
 import android.widget.BaseAdapter;
 import android.widget.ListAdapter;
@@ -49,6 +53,7 @@ import de.schildbach.wallet.Constants;
 import de.schildbach.wallet.DetermineFirstSeenThread;
 import de.schildbach.wallet.WalletApplication;
 import de.schildbach.wallet.util.BitmapFragment;
+import de.schildbach.wallet.util.CrashReporter;
 import de.schildbach.wallet.util.WalletUtils;
 import de.schildbach.wallet_test.R;
 
@@ -60,8 +65,9 @@ public final class WalletAddressesFragment extends SherlockListFragment
 	private AddressBookActivity activity;
 	private WalletApplication application;
 	private ContentResolver contentResolver;
+	private SharedPreferences prefs;
 
-	private BaseAdapter adapter;
+	private WalletAddressesAdapter adapter;
 
 	@Override
 	public void onAttach(final Activity activity)
@@ -71,6 +77,7 @@ public final class WalletAddressesFragment extends SherlockListFragment
 		this.activity = (AddressBookActivity) activity;
 		application = (WalletApplication) activity.getApplication();
 		contentResolver = activity.getContentResolver();
+		prefs = PreferenceManager.getDefaultSharedPreferences(activity);
 	}
 
 	@Override
@@ -80,7 +87,11 @@ public final class WalletAddressesFragment extends SherlockListFragment
 
 		setHasOptionsMenu(true);
 
-		adapter = new WalletAddressesAdapter(activity, application.getWallet().keychain, true);
+		final List<ECKey> keys = application.getWallet().getKeys();
+		adapter = new WalletAddressesAdapter(activity, keys, true);
+
+		final Address selectedAddress = application.determineSelectedAddress();
+		adapter.setSelectedAddress(selectedAddress.toString());
 
 		setListAdapter(adapter);
 	}
@@ -90,7 +101,7 @@ public final class WalletAddressesFragment extends SherlockListFragment
 	{
 		super.onResume();
 
-		contentResolver.registerContentObserver(AddressBookProvider.CONTENT_URI, true, contentObserver);
+		contentResolver.registerContentObserver(AddressBookProvider.contentUri(activity.getPackageName()), true, contentObserver);
 
 		updateView();
 	}
@@ -149,6 +160,8 @@ public final class WalletAddressesFragment extends SherlockListFragment
 			{
 				final MenuInflater inflater = mode.getMenuInflater();
 				inflater.inflate(R.menu.wallet_addresses_context, menu);
+				menu.findItem(R.id.wallet_addresses_context_open_blockexplorer).setVisible(
+						prefs.getBoolean(Constants.PREFS_KEY_LABS_BLOCKEXPLORER_INTEGRATION, false));
 
 				return true;
 			}
@@ -163,8 +176,8 @@ public final class WalletAddressesFragment extends SherlockListFragment
 				item.setVisible(enabled);
 
 				final String address = key.toAddress(Constants.NETWORK_PARAMETERS).toString();
-				final String label = AddressBookProvider.resolveLabel(contentResolver, address);
-				mode.setTitle(label != null ? label : WalletUtils.formatAddress(address, Constants.ADDRESS_FORMAT_GROUP_SIZE, 0));
+				final String label = AddressBookProvider.resolveLabel(activity, address);
+				mode.setTitle(label != null ? label : WalletUtils.formatHash(address, Constants.ADDRESS_FORMAT_GROUP_SIZE, 0));
 
 				return true;
 			}
@@ -203,6 +216,13 @@ public final class WalletAddressesFragment extends SherlockListFragment
 
 						mode.finish();
 						return true;
+
+					case R.id.wallet_addresses_context_open_blockexplorer:
+						startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse(Constants.BLOCKEXPLORER_BASE_URL + "address/"
+								+ getAddress(position).toString())));
+
+						mode.finish();
+						return true;
 				}
 
 				return false;
@@ -238,13 +258,13 @@ public final class WalletAddressesFragment extends SherlockListFragment
 			{
 				final ClipboardManager clipboardManager = (ClipboardManager) activity.getSystemService(Context.CLIPBOARD_SERVICE);
 				clipboardManager.setText(address.toString());
-				((AbstractWalletActivity) activity).toast(R.string.wallet_address_fragment_clipboard_msg);
+				activity.toast(R.string.wallet_address_fragment_clipboard_msg);
 			}
 
 			private void handleDefault(final Address address)
 			{
-				final SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(activity);
 				prefs.edit().putString(Constants.PREFS_KEY_SELECTED_ADDRESS, address.toString()).commit();
+				adapter.setSelectedAddress(address.toString());
 			}
 		});
 	}
@@ -256,12 +276,15 @@ public final class WalletAddressesFragment extends SherlockListFragment
 			@Override
 			protected void succeed(final Date firstSeen)
 			{
-				if (firstSeen != null)
-				{
-					key.setCreationTimeSeconds(firstSeen.getTime() / 1000);
-					updateView();
-					application.saveWallet();
-				}
+				key.setCreationTimeSeconds((firstSeen != null ? firstSeen.getTime() : System.currentTimeMillis()) / DateUtils.SECOND_IN_MILLIS);
+				updateView();
+				application.saveWallet();
+			}
+
+			@Override
+			protected void fail(final Exception x)
+			{
+				CrashReporter.saveBackgroundTrace(x);
 			}
 		};
 	}

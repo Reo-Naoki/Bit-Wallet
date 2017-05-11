@@ -1,5 +1,5 @@
 /*
- * Copyright 2012 the original author or authors.
+ * Copyright 2012-2013 the original author or authors.
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -24,9 +24,10 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
 
-import android.graphics.Point;
+import android.annotation.SuppressLint;
 import android.graphics.Rect;
 import android.hardware.Camera;
+import android.hardware.Camera.CameraInfo;
 import android.hardware.Camera.PreviewCallback;
 import android.view.SurfaceHolder;
 
@@ -39,10 +40,8 @@ public final class CameraManager
 {
 	private static final boolean CONTINUOUS_FOCUS = true;
 
-	private static final int MIN_FRAME_WIDTH = 240;
-	private static final int MIN_FRAME_HEIGHT = 240;
-	private static final int MAX_FRAME_WIDTH = 600;
-	private static final int MAX_FRAME_HEIGHT = 400;
+	private static final int MIN_FRAME_SIZE = 240;
+	private static final int MAX_FRAME_SIZE = 600;
 	private static final int MIN_PREVIEW_PIXELS = 470 * 320; // normal screen
 	private static final int MAX_PREVIEW_PIXELS = 1280 * 720;
 
@@ -68,34 +67,43 @@ public final class CameraManager
 
 	public void open(final SurfaceHolder holder) throws IOException
 	{
-		camera = new CameraSupportManager().build().open();
+		// try back-facing camera
+		camera = Camera.open();
+
+		// fall back to using front-facing camera
+		if (camera == null)
+		{
+			final int cameraCount = Camera.getNumberOfCameras();
+			final CameraInfo cameraInfo = new CameraInfo();
+
+			// search for front-facing camera
+			for (int i = 0; i < cameraCount; i++)
+			{
+				Camera.getCameraInfo(i, cameraInfo);
+				if (cameraInfo.facing == Camera.CameraInfo.CAMERA_FACING_FRONT)
+				{
+					camera = Camera.open(i);
+					break;
+				}
+			}
+		}
+
 		camera.setPreviewDisplay(holder);
 
 		final Camera.Parameters parameters = camera.getParameters();
 
 		final Rect surfaceFrame = holder.getSurfaceFrame();
+		cameraResolution = findBestPreviewSizeValue(parameters, surfaceFrame);
+
 		final int surfaceWidth = surfaceFrame.width();
 		final int surfaceHeight = surfaceFrame.height();
 
-		cameraResolution = findBestPreviewSizeValue(parameters, new Point(surfaceWidth, surfaceHeight));
+		final int rawSize = Math.min(surfaceWidth * 2 / 3, surfaceHeight * 2 / 3);
+		final int frameSize = Math.max(MIN_FRAME_SIZE, Math.min(MAX_FRAME_SIZE, rawSize));
 
-		int width = surfaceWidth * 3 / 4;
-		if (width < MIN_FRAME_WIDTH)
-			width = MIN_FRAME_WIDTH;
-		else if (width > MAX_FRAME_WIDTH)
-			width = MAX_FRAME_WIDTH;
-
-		int height = surfaceHeight * 3 / 4;
-		if (height < MIN_FRAME_HEIGHT)
-			height = MIN_FRAME_HEIGHT;
-		else if (height > MAX_FRAME_HEIGHT)
-			height = MAX_FRAME_HEIGHT;
-
-		final int finalWidth = Math.min(width, height);
-
-		final int leftOffset = (surfaceWidth - finalWidth) / 2;
-		final int topOffset = (surfaceHeight - finalWidth) / 2;
-		frame = new Rect(leftOffset, topOffset, leftOffset + finalWidth, topOffset + finalWidth);
+		final int leftOffset = (surfaceWidth - frameSize) / 2;
+		final int topOffset = (surfaceHeight - frameSize) / 2;
+		frame = new Rect(leftOffset, topOffset, leftOffset + frameSize, topOffset + frameSize);
 		framePreview = new Rect(frame.left * cameraResolution.width / surfaceWidth, frame.top * cameraResolution.height / surfaceHeight, frame.right
 				* cameraResolution.width / surfaceWidth, frame.bottom * cameraResolution.height / surfaceHeight);
 
@@ -128,8 +136,11 @@ public final class CameraManager
 
 	public void close()
 	{
-		camera.stopPreview();
-		camera.release();
+		if (camera != null)
+		{
+			camera.stopPreview();
+			camera.release();
+		}
 	}
 
 	private static final Comparator<Camera.Size> numPixelComparator = new Comparator<Camera.Size>()
@@ -148,8 +159,13 @@ public final class CameraManager
 		}
 	};
 
-	private static Camera.Size findBestPreviewSizeValue(final Camera.Parameters parameters, final Point screenResolution)
+	private static Camera.Size findBestPreviewSizeValue(final Camera.Parameters parameters, Rect surfaceResolution)
 	{
+		if (surfaceResolution.height() > surfaceResolution.width())
+			surfaceResolution = new Rect(0, 0, surfaceResolution.height(), surfaceResolution.width());
+
+		final float screenAspectRatio = (float) surfaceResolution.width() / (float) surfaceResolution.height();
+
 		final List<Camera.Size> rawSupportedSizes = parameters.getSupportedPreviewSizes();
 		if (rawSupportedSizes == null)
 			return parameters.getPreviewSize();
@@ -157,8 +173,6 @@ public final class CameraManager
 		// sort by size, descending
 		final List<Camera.Size> supportedPreviewSizes = new ArrayList<Camera.Size>(rawSupportedSizes);
 		Collections.sort(supportedPreviewSizes, numPixelComparator);
-
-		final float screenAspectRatio = (float) screenResolution.x / (float) screenResolution.y;
 
 		Camera.Size bestSize = null;
 		float diff = Float.POSITIVE_INFINITY;
@@ -174,7 +188,7 @@ public final class CameraManager
 			final boolean isCandidatePortrait = realWidth < realHeight;
 			final int maybeFlippedWidth = isCandidatePortrait ? realHeight : realWidth;
 			final int maybeFlippedHeight = isCandidatePortrait ? realWidth : realHeight;
-			if (maybeFlippedWidth == screenResolution.x && maybeFlippedHeight == screenResolution.y)
+			if (maybeFlippedWidth == surfaceResolution.width() && maybeFlippedHeight == surfaceResolution.height())
 				return supportedPreviewSize;
 
 			final float aspectRatio = (float) maybeFlippedWidth / (float) maybeFlippedHeight;
@@ -192,6 +206,7 @@ public final class CameraManager
 			return parameters.getPreviewSize();
 	}
 
+	@SuppressLint("InlinedApi")
 	private static void setDesiredCameraParameters(final Camera camera, final Camera.Size cameraResolution, final boolean safeMode)
 	{
 		final Camera.Parameters parameters = camera.getParameters();

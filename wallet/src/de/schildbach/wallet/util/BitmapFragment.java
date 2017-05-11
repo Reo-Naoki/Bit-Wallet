@@ -1,5 +1,5 @@
 /*
- * Copyright 2011-2012 the original author or authors.
+ * Copyright 2011-2013 the original author or authors.
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -22,9 +22,7 @@ import android.app.Dialog;
 import android.graphics.Bitmap;
 import android.os.Bundle;
 import android.support.v4.app.DialogFragment;
-import android.support.v4.app.Fragment;
 import android.support.v4.app.FragmentManager;
-import android.support.v4.app.FragmentTransaction;
 import android.view.View;
 import android.view.Window;
 import android.widget.ImageView;
@@ -41,13 +39,8 @@ public class BitmapFragment extends DialogFragment
 
 	public static void show(final FragmentManager fm, final Bitmap bitmap)
 	{
-		final FragmentTransaction ft = fm.beginTransaction();
-		final Fragment prev = fm.findFragmentByTag(FRAGMENT_TAG);
-		if (prev != null)
-			ft.remove(prev);
-		ft.addToBackStack(null);
 		final DialogFragment newFragment = instance(bitmap);
-		newFragment.show(ft, FRAGMENT_TAG);
+		newFragment.show(fm, FRAGMENT_TAG);
 	}
 
 	private static BitmapFragment instance(final Bitmap bitmap)

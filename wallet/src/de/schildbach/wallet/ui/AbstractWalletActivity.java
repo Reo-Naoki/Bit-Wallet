@@ -1,5 +1,5 @@
 /*
- * Copyright 2011-2012 the original author or authors.
+ * Copyright 2011-2013 the original author or authors.
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -17,20 +17,15 @@
 
 package de.schildbach.wallet.ui;
 
-import java.util.Locale;
-
 import android.app.AlertDialog;
 import android.app.AlertDialog.Builder;
-import android.content.Intent;
 import android.content.SharedPreferences;
-import android.net.Uri;
 import android.os.Bundle;
 import android.preference.PreferenceManager;
 import android.view.View;
 import android.widget.TextView;
 import android.widget.Toast;
 
-import com.actionbarsherlock.app.ActionBar;
 import com.actionbarsherlock.app.SherlockFragmentActivity;
 
 import de.schildbach.wallet.Constants;
@@ -47,20 +42,9 @@ public abstract class AbstractWalletActivity extends SherlockFragmentActivity
 	@Override
 	protected void onCreate(final Bundle savedInstanceState)
 	{
-		super.onCreate(savedInstanceState);
-
 		application = (WalletApplication) getApplication();
-	}
 
-	@Override
-	protected void onStart()
-	{
-		super.onStart();
-
-		final ActionBar actionBar = getSupportActionBar();
-		actionBar.setIcon(R.drawable.app_icon);
-		final String subtitle = Constants.NETWORK_SUFFIX.trim();
-		actionBar.setSubtitle(subtitle.length() > 0 ? subtitle : null);
+		super.onCreate(savedInstanceState);
 	}
 
 	protected WalletApplication getWalletApplication()
@@ -121,46 +105,6 @@ public abstract class AbstractWalletActivity extends SherlockFragmentActivity
 		dialog.setMessage(uri);
 		dialog.setNeutralButton(R.string.button_dismiss, null);
 		dialog.show();
-	}
-
-	protected final static String languagePrefix()
-	{
-		final String language = Locale.getDefault().getLanguage();
-		if ("de".equals(language))
-			return "_de";
-		else if ("cs".equals(language))
-			return "_cs";
-		else if ("el".equals(language))
-			return "_el";
-		else if ("es".equals(language))
-			return "_es";
-		else if ("fr".equals(language))
-			return "_fr";
-		else if ("it".equals(language))
-			return "_it";
-		else if ("nl".equals(language))
-			return "_nl";
-		else if ("pl".equals(language))
-			return "_pl";
-		else if ("ru".equals(language))
-			return "_ru";
-		else if ("sv".equals(language))
-			return "_sv";
-		else if ("tr".equals(language))
-			return "_tr";
-		else if ("zh".equals(language))
-			return "_zh";
-		else
-			return "";
-	}
-
-	protected void showMarketPage(final String packageName)
-	{
-		final Intent marketIntent = new Intent(Intent.ACTION_VIEW, Uri.parse(String.format(Constants.MARKET_APP_URL, packageName)));
-		if (getPackageManager().resolveActivity(marketIntent, 0) != null)
-			startActivity(marketIntent);
-		else
-			startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse(String.format(Constants.WEBMARKET_APP_URL, packageName))));
 	}
 
 	protected void touchLastUsed()

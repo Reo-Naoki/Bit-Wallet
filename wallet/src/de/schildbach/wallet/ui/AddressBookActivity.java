@@ -1,5 +1,5 @@
 /*
- * Copyright 2011-2012 the original author or authors.
+ * Copyright 2011-2013 the original author or authors.
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -18,6 +18,7 @@
 package de.schildbach.wallet.ui;
 
 import java.util.ArrayList;
+import java.util.List;
 
 import android.content.Context;
 import android.content.Intent;
@@ -61,7 +62,6 @@ public final class AddressBookActivity extends AbstractWalletActivity
 		setContentView(R.layout.address_book_content);
 
 		final ActionBar actionBar = getSupportActionBar();
-		actionBar.setTitle(R.string.address_book_activity_title);
 		actionBar.setDisplayHomeAsUpEnabled(true);
 
 		final ViewPager pager = (ViewPager) findViewById(R.id.address_book_pager);
@@ -112,10 +112,10 @@ public final class AddressBookActivity extends AbstractWalletActivity
 
 	/* private */void updateFragments()
 	{
-		final ArrayList<ECKey> keychain = getWalletApplication().getWallet().keychain;
-		final ArrayList<Address> addresses = new ArrayList<Address>(keychain.size());
+		final List<ECKey> keys = getWalletApplication().getWallet().getKeys();
+		final ArrayList<Address> addresses = new ArrayList<Address>(keys.size());
 
-		for (final ECKey key : keychain)
+		for (final ECKey key : keys)
 		{
 			final Address address = key.toAddress(Constants.NETWORK_PARAMETERS);
 			addresses.add(address);

@@ -1,5 +1,5 @@
 /*
- * Copyright 2011-2012 the original author or authors.
+ * Copyright 2011-2013 the original author or authors.
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -26,6 +26,7 @@ import android.preference.PreferenceScreen;
 import com.actionbarsherlock.app.ActionBar;
 import com.actionbarsherlock.app.SherlockPreferenceActivity;
 import com.actionbarsherlock.view.MenuItem;
+import com.google.bitcoin.core.VersionMessage;
 
 import de.schildbach.wallet.Constants;
 import de.schildbach.wallet.WalletApplication;
@@ -55,12 +56,12 @@ public final class AboutActivity extends SherlockPreferenceActivity
 		addPreferencesFromResource(R.xml.about);
 
 		final ActionBar actionBar = getSupportActionBar();
-		actionBar.setTitle(R.string.about_title);
 		actionBar.setDisplayHomeAsUpEnabled(true);
 
 		findPreference(KEY_ABOUT_VERSION).setSummary(((WalletApplication) getApplication()).applicationVersionName());
 		findPreference(KEY_ABOUT_LICENSE).setSummary(Constants.LICENSE_URL);
 		findPreference(KEY_ABOUT_SOURCE).setSummary(Constants.SOURCE_URL);
+		findPreference(KEY_ABOUT_CREDITS_BITCOINJ).setTitle(getString(R.string.about_credits_bitcoinj_title, VersionMessage.BITCOINJ_VERSION));
 		findPreference(KEY_ABOUT_CREDITS_BITCOINJ).setSummary(Constants.CREDITS_BITCOINJ_URL);
 		findPreference(KEY_ABOUT_CREDITS_ZXING).setSummary(Constants.CREDITS_ZXING_URL);
 		findPreference(KEY_ABOUT_CREDITS_ICON).setSummary(Constants.CREDITS_ICON_URL);
@@ -122,7 +123,11 @@ public final class AboutActivity extends SherlockPreferenceActivity
 		}
 		else if (KEY_ABOUT_MARKET_APP.equals(key))
 		{
-			startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse(String.format(Constants.MARKET_APP_URL, getPackageName()))));
+			final Intent marketIntent = new Intent(Intent.ACTION_VIEW, Uri.parse(String.format(Constants.MARKET_APP_URL, getPackageName())));
+			if (getPackageManager().resolveActivity(marketIntent, 0) != null)
+				startActivity(marketIntent);
+			else
+				startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse(String.format(Constants.WEBMARKET_APP_URL, getPackageName()))));
 			finish();
 		}
 		else if (KEY_ABOUT_MARKET_PUBLISHER.equals(key))

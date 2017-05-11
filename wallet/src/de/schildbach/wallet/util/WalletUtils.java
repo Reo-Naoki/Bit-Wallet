@@ -1,5 +1,5 @@
 /*
- * Copyright 2011-2012 the original author or authors.
+ * Copyright 2011-2013 the original author or authors.
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -23,7 +23,7 @@ import java.io.FileFilter;
 import java.io.FileReader;
 import java.io.IOException;
 import java.io.Writer;
-import java.math.BigDecimal;
+import java.lang.reflect.Method;
 import java.math.BigInteger;
 import java.text.DateFormat;
 import java.text.ParseException;
@@ -31,7 +31,6 @@ import java.util.Date;
 import java.util.Hashtable;
 import java.util.LinkedList;
 import java.util.List;
-import java.util.Locale;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -41,6 +40,7 @@ import android.graphics.Typeface;
 import android.text.Editable;
 import android.text.Spannable;
 import android.text.SpannableStringBuilder;
+import android.text.format.DateUtils;
 import android.text.style.RelativeSizeSpan;
 import android.text.style.StyleSpan;
 import android.text.style.TypefaceSpan;
@@ -50,6 +50,7 @@ import com.google.bitcoin.core.AddressFormatException;
 import com.google.bitcoin.core.DumpedPrivateKey;
 import com.google.bitcoin.core.ECKey;
 import com.google.bitcoin.core.ScriptException;
+import com.google.bitcoin.core.Sha256Hash;
 import com.google.bitcoin.core.Transaction;
 import com.google.bitcoin.core.TransactionInput;
 import com.google.bitcoin.core.TransactionOutput;
@@ -105,20 +106,28 @@ public class WalletUtils
 
 	public static Editable formatAddress(final Address address, final int groupSize, final int lineSize)
 	{
-		return formatAddress(address.toString(), groupSize, lineSize);
+		return formatHash(address.toString(), groupSize, lineSize);
 	}
 
 	public static Editable formatAddress(final String prefix, final Address address, final int groupSize, final int lineSize)
 	{
-		return formatAddress(prefix, address.toString(), groupSize, lineSize);
+		return formatHash(prefix, address.toString(), groupSize, lineSize, Constants.CHAR_THIN_SPACE);
 	}
 
-	public static Editable formatAddress(final String address, final int groupSize, final int lineSize)
+	public static Editable formatHash(final String address, final int groupSize, final int lineSize)
 	{
-		return formatAddress(null, address, groupSize, lineSize);
+		return formatHash(null, address, groupSize, lineSize, Constants.CHAR_THIN_SPACE);
 	}
 
-	public static Editable formatAddress(final String prefix, final String address, final int groupSize, final int lineSize)
+	public static long longHash(final Sha256Hash hash)
+	{
+		final byte[] bytes = hash.getBytes();
+
+		return (bytes[31] & 0xFFl) | ((bytes[30] & 0xFFl) << 8) | ((bytes[29] & 0xFFl) << 16) | ((bytes[28] & 0xFFl) << 24)
+				| ((bytes[27] & 0xFFl) << 32) | ((bytes[26] & 0xFFl) << 40) | ((bytes[25] & 0xFFl) << 48) | ((bytes[23] & 0xFFl) << 56);
+	}
+
+	public static Editable formatHash(final String prefix, final String address, final int groupSize, final int lineSize, final char groupSeparator)
 	{
 		final SpannableStringBuilder builder = prefix != null ? new SpannableStringBuilder(prefix) : new SpannableStringBuilder();
 
@@ -133,66 +142,48 @@ public class WalletUtils
 			if (end < len)
 			{
 				final boolean endOfLine = lineSize > 0 && end % lineSize == 0;
-				builder.append(endOfLine ? "\n" : Constants.THIN_SPACE);
+				builder.append(endOfLine ? '\n' : groupSeparator);
 			}
 		}
 
 		return builder;
 	}
 
-	public static String formatValue(final BigInteger value)
-	{
-		return formatValue(value, "", "-");
-	}
+	private static final Pattern P_SIGNIFICANT = Pattern.compile("^([-+]" + Constants.CHAR_THIN_SPACE + ")?\\d*(\\.\\d{0,2})?");
+	private static final Object SIGNIFICANT_SPAN = new StyleSpan(Typeface.BOLD);
+	public static final RelativeSizeSpan SMALLER_SPAN = new RelativeSizeSpan(0.85f);
 
-	public static String formatValue(final BigInteger value, final String plusSign, final String minusSign)
-	{
-		final boolean negative = value.compareTo(BigInteger.ZERO) < 0;
-		final BigInteger absValue = value.abs();
-
-		final String sign = negative ? minusSign : plusSign;
-
-		final int coins = absValue.divide(Utils.COIN).intValue();
-		final int cents = absValue.remainder(Utils.COIN).intValue();
-
-		if (cents % 1000000 == 0)
-			return String.format(Locale.US, "%s%d.%02d", sign, coins, cents / 1000000);
-		else if (cents % 10000 == 0)
-			return String.format(Locale.US, "%s%d.%04d", sign, coins, cents / 10000);
-		else
-			return String.format(Locale.US, "%s%d.%08d", sign, coins, cents);
-	}
-
-	private static final Pattern P_SIGNIFICANT = Pattern.compile("^([-+]" + Constants.THIN_SPACE + ")?\\d*(\\.\\d{0,2})?");
-	private static Object SIGNIFICANT_SPAN = new StyleSpan(Typeface.BOLD);
-	private static Object UNSIGNIFICANT_SPAN = new RelativeSizeSpan(0.85f);
-
-	public static void formatValue(final Editable s)
+	public static void formatSignificant(final Editable s, final RelativeSizeSpan insignificantRelativeSizeSpan)
 	{
 		s.removeSpan(SIGNIFICANT_SPAN);
-		s.removeSpan(UNSIGNIFICANT_SPAN);
+		if (insignificantRelativeSizeSpan != null)
+			s.removeSpan(insignificantRelativeSizeSpan);
 
 		final Matcher m = P_SIGNIFICANT.matcher(s);
 		if (m.find())
 		{
 			final int pivot = m.group().length();
-			s.setSpan(SIGNIFICANT_SPAN, 0, pivot, 0);
-			if (s.length() > pivot)
-				s.setSpan(UNSIGNIFICANT_SPAN, pivot, s.length(), 0);
+			s.setSpan(SIGNIFICANT_SPAN, 0, pivot, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
+			if (s.length() > pivot && insignificantRelativeSizeSpan != null)
+				s.setSpan(insignificantRelativeSizeSpan, pivot, s.length(), Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
 		}
 	}
 
-	private static final BigDecimal LOCAL_VALUE_PRECISION = new BigDecimal(new BigInteger("10000", 10));
-
-	public static BigInteger localValue(final BigInteger btcValue, final BigDecimal exchangeRate)
+	public static BigInteger localValue(final BigInteger btcValue, final BigInteger rate)
 	{
-		final BigDecimal value = new BigDecimal(btcValue).multiply(exchangeRate);
-		final BigDecimal remainder = value.remainder(LOCAL_VALUE_PRECISION);
-		return value.subtract(remainder).toBigInteger();
+		return btcValue.multiply(rate).divide(Utils.COIN);
+	}
+
+	public static BigInteger btcValue(final BigInteger localValue, final BigInteger rate)
+	{
+		return localValue.multiply(Utils.COIN).divide(rate);
 	}
 
 	public static Address getFromAddress(final Transaction tx)
 	{
+		if (tx.isCoinBase())
+			return null;
+
 		try
 		{
 			for (final TransactionInput input : tx.getInputs())
@@ -215,7 +206,7 @@ public class WalletUtils
 		{
 			for (final TransactionOutput output : tx.getOutputs())
 			{
-				return output.getScriptPubKey().getToAddress();
+				return output.getScriptPubKey().getToAddress(Constants.NETWORK_PARAMETERS);
 			}
 
 			throw new IllegalStateException();
@@ -238,7 +229,7 @@ public class WalletUtils
 			if (key.getCreationTimeSeconds() != 0)
 			{
 				out.write(' ');
-				out.write(format.format(new Date(key.getCreationTimeSeconds() * 1000)));
+				out.write(format.format(new Date(key.getCreationTimeSeconds() * DateUtils.SECOND_IN_MILLIS)));
 			}
 			out.write('\n');
 		}
@@ -257,13 +248,13 @@ public class WalletUtils
 				final String line = in.readLine();
 				if (line == null)
 					break; // eof
-				if (line.length() == 0 || line.charAt(0) == '#')
+				if (line.trim().isEmpty() || line.charAt(0) == '#')
 					continue; // skip comment
 
 				final String[] parts = line.split(" ");
 
 				final ECKey key = new DumpedPrivateKey(Constants.NETWORK_PARAMETERS, parts[0]).getKey();
-				key.setCreationTimeSeconds(parts.length >= 2 ? format.parse(parts[1]).getTime() / 1000 : 0);
+				key.setCreationTimeSeconds(parts.length >= 2 ? format.parse(parts[1]).getTime() / DateUtils.SECOND_IN_MILLIS : 0);
 
 				keys.add(key);
 			}
@@ -272,11 +263,11 @@ public class WalletUtils
 		}
 		catch (final AddressFormatException x)
 		{
-			throw new IOException("cannot read keys: " + x);
+			throw new IOException("cannot read keys", x);
 		}
 		catch (final ParseException x)
 		{
-			throw new IOException("cannot read keys: " + x);
+			throw new IOException("cannot read keys", x);
 		}
 	}
 
@@ -313,4 +304,19 @@ public class WalletUtils
 			}
 		}
 	};
+
+	@SuppressWarnings({ "rawtypes", "unchecked" })
+	public static void chmod(final File path, final int mode)
+	{
+		try
+		{
+			final Class fileUtils = Class.forName("android.os.FileUtils");
+			final Method setPermissions = fileUtils.getMethod("setPermissions", String.class, int.class, int.class, int.class);
+			setPermissions.invoke(null, path.getAbsolutePath(), mode, -1, -1);
+		}
+		catch (final Exception x)
+		{
+			x.printStackTrace();
+		}
+	}
 }

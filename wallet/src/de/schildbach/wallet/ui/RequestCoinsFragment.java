@@ -1,5 +1,5 @@
 /*
- * Copyright 2011-2012 the original author or authors.
+ * Copyright 2011-2013 the original author or authors.
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -18,14 +18,22 @@
 package de.schildbach.wallet.ui;
 
 import java.math.BigInteger;
-import java.util.ArrayList;
+import java.util.List;
 
 import android.app.Activity;
-import android.content.ContentResolver;
 import android.content.Context;
+import android.content.Intent;
+import android.content.SharedPreferences;
+import android.database.Cursor;
 import android.graphics.Bitmap;
+import android.net.Uri;
+import android.nfc.NfcManager;
 import android.os.Bundle;
+import android.preference.PreferenceManager;
+import android.support.v4.app.LoaderManager;
+import android.support.v4.app.LoaderManager.LoaderCallbacks;
 import android.support.v4.app.ShareCompat.IntentBuilder;
+import android.support.v4.content.Loader;
 import android.text.ClipboardManager;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -50,6 +58,8 @@ import com.google.bitcoin.uri.BitcoinURI;
 
 import de.schildbach.wallet.AddressBookProvider;
 import de.schildbach.wallet.Constants;
+import de.schildbach.wallet.ExchangeRatesProvider;
+import de.schildbach.wallet.ExchangeRatesProvider.ExchangeRate;
 import de.schildbach.wallet.WalletApplication;
 import de.schildbach.wallet.util.BitmapFragment;
 import de.schildbach.wallet.util.NfcTools;
@@ -59,32 +69,70 @@ import de.schildbach.wallet_test.R;
 /**
  * @author Andreas Schildbach
  */
-public final class RequestCoinsFragment extends SherlockFragment implements AmountCalculatorFragment.Listener
+public final class RequestCoinsFragment extends SherlockFragment
 {
 	private AbstractWalletActivity activity;
 	private WalletApplication application;
-	private ContentResolver contentResolver;
-	private Object nfcManager;
+	private NfcManager nfcManager;
+	private LoaderManager loaderManager;
 	private ClipboardManager clipboardManager;
 	private ShareActionProvider shareActionProvider;
 
+	private int btcPrecision;
+
 	private ImageView qrView;
 	private Bitmap qrCodeBitmap;
-	private CurrencyAmountView amountView;
 	private Spinner addressView;
 	private CheckBox includeLabelView;
 	private View nfcEnabledView;
+
+	private CurrencyCalculatorLink amountCalculatorLink;
+
+	private static final int ID_RATE_LOADER = 0;
+
+	private final LoaderCallbacks<Cursor> rateLoaderCallbacks = new LoaderManager.LoaderCallbacks<Cursor>()
+	{
+		public Loader<Cursor> onCreateLoader(final int id, final Bundle args)
+		{
+			return new ExchangeRateLoader(activity);
+		}
+
+		public void onLoadFinished(final Loader<Cursor> loader, final Cursor data)
+		{
+			if (data != null)
+			{
+				data.moveToFirst();
+				final ExchangeRate exchangeRate = ExchangeRatesProvider.getExchangeRate(data);
+
+				amountCalculatorLink.setExchangeRate(exchangeRate);
+				updateView();
+			}
+		}
+
+		public void onLoaderReset(final Loader<Cursor> loader)
+		{
+		}
+	};
 
 	@Override
 	public void onAttach(final Activity activity)
 	{
 		super.onAttach(activity);
-		this.activity = (AbstractWalletActivity) activity;
-		application = (WalletApplication) activity.getApplication();
-		contentResolver = activity.getContentResolver();
 
-		nfcManager = activity.getSystemService(Context.NFC_SERVICE);
-		clipboardManager = (ClipboardManager) activity.getSystemService(Context.CLIPBOARD_SERVICE);
+		this.activity = (AbstractWalletActivity) activity;
+		this.application = (WalletApplication) activity.getApplication();
+		this.loaderManager = getLoaderManager();
+		this.nfcManager = (NfcManager) activity.getSystemService(Context.NFC_SERVICE);
+		this.clipboardManager = (ClipboardManager) activity.getSystemService(Context.CLIPBOARD_SERVICE);
+	}
+
+	@Override
+	public void onCreate(final Bundle savedInstanceState)
+	{
+		super.onCreate(savedInstanceState);
+
+		final SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(activity);
+		btcPrecision = Integer.parseInt(prefs.getString(Constants.PREFS_KEY_BTC_PRECISION, Constants.PREFS_DEFAULT_BTC_PRECISION));
 	}
 
 	@Override
@@ -101,17 +149,16 @@ public final class RequestCoinsFragment extends SherlockFragment implements Amou
 			}
 		});
 
-		amountView = (CurrencyAmountView) view.findViewById(R.id.request_coins_amount);
-		amountView.setContextButton(R.drawable.ic_input_calculator, new OnClickListener()
-		{
-			public void onClick(final View v)
-			{
-				AmountCalculatorFragment.calculate(getFragmentManager(), RequestCoinsFragment.this);
-			}
-		});
+		final CurrencyAmountView btcAmountView = (CurrencyAmountView) view.findViewById(R.id.request_coins_amount_btc);
+		btcAmountView.setCurrencySymbol(Constants.CURRENCY_CODE_BITCOIN);
+		btcAmountView.setHintPrecision(btcPrecision);
+
+		final CurrencyAmountView localAmountView = (CurrencyAmountView) view.findViewById(R.id.request_coins_amount_local);
+		localAmountView.setHintPrecision(Constants.LOCAL_PRECISION);
+		amountCalculatorLink = new CurrencyCalculatorLink(btcAmountView, localAmountView);
 
 		addressView = (Spinner) view.findViewById(R.id.request_coins_fragment_address);
-		final ArrayList<ECKey> keys = application.getWallet().keychain;
+		final List<ECKey> keys = application.getWallet().getKeys();
 		final WalletAddressesAdapter adapter = new WalletAddressesAdapter(activity, keys, false);
 		addressView.setAdapter(adapter);
 		final Address selectedAddress = application.determineSelectedAddress();
@@ -146,7 +193,7 @@ public final class RequestCoinsFragment extends SherlockFragment implements Amou
 	{
 		super.onResume();
 
-		amountView.setListener(new CurrencyAmountView.Listener()
+		amountCalculatorLink.setListener(new CurrencyAmountView.Listener()
 		{
 			public void changed()
 			{
@@ -167,6 +214,10 @@ public final class RequestCoinsFragment extends SherlockFragment implements Amou
 		{
 			public void onItemSelected(final AdapterView<?> parent, final View view, final int position, final long id)
 			{
+				// ignore layout operations
+				if (view == null)
+					return;
+
 				updateView();
 				updateShareIntent();
 			}
@@ -185,16 +236,19 @@ public final class RequestCoinsFragment extends SherlockFragment implements Amou
 			}
 		});
 
+		loaderManager.initLoader(ID_RATE_LOADER, null, rateLoaderCallbacks);
+
 		updateView();
 	}
 
 	@Override
 	public void onPause()
 	{
-		if (nfcManager != null)
-			NfcTools.unpublish(nfcManager, activity);
+		loaderManager.destroyLoader(ID_RATE_LOADER);
 
-		amountView.setListener(null);
+		NfcTools.unpublish(nfcManager, activity);
+
+		amountCalculatorLink.setListener(null);
 
 		addressView.setOnItemSelectedListener(null);
 
@@ -224,6 +278,10 @@ public final class RequestCoinsFragment extends SherlockFragment implements Amou
 			case R.id.request_coins_options_copy:
 				handleCopy();
 				return true;
+
+			case R.id.request_coins_options_local_app:
+				handleLocalApp();
+				return true;
 		}
 
 		return super.onOptionsItemSelected(item);
@@ -236,6 +294,13 @@ public final class RequestCoinsFragment extends SherlockFragment implements Amou
 		activity.toast(R.string.request_coins_clipboard_msg);
 	}
 
+	private void handleLocalApp()
+	{
+		final Intent intent = new Intent(Intent.ACTION_VIEW, Uri.parse(determineRequestStr()));
+		startActivity(intent);
+		activity.finish();
+	}
+
 	private void updateView()
 	{
 		final String request = determineRequestStr();
@@ -246,12 +311,9 @@ public final class RequestCoinsFragment extends SherlockFragment implements Amou
 		qrView.setImageBitmap(qrCodeBitmap);
 
 		// update ndef message
-		if (nfcManager != null)
-		{
-			final boolean success = NfcTools.publishUri(nfcManager, getActivity(), request);
-			if (success)
-				nfcEnabledView.setVisibility(View.VISIBLE);
-		}
+		final boolean success = NfcTools.publishUri(nfcManager, getActivity(), request);
+		if (success)
+			nfcEnabledView.setVisibility(View.VISIBLE);
 	}
 
 	private void updateShareIntent()
@@ -268,16 +330,11 @@ public final class RequestCoinsFragment extends SherlockFragment implements Amou
 	{
 		final boolean includeLabel = includeLabelView.isChecked();
 
-		final ECKey key = application.getWallet().keychain.get(addressView.getSelectedItemPosition());
+		final ECKey key = (ECKey) addressView.getSelectedItem();
 		final Address address = key.toAddress(Constants.NETWORK_PARAMETERS);
-		final String label = includeLabel ? AddressBookProvider.resolveLabel(contentResolver, address.toString()) : null;
-		final BigInteger amount = amountView.getAmount();
+		final String label = includeLabel ? AddressBookProvider.resolveLabel(activity, address.toString()) : null;
+		final BigInteger amount = amountCalculatorLink.getAmount();
 
 		return BitcoinURI.convertToBitcoinURI(address, amount, label, null).toString();
-	}
-
-	public void useCalculatedAmount(final BigInteger amount)
-	{
-		amountView.setAmount(amount);
 	}
 }

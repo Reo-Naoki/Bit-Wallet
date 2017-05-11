@@ -1,5 +1,5 @@
 /*
- * Copyright 2011-2012 the original author or authors.
+ * Copyright 2011-2013 the original author or authors.
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -18,9 +18,11 @@
 package de.schildbach.wallet.ui;
 
 import java.math.BigInteger;
+import java.util.Currency;
 
 import android.content.Context;
 import android.content.res.Resources;
+import android.graphics.Paint;
 import android.graphics.drawable.Drawable;
 import android.os.Bundle;
 import android.os.Parcelable;
@@ -42,6 +44,7 @@ import android.widget.TextView.OnEditorActionListener;
 import com.google.bitcoin.core.Utils;
 
 import de.schildbach.wallet.Constants;
+import de.schildbach.wallet.util.GenericUtils;
 import de.schildbach.wallet.util.WalletUtils;
 import de.schildbach.wallet_test.R;
 
@@ -61,8 +64,11 @@ public final class CurrencyAmountView extends FrameLayout
 
 	private int significantColor, lessSignificantColor, errorColor;
 	private Drawable deleteButtonDrawable, contextButtonDrawable;
-	private CurrencyCodeDrawable currencyCodeDrawable;
+	private Drawable currencySymbolDrawable;
+	private int inputPrecision = Constants.BTC_MAX_PRECISION;
+	private int hintPrecision = Constants.BTC_MAX_PRECISION;
 	private boolean amountSigned = false;
+	private boolean smallerInsignificant = true;
 	private boolean validateAmount = true;
 
 	private TextView textView;
@@ -101,9 +107,10 @@ public final class CurrencyAmountView extends FrameLayout
 		textView = (TextView) getChildAt(0);
 		textView.setInputType(InputType.TYPE_CLASS_NUMBER | InputType.TYPE_NUMBER_FLAG_DECIMAL);
 		textView.setHintTextColor(lessSignificantColor);
+		textView.setHorizontalFadingEdgeEnabled(true);
+		textView.setSingleLine();
 		setHint(null);
 		setValidateAmount(textView instanceof EditText);
-		final TextViewListener textViewListener = new TextViewListener();
 		textView.addTextChangedListener(textViewListener);
 		textView.setOnFocusChangeListener(textViewListener);
 		textView.setOnEditorActionListener(textViewListener);
@@ -121,29 +128,48 @@ public final class CurrencyAmountView extends FrameLayout
 		contextButton.setLayoutParams(chooseViewParams);
 		this.addView(contextButton);
 
-		setCurrencyCode(Constants.CURRENCY_CODE_BITCOIN);
+		updateAppearance();
+	}
+
+	public void setCurrencySymbol(final String currencyCode)
+	{
+		if (Constants.CURRENCY_CODE_BITCOIN.equals(currencyCode))
+		{
+			currencySymbolDrawable = getResources().getDrawable(R.drawable.currency_symbol_btc);
+		}
+		else if (currencyCode != null)
+		{
+			final String currencySymbol = currencySymbol(currencyCode);
+			final float textSize = textView.getTextSize();
+			final float smallerTextSize = textSize * (smallerInsignificant ? (20f / 24f) : 1);
+			currencySymbolDrawable = new CurrencySymbolDrawable(currencySymbol, smallerTextSize, lessSignificantColor, textSize * 0.37f);
+		}
+		else
+		{
+			currencySymbolDrawable = null;
+		}
 
 		updateAppearance();
 	}
 
-	public void setCurrencyCode(final String currencyCode)
+	public void setInputPrecision(final int inputPrecision)
 	{
-		if (currencyCode != null)
-		{
-			final float textSize = textView.getTextSize();
-			currencyCodeDrawable = new CurrencyCodeDrawable(currencyCode, textSize * 20f / 24f, lessSignificantColor, textSize * 0.37f);
-		}
-		else
-		{
-			currencyCodeDrawable = null;
-		}
+		this.inputPrecision = inputPrecision;
+	}
 
-		updateAppearance();
+	public void setHintPrecision(final int hintPrecision)
+	{
+		this.hintPrecision = hintPrecision;
 	}
 
 	public void setAmountSigned(final boolean amountSigned)
 	{
 		this.amountSigned = amountSigned;
+	}
+
+	public void setSmallerInsignificant(final boolean smallerInsignificant)
+	{
+		this.smallerInsignificant = smallerInsignificant;
 	}
 
 	public void setValidateAmount(final boolean validateAmount)
@@ -172,24 +198,30 @@ public final class CurrencyAmountView extends FrameLayout
 			return null;
 	}
 
-	public void setAmount(final BigInteger amount)
+	public void setAmount(final BigInteger amount, final boolean fireListener)
 	{
+		if (!fireListener)
+			textViewListener.setFire(false);
+
 		if (amount != null)
-			textView.setText(amountSigned ? WalletUtils.formatValue(amount, Constants.CURRENCY_PLUS_SIGN, Constants.CURRENCY_MINUS_SIGN)
-					: WalletUtils.formatValue(amount));
+			textView.setText(amountSigned ? GenericUtils.formatValue(amount, Constants.CURRENCY_PLUS_SIGN, Constants.CURRENCY_MINUS_SIGN,
+					inputPrecision) : GenericUtils.formatValue(amount, inputPrecision));
 		else
 			textView.setText(null);
+
+		if (!fireListener)
+			textViewListener.setFire(true);
 	}
 
 	public void setHint(final BigInteger amount)
 	{
 		final SpannableStringBuilder hint;
 		if (amount != null)
-			hint = new SpannableStringBuilder(WalletUtils.formatValue(amount));
+			hint = new SpannableStringBuilder(GenericUtils.formatValue(amount, hintPrecision));
 		else
 			hint = new SpannableStringBuilder("0.00");
 
-		WalletUtils.formatValue(hint);
+		WalletUtils.formatSignificant(hint, smallerInsignificant ? WalletUtils.SMALLER_SPAN : null);
 		textView.setHint(hint);
 	}
 
@@ -210,13 +242,21 @@ public final class CurrencyAmountView extends FrameLayout
 		updateAppearance();
 	}
 
+	public void setStrikeThru(final boolean strikeThru)
+	{
+		if (strikeThru)
+			textView.setPaintFlags(textView.getPaintFlags() | Paint.STRIKE_THRU_TEXT_FLAG);
+		else
+			textView.setPaintFlags(textView.getPaintFlags() & ~Paint.STRIKE_THRU_TEXT_FLAG);
+	}
+
 	private boolean isValidAmount()
 	{
 		final String amount = textView.getText().toString().trim();
 
 		try
 		{
-			if (amount.length() > 0)
+			if (!amount.isEmpty())
 			{
 				final BigInteger nanoCoins = Utils.toNanoCoins(amount);
 				if (nanoCoins.signum() >= 0)
@@ -234,7 +274,7 @@ public final class CurrencyAmountView extends FrameLayout
 	{
 		public void onClick(final View v)
 		{
-			textView.setText(null);
+			setAmount(null, true);
 			textView.requestFocus();
 		}
 	};
@@ -247,19 +287,19 @@ public final class CurrencyAmountView extends FrameLayout
 
 		final String amount = textView.getText().toString().trim();
 
-		if (enabled && amount.length() > 0)
+		if (enabled && !amount.isEmpty())
 		{
-			textView.setCompoundDrawablesWithIntrinsicBounds(currencyCodeDrawable, null, deleteButtonDrawable, null);
+			textView.setCompoundDrawablesWithIntrinsicBounds(currencySymbolDrawable, null, deleteButtonDrawable, null);
 			contextButton.setOnClickListener(deleteClickListener);
 		}
 		else if (enabled && contextButtonDrawable != null)
 		{
-			textView.setCompoundDrawablesWithIntrinsicBounds(currencyCodeDrawable, null, contextButtonDrawable, null);
+			textView.setCompoundDrawablesWithIntrinsicBounds(currencySymbolDrawable, null, contextButtonDrawable, null);
 			contextButton.setOnClickListener(contextButtonClickListener);
 		}
 		else
 		{
-			textView.setCompoundDrawablesWithIntrinsicBounds(currencyCodeDrawable, null, null, null);
+			textView.setCompoundDrawablesWithIntrinsicBounds(currencySymbolDrawable, null, null, null);
 			contextButton.setOnClickListener(null);
 		}
 
@@ -273,6 +313,7 @@ public final class CurrencyAmountView extends FrameLayout
 	{
 		final Bundle state = new Bundle();
 		state.putParcelable("super_state", super.onSaveInstanceState());
+		state.putParcelable("child_textview", textView.onSaveInstanceState());
 		state.putSerializable("amount", getAmount());
 		return state;
 	}
@@ -284,7 +325,8 @@ public final class CurrencyAmountView extends FrameLayout
 		{
 			final Bundle bundle = (Bundle) state;
 			super.onRestoreInstanceState(bundle.getParcelable("super_state"));
-			setAmount((BigInteger) bundle.getSerializable("amount"));
+			textView.onRestoreInstanceState(bundle.getParcelable("child_textview"));
+			setAmount((BigInteger) bundle.getSerializable("amount"), false);
 		}
 		else
 		{
@@ -292,8 +334,17 @@ public final class CurrencyAmountView extends FrameLayout
 		}
 	}
 
+	private final TextViewListener textViewListener = new TextViewListener();
+
 	private final class TextViewListener implements TextWatcher, OnFocusChangeListener, OnEditorActionListener
 	{
+		private boolean fire = true;
+
+		public void setFire(final boolean fire)
+		{
+			this.fire = fire;
+		}
+
 		public void afterTextChanged(final Editable s)
 		{
 			// workaround for German keyboards
@@ -305,7 +356,7 @@ public final class CurrencyAmountView extends FrameLayout
 				s.append(replaced);
 			}
 
-			WalletUtils.formatValue(s);
+			WalletUtils.formatSignificant(s, smallerInsignificant ? WalletUtils.SMALLER_SPAN : null);
 		}
 
 		public void beforeTextChanged(final CharSequence s, final int start, final int count, final int after)
@@ -315,7 +366,7 @@ public final class CurrencyAmountView extends FrameLayout
 		public void onTextChanged(final CharSequence s, final int start, final int before, final int count)
 		{
 			updateAppearance();
-			if (listener != null)
+			if (listener != null && fire)
 				listener.changed();
 		}
 
@@ -325,19 +376,32 @@ public final class CurrencyAmountView extends FrameLayout
 			{
 				final BigInteger amount = getAmount();
 				if (amount != null)
-					setAmount(amount);
+					setAmount(amount, false);
 			}
 
-			if (listener != null)
+			if (listener != null && fire)
 				listener.focusChanged(hasFocus);
 		}
 
 		public boolean onEditorAction(final TextView v, final int actionId, final KeyEvent event)
 		{
-			if (actionId == EditorInfo.IME_ACTION_DONE && listener != null)
+			if (actionId == EditorInfo.IME_ACTION_DONE && listener != null && fire)
 				listener.done();
 
 			return false;
+		}
+	}
+
+	private static String currencySymbol(final String currencyCode)
+	{
+		try
+		{
+			final Currency currency = Currency.getInstance(currencyCode);
+			return currency.getSymbol();
+		}
+		catch (final IllegalArgumentException x)
+		{
+			return currencyCode;
 		}
 	}
 }

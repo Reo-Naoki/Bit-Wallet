@@ -1,5 +1,5 @@
 /*
- * Copyright 2011-2012 the original author or authors.
+ * Copyright 2011-2013 the original author or authors.
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -42,7 +42,7 @@ public class AutosyncReceiver extends BroadcastReceiver
 		Log.i(TAG, "got broadcast intent: " + intent);
 
 		// other app got replaced
-		if (intent.getAction().equals(Intent.ACTION_PACKAGE_REPLACED) && !intent.getDataString().equals(context.getPackageName()))
+		if (intent.getAction().equals(Intent.ACTION_PACKAGE_REPLACED) && !intent.getDataString().equals("package:" + context.getPackageName()))
 			return;
 
 		final SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(context);

@@ -1,5 +1,5 @@
 /*
- * Copyright 2011-2012 the original author or authors.
+ * Copyright 2011-2013 the original author or authors.
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -17,10 +17,7 @@
 
 package de.schildbach.wallet.ui;
 
-import android.app.Dialog;
 import android.os.Bundle;
-import android.view.Window;
-import android.webkit.WebView;
 
 import com.actionbarsherlock.app.ActionBar;
 import com.actionbarsherlock.view.Menu;
@@ -33,8 +30,6 @@ import de.schildbach.wallet_test.R;
  */
 public final class RequestCoinsActivity extends AbstractWalletActivity
 {
-	private static final int DIALOG_HELP = 0;
-
 	@Override
 	protected void onCreate(final Bundle savedInstanceState)
 	{
@@ -43,7 +38,6 @@ public final class RequestCoinsActivity extends AbstractWalletActivity
 		setContentView(R.layout.request_coins_content);
 
 		final ActionBar actionBar = getSupportActionBar();
-		actionBar.setTitle(R.string.request_coins_activity_title);
 		actionBar.setDisplayHomeAsUpEnabled(true);
 	}
 
@@ -65,24 +59,10 @@ public final class RequestCoinsActivity extends AbstractWalletActivity
 				return true;
 
 			case R.id.request_coins_options_help:
-				showDialog(DIALOG_HELP);
+				HelpDialogFragment.page(getSupportFragmentManager(), "help_request_coins");
 				return true;
 		}
 
 		return super.onOptionsItemSelected(item);
-	}
-
-	@Override
-	protected Dialog onCreateDialog(final int id)
-	{
-		final WebView webView = new WebView(this);
-		webView.loadUrl("file:///android_asset/help_request_coins" + languagePrefix() + ".html");
-
-		final Dialog dialog = new Dialog(this);
-		dialog.requestWindowFeature(Window.FEATURE_NO_TITLE);
-		dialog.setContentView(webView);
-		dialog.setCanceledOnTouchOutside(true);
-
-		return dialog;
 	}
 }

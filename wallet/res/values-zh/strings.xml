@@ -2,16 +2,13 @@
 
 <resources>
 
-	<string name="app_name">比特币钱包</string>
 	<string name="toast_wallet_reset">钱包已重置，\n需要一些时间才能恢复</string>
 
-	<string name="blockchain_state_disclaimer">请阅读安全及风险提示以了解潜在使用风险。</string>
+	<string name="wallet_disclaimer">请阅读安全及风险提示以了解潜在使用风险。</string>
 	<string name="wallet_address_fragment_your">你的比特币地址：</string>
 	<string name="wallet_address_fragment_clipboard_msg">比特币地址已复制到剪贴板</string>
-	<string name="wallet_address_fragment_share_dialog_title">分享你的比特币地址…</string>
 	<string name="wallet_addresses_fragment_add_dialog_title">添加比特币地址</string>
 	<string name="wallet_addresses_fragment_add_dialog_message">不能删除比特币地址，或许你想要一个新地址？</string>
-	<string name="wallet_balance_fragment_local_value">总价值约为%1$s %2$s</string>
 	<string name="exchange_rates_fragment_empty_text">无法加载汇率</string>
 	<string name="wallet_transactions_fragment_tab_received">接收</string>
 	<string name="wallet_transactions_fragment_tab_all">全部</string>
@@ -31,17 +28,13 @@
 	<string name="send_coins_fragment_available_label">可用余额</string>
 	<string name="send_coins_fragment_pending">（%s比特币等待网络确认）</string>
 	<string name="send_coins_fragment_amount_label">总量</string>
-	<string name="send_coins_fragment_fee_label">手续费（可选）</string>
 	<string name="send_coins_fragment_button_send">发送</string>
 	<string name="send_coins_sending_msg">发送中…</string>
-	<string name="send_coins_add_address_dialog_title">收件人不在你的地址簿中哦！\n\n你确信是支付给这个地址？</string>
-	<string name="send_coins_add_address_dialog_button_add">添加地址</string>
 	<string name="send_coins_error_msg">支付时遇到了问题！</string>
-	<string name="send_coins_success_msg">%s比特币已发送！</string>
 
 	<string name="request_coins_activity_title">接收比特币</string>
 	<string name="request_coins_fragment_amount_label">接收数量（可选）</string>
-	<string name="request_coins_fragment_qr_label">请付款者扫描此二维码：</string>
+	<string name="request_coins_fragment_qr_label">请付款者扫描此二维码。</string>
 	<string name="request_coins_fragment_nfc_enabled">或使用具备近场支付功能的设备。</string>
 	<string name="request_coins_clipboard_msg">索取比特币的请求已复制到剪贴板</string>
 	<string name="request_coins_share_dialog_title">使用其它方式分享该申请…</string>
@@ -62,7 +55,7 @@
 
 	<string name="about_title">关于</string>
 	<string name="about_license_title">授权</string>
-	<string name="about_credits_bitcoinj_title">"本程序使用 '比特币j'"</string>
+	<string name="about_credits_bitcoinj_title">本程序使用 bitcoinj %s</string>
 	<string name="about_credits_zxing_title">"本程序使用 'zxing'"</string>
 	<string name="about_credits_icon_title">"本程序使用 'bitboy' 制作的图标"</string>
 	<string name="about_author_twitter_title">作者Twitter</string>

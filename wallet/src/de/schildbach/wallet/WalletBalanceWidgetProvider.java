@@ -1,5 +1,5 @@
 /*
- * Copyright 2011-2012 the original author or authors.
+ * Copyright 2011-2013 the original author or authors.
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -24,6 +24,8 @@ import android.appwidget.AppWidgetManager;
 import android.appwidget.AppWidgetProvider;
 import android.content.Context;
 import android.content.Intent;
+import android.content.SharedPreferences;
+import android.preference.PreferenceManager;
 import android.text.Editable;
 import android.text.SpannableStringBuilder;
 import android.widget.RemoteViews;
@@ -34,6 +36,7 @@ import com.google.bitcoin.core.Wallet.BalanceType;
 import de.schildbach.wallet.ui.RequestCoinsActivity;
 import de.schildbach.wallet.ui.SendCoinsActivity;
 import de.schildbach.wallet.ui.WalletActivity;
+import de.schildbach.wallet.util.GenericUtils;
 import de.schildbach.wallet.util.WalletUtils;
 import de.schildbach.wallet_test.R;
 
@@ -48,8 +51,17 @@ public class WalletBalanceWidgetProvider extends AppWidgetProvider
 		final WalletApplication application = (WalletApplication) context.getApplicationContext();
 		final Wallet wallet = application.getWallet();
 		final BigInteger balance = wallet.getBalance(BalanceType.ESTIMATED);
-		final Editable balanceStr = new SpannableStringBuilder(WalletUtils.formatValue(balance));
-		WalletUtils.formatValue(balanceStr);
+
+		updateWidgets(context, appWidgetManager, appWidgetIds, balance);
+	}
+
+	public static void updateWidgets(final Context context, final AppWidgetManager appWidgetManager, final int[] appWidgetIds,
+			final BigInteger balance)
+	{
+		final SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(context);
+		final int precision = Integer.parseInt(prefs.getString(Constants.PREFS_KEY_BTC_PRECISION, Constants.PREFS_DEFAULT_BTC_PRECISION));
+		final Editable balanceStr = new SpannableStringBuilder(GenericUtils.formatValue(balance, precision));
+		WalletUtils.formatSignificant(balanceStr, WalletUtils.SMALLER_SPAN);
 
 		for (final int appWidgetId : appWidgetIds)
 		{
@@ -62,7 +74,7 @@ public class WalletBalanceWidgetProvider extends AppWidgetProvider
 			views.setOnClickPendingIntent(R.id.widget_button_request,
 					PendingIntent.getActivity(context, 0, new Intent(context, RequestCoinsActivity.class), 0));
 
-			AppWidgetManager.getInstance(context).updateAppWidget(appWidgetId, views);
+			appWidgetManager.updateAppWidget(appWidgetId, views);
 		}
 	}
 }

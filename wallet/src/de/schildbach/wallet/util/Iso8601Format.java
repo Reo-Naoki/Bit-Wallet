@@ -1,5 +1,5 @@
 /*
- * Copyright 2011-2012 the original author or authors.
+ * Copyright 2011-2013 the original author or authors.
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -21,6 +21,7 @@ import java.text.DateFormat;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.Date;
+import java.util.TimeZone;
 
 import android.annotation.SuppressLint;
 
@@ -30,9 +31,13 @@ import android.annotation.SuppressLint;
 @SuppressLint("SimpleDateFormat")
 public class Iso8601Format extends SimpleDateFormat
 {
-	private Iso8601Format(String formatString)
+	private static final TimeZone UTC = TimeZone.getTimeZone("UTC");
+
+	private Iso8601Format(final String formatString)
 	{
 		super(formatString);
+
+		setTimeZone(UTC);
 	}
 
 	public static DateFormat newTimeFormat()

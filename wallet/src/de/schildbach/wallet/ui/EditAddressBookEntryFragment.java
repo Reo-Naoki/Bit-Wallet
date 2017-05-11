@@ -1,5 +1,5 @@
 /*
- * Copyright 2011-2012 the original author or authors.
+ * Copyright 2011-2013 the original author or authors.
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -26,9 +26,7 @@ import android.content.DialogInterface;
 import android.net.Uri;
 import android.os.Bundle;
 import android.support.v4.app.DialogFragment;
-import android.support.v4.app.Fragment;
 import android.support.v4.app.FragmentManager;
-import android.support.v4.app.FragmentTransaction;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.widget.TextView;
@@ -54,13 +52,8 @@ public final class EditAddressBookEntryFragment extends DialogFragment
 
 	public static void edit(final FragmentManager fm, final String address, final String suggestedAddressLabel)
 	{
-		final FragmentTransaction ft = fm.beginTransaction();
-		final Fragment prev = fm.findFragmentByTag(EditAddressBookEntryFragment.FRAGMENT_TAG);
-		if (prev != null)
-			ft.remove(prev);
-		ft.addToBackStack(null);
 		final DialogFragment newFragment = EditAddressBookEntryFragment.instance(address, suggestedAddressLabel);
-		newFragment.show(ft, EditAddressBookEntryFragment.FRAGMENT_TAG);
+		newFragment.show(fm, FRAGMENT_TAG);
 	}
 
 	private static EditAddressBookEntryFragment instance(final String address, final String suggestedAddressLabel)
@@ -76,6 +69,7 @@ public final class EditAddressBookEntryFragment extends DialogFragment
 	}
 
 	private Activity activity;
+	private ContentResolver contentResolver;
 
 	@Override
 	public void onAttach(final Activity activity)
@@ -83,6 +77,7 @@ public final class EditAddressBookEntryFragment extends DialogFragment
 		super.onAttach(activity);
 
 		this.activity = activity;
+		this.contentResolver = activity.getContentResolver();
 	}
 
 	@Override
@@ -94,10 +89,9 @@ public final class EditAddressBookEntryFragment extends DialogFragment
 
 		final LayoutInflater inflater = LayoutInflater.from(activity);
 
-		final ContentResolver contentResolver = activity.getContentResolver();
-		final Uri uri = AddressBookProvider.CONTENT_URI.buildUpon().appendPath(address).build();
+		final Uri uri = AddressBookProvider.contentUri(activity.getPackageName()).buildUpon().appendPath(address).build();
 
-		final String label = AddressBookProvider.resolveLabel(contentResolver, address);
+		final String label = AddressBookProvider.resolveLabel(activity, address);
 
 		final boolean isAdd = label == null;
 
@@ -108,7 +102,7 @@ public final class EditAddressBookEntryFragment extends DialogFragment
 		final View view = inflater.inflate(R.layout.edit_address_book_entry_dialog, null);
 
 		final TextView viewAddress = (TextView) view.findViewById(R.id.edit_address_book_entry_address);
-		viewAddress.setText(WalletUtils.formatAddress(address, Constants.ADDRESS_FORMAT_GROUP_SIZE, Constants.ADDRESS_FORMAT_LINE_SIZE));
+		viewAddress.setText(WalletUtils.formatHash(address, Constants.ADDRESS_FORMAT_GROUP_SIZE, Constants.ADDRESS_FORMAT_LINE_SIZE));
 
 		final TextView viewLabel = (TextView) view.findViewById(R.id.edit_address_book_entry_label);
 		viewLabel.setText(label != null ? label : suggestedAddressLabel);
@@ -123,7 +117,7 @@ public final class EditAddressBookEntryFragment extends DialogFragment
 				{
 					final String newLabel = viewLabel.getText().toString().trim();
 
-					if (newLabel.length() > 0)
+					if (!newLabel.isEmpty())
 					{
 						final ContentValues values = new ContentValues();
 						values.put(AddressBookProvider.KEY_LABEL, newLabel);

@@ -1,5 +1,5 @@
 /*
- * Copyright 2011-2012 the original author or authors.
+ * Copyright 2011-2013 the original author or authors.
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -19,9 +19,11 @@ package de.schildbach.wallet.ui;
 
 import android.app.Activity;
 import android.content.Context;
+import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.SharedPreferences.OnSharedPreferenceChangeListener;
 import android.graphics.Bitmap;
+import android.nfc.NfcManager;
 import android.os.Bundle;
 import android.preference.PreferenceManager;
 import android.support.v4.app.Fragment;
@@ -29,6 +31,7 @@ import android.support.v4.app.FragmentActivity;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.View.OnClickListener;
+import android.view.View.OnLongClickListener;
 import android.view.ViewGroup;
 import android.widget.ImageView;
 import android.widget.TextView;
@@ -51,7 +54,7 @@ public final class WalletAddressFragment extends Fragment
 	private FragmentActivity activity;
 	private WalletApplication application;
 	private SharedPreferences prefs;
-	private Object nfcManager;
+	private NfcManager nfcManager;
 
 	private View bitcoinAddressButton;
 	private TextView bitcoinAddressLabel;
@@ -67,15 +70,14 @@ public final class WalletAddressFragment extends Fragment
 		super.onAttach(activity);
 
 		this.activity = (FragmentActivity) activity;
-		prefs = PreferenceManager.getDefaultSharedPreferences(activity);
-		application = (WalletApplication) activity.getApplication();
+		this.application = (WalletApplication) activity.getApplication();
+		this.prefs = PreferenceManager.getDefaultSharedPreferences(activity);
+		this.nfcManager = (NfcManager) activity.getSystemService(Context.NFC_SERVICE);
 	}
 
 	@Override
 	public View onCreateView(final LayoutInflater inflater, final ViewGroup container, final Bundle savedInstanceState)
 	{
-		nfcManager = activity.getSystemService(Context.NFC_SERVICE);
-
 		final View view = inflater.inflate(R.layout.wallet_address_fragment, container, false);
 		bitcoinAddressButton = view.findViewById(R.id.bitcoin_address_button);
 		bitcoinAddressLabel = (TextView) view.findViewById(R.id.bitcoin_address_label);
@@ -97,6 +99,15 @@ public final class WalletAddressFragment extends Fragment
 			}
 		});
 
+		bitcoinAddressQrView.setOnLongClickListener(new OnLongClickListener()
+		{
+			public boolean onLongClick(final View v)
+			{
+				startActivity(new Intent(activity, RequestCoinsActivity.class));
+				return true;
+			}
+		});
+
 		return view;
 	}
 
@@ -115,8 +126,7 @@ public final class WalletAddressFragment extends Fragment
 	{
 		prefs.unregisterOnSharedPreferenceChangeListener(prefsListener);
 
-		if (nfcManager != null)
-			NfcTools.unpublish(nfcManager, getActivity());
+		NfcTools.unpublish(nfcManager, getActivity());
 
 		super.onPause();
 	}
@@ -138,8 +148,7 @@ public final class WalletAddressFragment extends Fragment
 			qrCodeBitmap = WalletUtils.getQRCodeBitmap(addressStr, size);
 			bitcoinAddressQrView.setImageBitmap(qrCodeBitmap);
 
-			if (nfcManager != null)
-				NfcTools.publishUri(nfcManager, getActivity(), addressStr);
+			NfcTools.publishUri(nfcManager, getActivity(), addressStr);
 		}
 	}
 

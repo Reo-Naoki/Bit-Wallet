@@ -1,5 +1,5 @@
 /*
- * Copyright 2012 the original author or authors.
+ * Copyright 2012-2013 the original author or authors.
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -37,7 +37,6 @@ public final class ExchangeRatesActivity extends AbstractWalletActivity
 		setContentView(R.layout.exchange_rates_content);
 
 		final ActionBar actionBar = getSupportActionBar();
-		actionBar.setTitle(R.string.exchange_rates_activity_title);
 		actionBar.setDisplayHomeAsUpEnabled(true);
 	}
 

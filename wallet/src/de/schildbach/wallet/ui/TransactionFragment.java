@@ -1,5 +1,5 @@
 /*
- * Copyright 2011-2012 the original author or authors.
+ * Copyright 2011-2013 the original author or authors.
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -26,11 +26,11 @@ import java.util.Locale;
 import java.util.zip.GZIPOutputStream;
 
 import android.app.Activity;
-import android.content.ContentResolver;
+import android.content.Context;
 import android.graphics.Bitmap;
 import android.graphics.Typeface;
 import android.os.Bundle;
-import android.support.v4.app.FragmentActivity;
+import android.text.ClipboardManager;
 import android.text.format.DateUtils;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -51,6 +51,7 @@ import de.schildbach.wallet.Constants;
 import de.schildbach.wallet.WalletApplication;
 import de.schildbach.wallet.util.Base43;
 import de.schildbach.wallet.util.BitmapFragment;
+import de.schildbach.wallet.util.GenericUtils;
 import de.schildbach.wallet.util.WalletUtils;
 import de.schildbach.wallet_test.R;
 
@@ -61,7 +62,10 @@ public final class TransactionFragment extends SherlockFragment
 {
 	public static final String FRAGMENT_TAG = TransactionFragment.class.getName();
 
-	private FragmentActivity activity;
+	private static final int SHOW_QR_THRESHOLD_BYTES = 2500;
+
+	private AbstractWalletActivity activity;
+	private ClipboardManager clipboardManager;
 
 	private DateFormat dateFormat;
 	private DateFormat timeFormat;
@@ -71,7 +75,8 @@ public final class TransactionFragment extends SherlockFragment
 	{
 		super.onAttach(activity);
 
-		this.activity = (FragmentActivity) activity;
+		this.activity = (AbstractWalletActivity) activity;
+		this.clipboardManager = (ClipboardManager) activity.getSystemService(Context.CLIPBOARD_SERVICE);
 
 		dateFormat = android.text.format.DateFormat.getDateFormat(activity);
 		timeFormat = android.text.format.DateFormat.getTimeFormat(activity);
@@ -105,15 +110,13 @@ public final class TransactionFragment extends SherlockFragment
 		boolean toMine = false;
 		try
 		{
-			to = tx.getOutputs().get(0).getScriptPubKey().getToAddress();
+			to = tx.getOutputs().get(0).getScriptPubKey().getToAddress(Constants.NETWORK_PARAMETERS);
 			toMine = wallet.isPubKeyHashMine(to.getHash160());
 		}
 		catch (final ScriptException x)
 		{
 			x.printStackTrace();
 		}
-
-		final ContentResolver contentResolver = activity.getContentResolver();
 
 		final View view = getView();
 
@@ -133,7 +136,7 @@ public final class TransactionFragment extends SherlockFragment
 			if (amountSent.signum() != 0)
 			{
 				final TextView viewAmountSent = (TextView) view.findViewById(R.id.transaction_fragment_amount_sent);
-				viewAmountSent.setText(Constants.CURRENCY_MINUS_SIGN + WalletUtils.formatValue(amountSent));
+				viewAmountSent.setText(Constants.CURRENCY_MINUS_SIGN + GenericUtils.formatValue(amountSent, Constants.BTC_MAX_PRECISION));
 			}
 		}
 		catch (final ScriptException x)
@@ -146,14 +149,14 @@ public final class TransactionFragment extends SherlockFragment
 		if (amountReceived.signum() != 0)
 		{
 			final TextView viewAmountReceived = (TextView) view.findViewById(R.id.transaction_fragment_amount_received);
-			viewAmountReceived.setText(Constants.CURRENCY_PLUS_SIGN + WalletUtils.formatValue(amountReceived));
+			viewAmountReceived.setText(Constants.CURRENCY_PLUS_SIGN + GenericUtils.formatValue(amountReceived, Constants.BTC_MAX_PRECISION));
 		}
 
 		final View viewFromButton = view.findViewById(R.id.transaction_fragment_from_button);
 		final TextView viewFromLabel = (TextView) view.findViewById(R.id.transaction_fragment_from_label);
 		if (from != null)
 		{
-			final String label = AddressBookProvider.resolveLabel(contentResolver, from.toString());
+			final String label = AddressBookProvider.resolveLabel(activity, from.toString());
 			final StringBuilder builder = new StringBuilder();
 
 			if (fromMine)
@@ -189,7 +192,7 @@ public final class TransactionFragment extends SherlockFragment
 		final TextView viewToLabel = (TextView) view.findViewById(R.id.transaction_fragment_to_label);
 		if (to != null)
 		{
-			final String label = AddressBookProvider.resolveLabel(contentResolver, to.toString());
+			final String label = AddressBookProvider.resolveLabel(activity, to.toString());
 			final StringBuilder builder = new StringBuilder();
 
 			if (toMine)
@@ -223,9 +226,9 @@ public final class TransactionFragment extends SherlockFragment
 
 		final TextView viewStatus = (TextView) view.findViewById(R.id.transaction_fragment_status);
 		final ConfidenceType confidenceType = tx.getConfidence().getConfidenceType();
-		if (confidenceType == ConfidenceType.DEAD || confidenceType == ConfidenceType.NOT_IN_BEST_CHAIN)
+		if (confidenceType == ConfidenceType.DEAD)
 			viewStatus.setText(R.string.transaction_fragment_status_dead);
-		else if (confidenceType == ConfidenceType.NOT_SEEN_IN_CHAIN)
+		else if (confidenceType == ConfidenceType.PENDING)
 			viewStatus.setText(R.string.transaction_fragment_status_pending);
 		else if (confidenceType == ConfidenceType.BUILDING)
 			viewStatus.setText(R.string.transaction_fragment_status_confirmed);
@@ -233,41 +236,61 @@ public final class TransactionFragment extends SherlockFragment
 			viewStatus.setText(R.string.transaction_fragment_status_unknown);
 
 		final TextView viewHash = (TextView) view.findViewById(R.id.transaction_fragment_hash);
-		viewHash.setText(tx.getHash().toString());
+		final View viewHashButton = view.findViewById(R.id.transaction_fragment_hash_button);
+		final String txHashString = tx.getHash().toString();
+		viewHash.setText(txHashString);
+		viewHashButton.setOnClickListener(new OnClickListener()
+		{
+			public void onClick(final View v)
+			{
+				clipboardManager.setText(txHashString);
+				activity.toast(R.string.transaction_fragment_hash_clipboard_msg);
+			}
+		});
 
 		final TextView viewLength = (TextView) view.findViewById(R.id.transaction_fragment_length);
 		viewLength.setText(Integer.toString(serializedTx.length));
 
 		final ImageView viewQr = (ImageView) view.findViewById(R.id.transaction_fragment_qr);
+		viewQr.setVisibility(View.GONE);
 
-		try
+		if (serializedTx.length < SHOW_QR_THRESHOLD_BYTES)
 		{
-			// encode transaction URI
-			final ByteArrayOutputStream bos = new ByteArrayOutputStream(serializedTx.length);
-			final GZIPOutputStream gos = new GZIPOutputStream(bos);
-			gos.write(serializedTx);
-			gos.close();
-
-			final byte[] gzippedSerializedTx = bos.toByteArray();
-			final boolean useCompressioon = gzippedSerializedTx.length < serializedTx.length;
-
-			final StringBuilder txStr = new StringBuilder("btctx:");
-			txStr.append(useCompressioon ? 'Z' : '-');
-			txStr.append(Base43.encode(useCompressioon ? gzippedSerializedTx : serializedTx));
-
-			final Bitmap qrCodeBitmap = WalletUtils.getQRCodeBitmap(txStr.toString().toUpperCase(Locale.US), 512);
-			viewQr.setImageBitmap(qrCodeBitmap);
-			viewQr.setOnClickListener(new OnClickListener()
+			try
 			{
-				public void onClick(final View v)
+				// encode transaction URI
+				final ByteArrayOutputStream bos = new ByteArrayOutputStream(serializedTx.length);
+				final GZIPOutputStream gos = new GZIPOutputStream(bos);
+				gos.write(serializedTx);
+				gos.close();
+
+				final byte[] gzippedSerializedTx = bos.toByteArray();
+				final boolean useCompressioon = gzippedSerializedTx.length < serializedTx.length;
+
+				final StringBuilder txStr = new StringBuilder("btctx:");
+				txStr.append(useCompressioon ? 'Z' : '-');
+				txStr.append(Base43.encode(useCompressioon ? gzippedSerializedTx : serializedTx));
+
+				final Bitmap qrCodeBitmap = WalletUtils.getQRCodeBitmap(txStr.toString().toUpperCase(Locale.US), 512);
+				viewQr.setImageBitmap(qrCodeBitmap);
+				viewQr.setOnClickListener(new OnClickListener()
 				{
-					BitmapFragment.show(getFragmentManager(), qrCodeBitmap);
-				}
-			});
-		}
-		catch (final IOException x)
-		{
-			throw new RuntimeException(x);
+					public void onClick(final View v)
+					{
+						BitmapFragment.show(getFragmentManager(), qrCodeBitmap);
+					}
+				});
+
+				viewQr.setVisibility(View.VISIBLE);
+			}
+			catch (final IOException x)
+			{
+				throw new RuntimeException(x);
+			}
+			catch (final OutOfMemoryError x)
+			{
+				// swallow
+			}
 		}
 	}
 }

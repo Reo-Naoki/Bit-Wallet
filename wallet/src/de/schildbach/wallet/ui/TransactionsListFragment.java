@@ -1,5 +1,5 @@
 /*
- * Copyright 2011-2012 the original author or authors.
+ * Copyright 2011-2013 the original author or authors.
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -24,20 +24,27 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.Date;
 import java.util.List;
-import java.util.concurrent.atomic.AtomicLong;
+import java.util.Set;
 
 import android.app.Activity;
 import android.content.ContentResolver;
 import android.content.Context;
+import android.content.Intent;
 import android.content.SharedPreferences;
+import android.content.SharedPreferences.OnSharedPreferenceChangeListener;
 import android.database.ContentObserver;
+import android.graphics.Typeface;
+import android.net.Uri;
 import android.os.Bundle;
 import android.os.Handler;
 import android.preference.PreferenceManager;
+import android.support.v4.app.LoaderManager;
 import android.support.v4.app.LoaderManager.LoaderCallbacks;
 import android.support.v4.content.AsyncTaskLoader;
 import android.support.v4.content.Loader;
+import android.text.SpannableStringBuilder;
 import android.text.format.DateUtils;
+import android.text.style.StyleSpan;
 import android.view.View;
 import android.widget.ListView;
 
@@ -46,24 +53,23 @@ import com.actionbarsherlock.view.ActionMode;
 import com.actionbarsherlock.view.Menu;
 import com.actionbarsherlock.view.MenuInflater;
 import com.actionbarsherlock.view.MenuItem;
-import com.google.bitcoin.core.AbstractWalletEventListener;
 import com.google.bitcoin.core.Address;
 import com.google.bitcoin.core.ScriptException;
 import com.google.bitcoin.core.Transaction;
 import com.google.bitcoin.core.TransactionConfidence.ConfidenceType;
 import com.google.bitcoin.core.Wallet;
-import com.google.bitcoin.core.WalletEventListener;
 
 import de.schildbach.wallet.AddressBookProvider;
 import de.schildbach.wallet.Constants;
 import de.schildbach.wallet.WalletApplication;
+import de.schildbach.wallet.util.ThrottelingWalletChangeListener;
 import de.schildbach.wallet.util.WalletUtils;
 import de.schildbach.wallet_test.R;
 
 /**
  * @author Andreas Schildbach
  */
-public class TransactionsListFragment extends SherlockListFragment implements LoaderCallbacks<List<Transaction>>
+public class TransactionsListFragment extends SherlockListFragment implements LoaderCallbacks<List<Transaction>>, OnSharedPreferenceChangeListener
 {
 	public enum Direction
 	{
@@ -71,18 +77,20 @@ public class TransactionsListFragment extends SherlockListFragment implements Lo
 	}
 
 	private AbstractWalletActivity activity;
-	private ContentResolver resolver;
-	private SharedPreferences prefs;
-
 	private WalletApplication application;
 	private Wallet wallet;
+	private SharedPreferences prefs;
+	private ContentResolver resolver;
+	private LoaderManager loaderManager;
+
 	private TransactionsListAdapter adapter;
 
 	private Direction direction;
 
 	private final Handler handler = new Handler();
 
-	private final static String KEY_DIRECTION = "direction";
+	private static final String KEY_DIRECTION = "direction";
+	private static final long THROTTLE_MS = DateUtils.SECOND_IN_MILLIS;
 
 	public static TransactionsListFragment instance(final Direction direction)
 	{
@@ -110,10 +118,11 @@ public class TransactionsListFragment extends SherlockListFragment implements Lo
 		super.onAttach(activity);
 
 		this.activity = (AbstractWalletActivity) activity;
-		resolver = activity.getContentResolver();
-		prefs = PreferenceManager.getDefaultSharedPreferences(activity);
-		application = (WalletApplication) activity.getApplication();
-		wallet = application.getWallet();
+		this.application = (WalletApplication) activity.getApplication();
+		this.wallet = application.getWallet();
+		this.prefs = PreferenceManager.getDefaultSharedPreferences(activity);
+		this.resolver = activity.getContentResolver();
+		this.loaderManager = getLoaderManager();
 	}
 
 	@Override
@@ -125,12 +134,26 @@ public class TransactionsListFragment extends SherlockListFragment implements Lo
 
 		this.direction = (Direction) getArguments().getSerializable(KEY_DIRECTION);
 
-		adapter = new TransactionsListAdapter(activity, wallet);
+		final boolean showBackupWarning = direction == null || direction == Direction.RECEIVED;
+
+		adapter = new TransactionsListAdapter(activity, wallet, application.maxConnectedPeers(), showBackupWarning);
 		setListAdapter(adapter);
+	}
 
-		activity.getContentResolver().registerContentObserver(AddressBookProvider.CONTENT_URI, true, addressBookObserver);
+	@Override
+	public void onResume()
+	{
+		super.onResume();
 
-		getLoaderManager().initLoader(0, null, this);
+		resolver.registerContentObserver(AddressBookProvider.contentUri(activity.getPackageName()), true, addressBookObserver);
+
+		prefs.registerOnSharedPreferenceChangeListener(this);
+
+		loaderManager.initLoader(0, null, this);
+
+		wallet.addEventListener(transactionChangeListener);
+
+		updateView();
 	}
 
 	@Override
@@ -138,26 +161,29 @@ public class TransactionsListFragment extends SherlockListFragment implements Lo
 	{
 		super.onViewCreated(view, savedInstanceState);
 
-		setEmptyText(getString(direction == Direction.SENT ? R.string.wallet_transactions_fragment_empty_text_sent
-				: R.string.wallet_transactions_fragment_empty_text_received));
+		final SpannableStringBuilder emptyText = new SpannableStringBuilder(
+				getString(direction == Direction.SENT ? R.string.wallet_transactions_fragment_empty_text_sent
+						: R.string.wallet_transactions_fragment_empty_text_received));
+		emptyText.setSpan(new StyleSpan(Typeface.BOLD), 0, emptyText.length(), SpannableStringBuilder.SPAN_POINT_MARK);
+		if (direction != Direction.SENT)
+			emptyText.append("\n\n").append(getString(R.string.wallet_transactions_fragment_empty_text_howto));
+
+		setEmptyText(emptyText);
 	}
 
 	@Override
-	public void onDestroyView()
+	public void onPause()
 	{
-		adapter.clearLabelCache();
+		wallet.removeEventListener(transactionChangeListener);
+		transactionChangeListener.removeCallbacks();
 
-		super.onDestroyView();
-	}
+		loaderManager.destroyLoader(0);
 
-	@Override
-	public void onDestroy()
-	{
-		activity.getContentResolver().unregisterContentObserver(addressBookObserver);
+		prefs.unregisterOnSharedPreferenceChangeListener(this);
 
-		getLoaderManager().destroyLoader(0);
+		resolver.unregisterContentObserver(addressBookObserver);
 
-		super.onDestroy();
+		super.onPause();
 	}
 
 	@Override
@@ -165,6 +191,14 @@ public class TransactionsListFragment extends SherlockListFragment implements Lo
 	{
 		final Transaction tx = (Transaction) adapter.getItem(position);
 
+		if (tx != null)
+			handleTransactionClick(tx);
+		else
+			handleBackupWarningClick();
+	}
+
+	private void handleTransactionClick(final Transaction tx)
+	{
 		activity.startActionMode(new ActionMode.Callback()
 		{
 			private Address address;
@@ -175,6 +209,8 @@ public class TransactionsListFragment extends SherlockListFragment implements Lo
 				inflater.inflate(R.menu.wallet_transactions_context, menu);
 				menu.findItem(R.id.wallet_transactions_context_show_transaction).setVisible(
 						prefs.getBoolean(Constants.PREFS_KEY_LABS_TRANSACTION_DETAILS, false));
+				menu.findItem(R.id.wallet_transactions_context_open_blockexplorer).setVisible(
+						prefs.getBoolean(Constants.PREFS_KEY_LABS_BLOCKEXPLORER_INTEGRATION, false));
 
 				return true;
 			}
@@ -199,7 +235,7 @@ public class TransactionsListFragment extends SherlockListFragment implements Lo
 					if (tx.isCoinBase())
 						label = getString(R.string.wallet_transactions_fragment_coinbase);
 					else if (address != null)
-						label = AddressBookProvider.resolveLabel(resolver, address.toString());
+						label = AddressBookProvider.resolveLabel(activity, address.toString());
 					else
 						label = "?";
 
@@ -233,6 +269,12 @@ public class TransactionsListFragment extends SherlockListFragment implements Lo
 
 						mode.finish();
 						return true;
+
+					case R.id.wallet_transactions_context_open_blockexplorer:
+						startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse(Constants.BLOCKEXPLORER_BASE_URL + "tx/" + tx.getHashAsString())));
+
+						mode.finish();
+						return true;
 				}
 				return false;
 			}
@@ -248,44 +290,46 @@ public class TransactionsListFragment extends SherlockListFragment implements Lo
 		});
 	}
 
+	private void handleBackupWarningClick()
+	{
+		((WalletActivity) activity).handleExportKeys();
+	}
+
 	public Loader<List<Transaction>> onCreateLoader(final int id, final Bundle args)
 	{
-		return new TransactionsLoader(activity, wallet);
+		return new TransactionsLoader(activity, wallet, direction);
 	}
 
 	public void onLoadFinished(final Loader<List<Transaction>> loader, final List<Transaction> transactions)
 	{
-		adapter.clear();
-
-		try
-		{
-			for (final Transaction tx : transactions)
-			{
-				final boolean sent = tx.getValue(wallet).signum() < 0;
-				if ((direction == Direction.RECEIVED && !sent) || direction == null || (direction == Direction.SENT && sent))
-					adapter.add(tx);
-			}
-		}
-		catch (final ScriptException x)
-		{
-			throw new RuntimeException(x);
-		}
+		adapter.replace(transactions);
 	}
 
 	public void onLoaderReset(final Loader<List<Transaction>> loader)
 	{
-		adapter.clear();
+		// don't clear the adapter, because it will confuse users
 	}
+
+	private final ThrottelingWalletChangeListener transactionChangeListener = new ThrottelingWalletChangeListener(THROTTLE_MS)
+	{
+		@Override
+		public void onThrotteledWalletChanged()
+		{
+			adapter.notifyDataSetChanged();
+		}
+	};
 
 	private static class TransactionsLoader extends AsyncTaskLoader<List<Transaction>>
 	{
 		private final Wallet wallet;
+		private final Direction direction;
 
-		private TransactionsLoader(final Context context, final Wallet wallet)
+		private TransactionsLoader(final Context context, final Wallet wallet, final Direction direction)
 		{
 			super(context);
 
 			this.wallet = wallet;
+			this.direction = direction;
 		}
 
 		@Override
@@ -293,7 +337,8 @@ public class TransactionsListFragment extends SherlockListFragment implements Lo
 		{
 			super.onStartLoading();
 
-			wallet.addEventListener(walletEventListener);
+			wallet.addEventListener(transactionAddRemoveListener);
+			transactionAddRemoveListener.onReorganize(null); // trigger at least one reload
 
 			forceLoad();
 		}
@@ -301,7 +346,8 @@ public class TransactionsListFragment extends SherlockListFragment implements Lo
 		@Override
 		protected void onStopLoading()
 		{
-			wallet.removeEventListener(walletEventListener);
+			wallet.removeEventListener(transactionAddRemoveListener);
+			transactionAddRemoveListener.removeCallbacks();
 
 			super.onStopLoading();
 		}
@@ -309,49 +355,44 @@ public class TransactionsListFragment extends SherlockListFragment implements Lo
 		@Override
 		public List<Transaction> loadInBackground()
 		{
-			final List<Transaction> transactions = new ArrayList<Transaction>(wallet.getTransactions(true, false));
+			final Set<Transaction> transactions = wallet.getTransactions(true);
+			final List<Transaction> filteredTransactions = new ArrayList<Transaction>(transactions.size());
 
-			Collections.sort(transactions, TRANSACTION_COMPARATOR);
-
-			return transactions;
-		}
-
-		private final WalletEventListener walletEventListener = new AbstractWalletEventListener()
-		{
-			private final AtomicLong lastMessageTime = new AtomicLong(0);
-			private static final int THROTTLE_MS = 200;
-			private final Handler handler = new Handler();
-
-			@Override
-			public void onChange()
+			try
 			{
-				handler.removeCallbacksAndMessages(null);
-
-				final long now = System.currentTimeMillis();
-
-				if (now - lastMessageTime.get() > THROTTLE_MS)
-					handler.post(runnable);
-				else
-					handler.postDelayed(runnable, THROTTLE_MS);
+				for (final Transaction tx : transactions)
+				{
+					final boolean sent = tx.getValue(wallet).signum() < 0;
+					if ((direction == Direction.RECEIVED && !sent) || direction == null || (direction == Direction.SENT && sent))
+						filteredTransactions.add(tx);
+				}
+			}
+			catch (final ScriptException x)
+			{
+				throw new RuntimeException(x);
 			}
 
-			private final Runnable runnable = new Runnable()
-			{
-				public void run()
-				{
-					lastMessageTime.set(System.currentTimeMillis());
+			Collections.sort(filteredTransactions, TRANSACTION_COMPARATOR);
 
-					forceLoad();
-				}
-			};
+			return filteredTransactions;
+		}
+
+		private final ThrottelingWalletChangeListener transactionAddRemoveListener = new ThrottelingWalletChangeListener(THROTTLE_MS, true, true,
+				false)
+		{
+			@Override
+			public void onThrotteledWalletChanged()
+			{
+				forceLoad();
+			}
 		};
 
 		private static final Comparator<Transaction> TRANSACTION_COMPARATOR = new Comparator<Transaction>()
 		{
 			public int compare(final Transaction tx1, final Transaction tx2)
 			{
-				final boolean pending1 = tx1.getConfidence().getConfidenceType() == ConfidenceType.NOT_SEEN_IN_CHAIN;
-				final boolean pending2 = tx2.getConfidence().getConfidenceType() == ConfidenceType.NOT_SEEN_IN_CHAIN;
+				final boolean pending1 = tx1.getConfidence().getConfidenceType() == ConfidenceType.PENDING;
+				final boolean pending2 = tx2.getConfidence().getConfidenceType() == ConfidenceType.PENDING;
 
 				if (pending1 != pending2)
 					return pending1 ? -1 : 1;
@@ -369,5 +410,18 @@ public class TransactionsListFragment extends SherlockListFragment implements Lo
 					return 0;
 			}
 		};
+	}
+
+	public void onSharedPreferenceChanged(final SharedPreferences sharedPreferences, final String key)
+	{
+		if (Constants.PREFS_KEY_BTC_PRECISION.equals(key))
+			updateView();
+	}
+
+	private void updateView()
+	{
+		adapter.setPrecision(Integer.parseInt(prefs.getString(Constants.PREFS_KEY_BTC_PRECISION, Constants.PREFS_DEFAULT_BTC_PRECISION)));
+
+		adapter.clearLabelCache();
 	}
 }

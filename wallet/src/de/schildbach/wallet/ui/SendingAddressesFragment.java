@@ -1,5 +1,5 @@
 /*
- * Copyright 2011-2012 the original author or authors.
+ * Copyright 2011-2013 the original author or authors.
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -60,6 +60,8 @@ public final class SendingAddressesFragment extends SherlockListFragment impleme
 {
 	private AbstractWalletActivity activity;
 	private ClipboardManager clipboardManager;
+	private LoaderManager loaderManager;
+
 	private SimpleCursorAdapter adapter;
 	private String walletAddressesSelection;
 
@@ -73,8 +75,8 @@ public final class SendingAddressesFragment extends SherlockListFragment impleme
 		super.onAttach(activity);
 
 		this.activity = (AbstractWalletActivity) activity;
-
-		clipboardManager = (ClipboardManager) activity.getSystemService(Context.CLIPBOARD_SERVICE);
+		this.clipboardManager = (ClipboardManager) activity.getSystemService(Context.CLIPBOARD_SERVICE);
+		this.loaderManager = getLoaderManager();
 	}
 
 	@Override
@@ -101,7 +103,7 @@ public final class SendingAddressesFragment extends SherlockListFragment impleme
 				if (!AddressBookProvider.KEY_ADDRESS.equals(cursor.getColumnName(columnIndex)))
 					return false;
 
-				((TextView) view).setText(WalletUtils.formatAddress(cursor.getString(columnIndex), Constants.ADDRESS_FORMAT_GROUP_SIZE,
+				((TextView) view).setText(WalletUtils.formatHash(cursor.getString(columnIndex), Constants.ADDRESS_FORMAT_GROUP_SIZE,
 						Constants.ADDRESS_FORMAT_LINE_SIZE));
 
 				return true;
@@ -109,7 +111,7 @@ public final class SendingAddressesFragment extends SherlockListFragment impleme
 		});
 		setListAdapter(adapter);
 
-		getLoaderManager().initLoader(0, null, this);
+		loaderManager.initLoader(0, null, this);
 	}
 
 	@Override
@@ -290,14 +292,12 @@ public final class SendingAddressesFragment extends SherlockListFragment impleme
 
 	private void handleSend(final String address)
 	{
-		final Intent intent = new Intent(activity, SendCoinsActivity.class);
-		intent.putExtra(SendCoinsActivity.INTENT_EXTRA_ADDRESS, address);
-		startActivity(intent);
+		SendCoinsActivity.start(activity, address, null, null);
 	}
 
 	private void handleRemove(final String address)
 	{
-		final Uri uri = AddressBookProvider.CONTENT_URI.buildUpon().appendPath(address).build();
+		final Uri uri = AddressBookProvider.contentUri(activity.getPackageName()).buildUpon().appendPath(address).build();
 		activity.getContentResolver().delete(uri, null, null);
 	}
 
@@ -310,14 +310,13 @@ public final class SendingAddressesFragment extends SherlockListFragment impleme
 
 	private void handleCopyToClipboard(final String address)
 	{
-		ClipboardManager clipboardManager = (ClipboardManager) activity.getSystemService(Context.CLIPBOARD_SERVICE);
 		clipboardManager.setText(address);
-		((AbstractWalletActivity) activity).toast(R.string.wallet_address_fragment_clipboard_msg);
+		activity.toast(R.string.wallet_address_fragment_clipboard_msg);
 	}
 
 	public Loader<Cursor> onCreateLoader(final int id, final Bundle args)
 	{
-		final Uri uri = AddressBookProvider.CONTENT_URI;
+		final Uri uri = AddressBookProvider.contentUri(activity.getPackageName());
 		return new CursorLoader(activity, uri, null, AddressBookProvider.SELECTION_NOTIN,
 				new String[] { walletAddressesSelection != null ? walletAddressesSelection : "" }, AddressBookProvider.KEY_LABEL
 						+ " COLLATE LOCALIZED ASC");

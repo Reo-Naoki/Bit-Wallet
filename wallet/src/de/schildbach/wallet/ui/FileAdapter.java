@@ -1,5 +1,5 @@
 /*
- * Copyright 2012 the original author or authors.
+ * Copyright 2012-2013 the original author or authors.
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -18,6 +18,7 @@
 package de.schildbach.wallet.ui;
 
 import java.io.File;
+import java.util.List;
 
 import android.content.Context;
 import android.view.LayoutInflater;
@@ -30,14 +31,16 @@ import de.schildbach.wallet_test.R;
 /**
  * @author Andreas Schildbach
  */
-public class FileAdapter extends ArrayAdapter<File>
+public abstract class FileAdapter extends ArrayAdapter<File>
 {
-	private final LayoutInflater inflater;
+	protected final Context context;
+	protected final LayoutInflater inflater;
 
-	public FileAdapter(final Context context, final File[] files)
+	public FileAdapter(final Context context, final List<File> files)
 	{
 		super(context, 0, files);
 
+		this.context = context;
 		inflater = LayoutInflater.from(context);
 	}
 
@@ -48,20 +51,6 @@ public class FileAdapter extends ArrayAdapter<File>
 
 		if (row == null)
 			row = inflater.inflate(R.layout.spinner_item, null);
-
-		final TextView textView = (TextView) row.findViewById(android.R.id.text1);
-		textView.setText(file.getName());
-
-		return row;
-	}
-
-	@Override
-	public View getDropDownView(final int position, View row, final ViewGroup parent)
-	{
-		final File file = getItem(position);
-
-		if (row == null)
-			row = inflater.inflate(R.layout.spinner_dropdown_item, null);
 
 		final TextView textView = (TextView) row.findViewById(android.R.id.text1);
 		textView.setText(file.getName());

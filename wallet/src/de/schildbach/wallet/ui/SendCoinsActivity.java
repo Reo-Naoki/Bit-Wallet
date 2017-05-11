@@ -1,5 +1,5 @@
 /*
- * Copyright 2011-2012 the original author or authors.
+ * Copyright 2011-2013 the original author or authors.
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -19,21 +19,21 @@ package de.schildbach.wallet.ui;
 
 import java.math.BigInteger;
 
-import android.app.Dialog;
+import android.app.AlertDialog;
+import android.app.AlertDialog.Builder;
+import android.content.Context;
 import android.content.Intent;
 import android.net.Uri;
 import android.nfc.NfcAdapter;
 import android.os.Bundle;
-import android.view.Window;
-import android.webkit.WebView;
 
 import com.actionbarsherlock.app.ActionBar;
 import com.actionbarsherlock.view.Menu;
 import com.actionbarsherlock.view.MenuItem;
+import com.google.bitcoin.core.Address;
 import com.google.bitcoin.uri.BitcoinURI;
 import com.google.bitcoin.uri.BitcoinURIParseException;
 
-import de.schildbach.wallet.service.BlockchainServiceImpl;
 import de.schildbach.wallet_test.R;
 
 /**
@@ -41,10 +41,46 @@ import de.schildbach.wallet_test.R;
  */
 public final class SendCoinsActivity extends AbstractWalletActivity
 {
-	public static final String INTENT_EXTRA_ADDRESS = "address";
-	public static final String INTENT_EXTRA_ADDRESS_LABEL = "address_label";
+	private static final String INTENT_EXTRA_ADDRESS = "address";
+	private static final String INTENT_EXTRA_ADDRESS_LABEL = "address_label";
+	private static final String INTENT_EXTRA_AMOUNT = "amount";
 
-	private static final int DIALOG_HELP = 0;
+	public static void start(final Context context, final String address, final String addressLabel, final BigInteger amount)
+	{
+		final Intent intent = new Intent(context, SendCoinsActivity.class);
+		intent.putExtra(INTENT_EXTRA_ADDRESS, address);
+		intent.putExtra(INTENT_EXTRA_ADDRESS_LABEL, addressLabel);
+		intent.putExtra(INTENT_EXTRA_AMOUNT, amount);
+		context.startActivity(intent);
+	}
+
+	public static void start(final Context context, final String uri)
+	{
+		if (uri.matches("[a-zA-Z0-9]*"))
+		{
+			start(context, uri, null, null);
+		}
+		else
+		{
+			try
+			{
+				final BitcoinURI bitcoinUri = new BitcoinURI(null, uri);
+				final Address address = bitcoinUri.getAddress();
+				final String addressLabel = bitcoinUri.getLabel();
+				final BigInteger amount = bitcoinUri.getAmount();
+
+				start(context, address != null ? address.toString() : null, addressLabel, amount);
+			}
+			catch (final BitcoinURIParseException x)
+			{
+				final Builder dialog = new AlertDialog.Builder(context);
+				dialog.setTitle(R.string.send_coins_uri_parse_error_title);
+				dialog.setMessage(uri);
+				dialog.setNeutralButton(R.string.button_dismiss, null);
+				dialog.show();
+			}
+		}
+	}
 
 	@Override
 	protected void onCreate(final Bundle savedInstanceState)
@@ -53,10 +89,9 @@ public final class SendCoinsActivity extends AbstractWalletActivity
 
 		setContentView(R.layout.send_coins_content);
 
-		startService(new Intent(this, BlockchainServiceImpl.class));
+		getWalletApplication().startBlockchainService(false);
 
 		final ActionBar actionBar = getSupportActionBar();
-		actionBar.setTitle(R.string.send_coins_activity_title);
 		actionBar.setDisplayHomeAsUpEnabled(true);
 
 		handleIntent(getIntent());
@@ -66,20 +101,6 @@ public final class SendCoinsActivity extends AbstractWalletActivity
 	protected void onNewIntent(final Intent intent)
 	{
 		handleIntent(intent);
-	}
-
-	@Override
-	protected Dialog onCreateDialog(final int id)
-	{
-		final WebView webView = new WebView(this);
-		webView.loadUrl("file:///android_asset/help_send_coins" + languagePrefix() + ".html");
-
-		final Dialog dialog = new Dialog(this);
-		dialog.requestWindowFeature(Window.FEATURE_NO_TITLE);
-		dialog.setContentView(webView);
-		dialog.setCanceledOnTouchOutside(true);
-
-		return dialog;
 	}
 
 	@Override
@@ -100,7 +121,7 @@ public final class SendCoinsActivity extends AbstractWalletActivity
 				return true;
 
 			case R.id.send_coins_options_help:
-				showDialog(DIALOG_HELP);
+				HelpDialogFragment.page(getSupportFragmentManager(), "help_send_coins");
 				return true;
 		}
 
@@ -136,7 +157,7 @@ public final class SendCoinsActivity extends AbstractWalletActivity
 		{
 			address = intent.getStringExtra(INTENT_EXTRA_ADDRESS);
 			addressLabel = intent.getStringExtra(INTENT_EXTRA_ADDRESS_LABEL);
-			amount = null;
+			amount = (BigInteger) intent.getSerializableExtra(INTENT_EXTRA_AMOUNT);
 		}
 		else
 		{

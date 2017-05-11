@@ -1,5 +1,5 @@
 /*
- * Copyright 2011-2012 the original author or authors.
+ * Copyright 2011-2013 the original author or authors.
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -20,26 +20,26 @@ package de.schildbach.wallet;
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileInputStream;
-import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.io.OutputStreamWriter;
 import java.io.Writer;
-import java.lang.reflect.Method;
 import java.nio.charset.Charset;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 import java.util.concurrent.TimeUnit;
 
+import android.app.ActivityManager;
 import android.app.Application;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager.NameNotFoundException;
+import android.os.StrictMode;
 import android.preference.PreferenceManager;
+import android.text.format.DateUtils;
 import android.util.Log;
 import android.widget.Toast;
 
@@ -47,14 +47,12 @@ import com.google.bitcoin.core.Address;
 import com.google.bitcoin.core.ECKey;
 import com.google.bitcoin.core.Wallet;
 import com.google.bitcoin.core.Wallet.AutosaveEventListener;
-import com.google.bitcoin.store.BlockStore;
-import com.google.bitcoin.store.BlockStoreException;
-import com.google.bitcoin.store.BoundedOverheadBlockStore;
 import com.google.bitcoin.store.WalletProtobufSerializer;
+import com.google.bitcoin.utils.Locks;
 
+import de.schildbach.wallet.service.BlockchainService;
 import de.schildbach.wallet.service.BlockchainServiceImpl;
-import de.schildbach.wallet.util.ErrorReporter;
-import de.schildbach.wallet.util.StrictModeWrapper;
+import de.schildbach.wallet.util.CrashReporter;
 import de.schildbach.wallet.util.WalletUtils;
 import de.schildbach.wallet_test.R;
 
@@ -65,6 +63,10 @@ public class WalletApplication extends Application
 {
 	private File walletFile;
 	private Wallet wallet;
+	private Intent blockchainServiceIntent;
+	private Intent blockchainServiceCancelCoinsReceivedIntent;
+	private Intent blockchainServiceResetBlockchainIntent;
+	private ActivityManager activityManager;
 
 	private static final Charset UTF_8 = Charset.forName("UTF-8");
 	private static final String TAG = WalletApplication.class.getSimpleName();
@@ -72,20 +74,31 @@ public class WalletApplication extends Application
 	@Override
 	public void onCreate()
 	{
-		try
+		final StrictMode.ThreadPolicy.Builder threadPolicy = new StrictMode.ThreadPolicy.Builder().detectAll().permitDiskReads().permitDiskWrites()
+				.penaltyLog();
+		final StrictMode.VmPolicy.Builder vmPolicy = new StrictMode.VmPolicy.Builder().detectAll().penaltyLog();
+		if (Constants.TEST)
 		{
-			StrictModeWrapper.init();
+			threadPolicy.penaltyDeath();
+			vmPolicy.penaltyDeath();
 		}
-		catch (final Error x)
-		{
-			Log.i(TAG, "StrictMode not available");
-		}
+		StrictMode.setThreadPolicy(threadPolicy.build());
+		StrictMode.setVmPolicy(vmPolicy.build());
+
+		Locks.throwOnLockCycles();
 
 		Log.d(TAG, ".onCreate()");
 
 		super.onCreate();
 
-		ErrorReporter.getInstance().init(this);
+		CrashReporter.init(getCacheDir());
+
+		activityManager = (ActivityManager) getSystemService(Context.ACTIVITY_SERVICE);
+
+		blockchainServiceIntent = new Intent(this, BlockchainServiceImpl.class);
+		blockchainServiceCancelCoinsReceivedIntent = new Intent(BlockchainService.ACTION_CANCEL_COINS_RECEIVED, null, this,
+				BlockchainServiceImpl.class);
+		blockchainServiceResetBlockchainIntent = new Intent(BlockchainService.ACTION_RESET_BLOCKCHAIN, null, this, BlockchainServiceImpl.class);
 
 		walletFile = getFileStreamPath(Constants.WALLET_FILENAME_PROTOBUF);
 
@@ -95,14 +108,19 @@ public class WalletApplication extends Application
 
 		backupKeys();
 
+		for (final String filename : fileList())
+			if (filename.endsWith(".tmp"))
+				new File(getFilesDir(), filename).delete();
+
 		wallet.autosaveToFile(walletFile, 1, TimeUnit.SECONDS, new WalletAutosaveEventListener());
 	}
 
 	private static final class WalletAutosaveEventListener implements AutosaveEventListener
 	{
-		public boolean caughtException(final Throwable t)
+		public boolean caughtException(final Throwable throwable)
 		{
-			throw new Error(t);
+			CrashReporter.saveBackgroundTrace(throwable);
+			return true;
 		}
 
 		public void onBeforeAutoSave(final File file)
@@ -113,22 +131,7 @@ public class WalletApplication extends Application
 		{
 			// make wallets world accessible in test mode
 			if (Constants.TEST)
-				chmod(file, 0777);
-		}
-
-		@SuppressWarnings({ "rawtypes", "unchecked" })
-		public void chmod(final File path, final int mode)
-		{
-			try
-			{
-				final Class fileUtils = Class.forName("android.os.FileUtils");
-				final Method setPermissions = fileUtils.getMethod("setPermissions", String.class, int.class, int.class, int.class);
-				setPermissions.invoke(null, path.getAbsolutePath(), mode, -1, -1);
-			}
-			catch (final Exception x)
-			{
-				x.printStackTrace();
-			}
+				WalletUtils.chmod(file, 0777);
 		}
 	}
 
@@ -179,27 +182,7 @@ public class WalletApplication extends Application
 			{
 				walletStream = new FileInputStream(walletFile);
 
-				final WalletProtobufSerializer walletSerializer = new WalletProtobufSerializer();
-
-				// temporary code: transaction confidence depth migration
-				final File blockChainFile = new File(getDir("blockstore", Context.MODE_WORLD_READABLE | Context.MODE_WORLD_WRITEABLE),
-						Constants.BLOCKCHAIN_FILENAME);
-				if (blockChainFile.exists())
-				{
-					try
-					{
-						final BlockStore blockStore = new BoundedOverheadBlockStore(Constants.NETWORK_PARAMETERS, blockChainFile);
-						walletSerializer.setChainHeight(blockStore.getChainHead().getHeight());
-						blockStore.close();
-					}
-					catch (final BlockStoreException x)
-					{
-						// don't migrate, blockchain will be rescanned anyway
-						x.printStackTrace();
-					}
-				}
-
-				wallet = walletSerializer.readWallet(walletStream);
+				wallet = new WalletProtobufSerializer().readWallet(walletStream);
 
 				Log.i(TAG, "wallet loaded from: '" + walletFile + "', took " + (System.currentTimeMillis() - start) + "ms");
 			}
@@ -211,7 +194,7 @@ public class WalletApplication extends Application
 
 				wallet = restoreWalletFromBackup();
 			}
-			catch (final IllegalStateException x)
+			catch (final RuntimeException x)
 			{
 				x.printStackTrace();
 
@@ -246,26 +229,24 @@ public class WalletApplication extends Application
 		}
 		else
 		{
+			wallet = new Wallet(Constants.NETWORK_PARAMETERS);
+			wallet.addKey(new ECKey());
+
 			try
 			{
-				wallet = restoreWalletFromSnapshot();
+				protobufSerializeWallet(wallet);
+				Log.i(TAG, "wallet created: '" + walletFile + "'");
 			}
-			catch (final FileNotFoundException x)
+			catch (final IOException x2)
 			{
-				wallet = new Wallet(Constants.NETWORK_PARAMETERS);
-				wallet.addKey(new ECKey());
-
-				try
-				{
-					protobufSerializeWallet(wallet);
-					Log.i(TAG, "wallet created: '" + walletFile + "'");
-				}
-				catch (final IOException x2)
-				{
-					throw new Error("wallet cannot be created", x2);
-				}
+				throw new Error("wallet cannot be created", x2);
 			}
 		}
+
+		// this check is needed so encrypted wallets won't get their private keys removed accidently
+		for (final ECKey key : wallet.getKeys())
+			if (key.getPrivKeyBytes() == null)
+				throw new Error("found read-only key, but wallet is likely an encrypted wallet from the future");
 	}
 
 	private Wallet restoreWalletFromBackup()
@@ -274,35 +255,13 @@ public class WalletApplication extends Application
 		{
 			final Wallet wallet = readKeys(openFileInput(Constants.WALLET_KEY_BACKUP_BASE58));
 
-			final File file = new File(getDir("blockstore", Context.MODE_WORLD_READABLE | Context.MODE_WORLD_WRITEABLE),
-					Constants.BLOCKCHAIN_FILENAME);
-			file.delete();
+			resetBlockchain();
 
 			Toast.makeText(this, R.string.toast_wallet_reset, Toast.LENGTH_LONG).show();
 
 			Log.i(TAG, "wallet restored from backup: '" + Constants.WALLET_KEY_BACKUP_BASE58 + "'");
 
 			return wallet;
-		}
-		catch (final IOException x)
-		{
-			throw new RuntimeException(x);
-		}
-	}
-
-	private Wallet restoreWalletFromSnapshot() throws FileNotFoundException
-	{
-		try
-		{
-			final Wallet wallet = readKeys(getAssets().open(Constants.WALLET_KEY_BACKUP_SNAPSHOT));
-
-			Log.i(TAG, "wallet restored from snapshot: '" + Constants.WALLET_KEY_BACKUP_SNAPSHOT + "'");
-
-			return wallet;
-		}
-		catch (final FileNotFoundException x)
-		{
-			throw x;
 		}
 		catch (final IOException x)
 		{
@@ -348,6 +307,10 @@ public class WalletApplication extends Application
 
 		wallet.saveToFile(walletFile);
 
+		// make wallets world accessible in test mode
+		if (Constants.TEST)
+			WalletUtils.chmod(walletFile, 0777);
+
 		Log.d(TAG, "wallet saved to: '" + walletFile + "', took " + (System.currentTimeMillis() - start) + "ms");
 	}
 
@@ -364,9 +327,8 @@ public class WalletApplication extends Application
 
 		try
 		{
-			final long MS_PER_DAY = 24 * 60 * 60 * 1000;
 			final String filename = String.format(Locale.US, "%s.%02d", Constants.WALLET_KEY_BACKUP_BASE58,
-					(System.currentTimeMillis() / MS_PER_DAY) % 100l);
+					(System.currentTimeMillis() / DateUtils.DAY_IN_MILLIS) % 100l);
 			writeKeys(openFileOutput(filename, Context.MODE_PRIVATE));
 		}
 		catch (final IOException x)
@@ -378,45 +340,47 @@ public class WalletApplication extends Application
 	private void writeKeys(final OutputStream os) throws IOException
 	{
 		final Writer out = new OutputStreamWriter(os, UTF_8);
-		WalletUtils.writeKeys(out, wallet.keychain);
+		WalletUtils.writeKeys(out, wallet.getKeys());
 		out.close();
 	}
 
 	public Address determineSelectedAddress()
 	{
-		final ArrayList<ECKey> keychain = wallet.keychain;
+		final List<ECKey> keys = wallet.getKeys();
 
 		final SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(this);
-		final String defaultAddress = keychain.get(0).toAddress(Constants.NETWORK_PARAMETERS).toString();
-		final String selectedAddress = prefs.getString(Constants.PREFS_KEY_SELECTED_ADDRESS, defaultAddress);
+		final String selectedAddress = prefs.getString(Constants.PREFS_KEY_SELECTED_ADDRESS, null);
 
-		// sanity check
-		for (final ECKey key : keychain)
+		if (selectedAddress != null)
 		{
-			final Address address = key.toAddress(Constants.NETWORK_PARAMETERS);
-			if (address.toString().equals(selectedAddress))
-				return address;
+			for (final ECKey key : keys)
+			{
+				final Address address = key.toAddress(Constants.NETWORK_PARAMETERS);
+				if (address.toString().equals(selectedAddress))
+					return address;
+			}
 		}
 
-		throw new IllegalStateException("address not in keychain: " + selectedAddress);
+		return keys.get(0).toAddress(Constants.NETWORK_PARAMETERS);
+	}
+
+	public void startBlockchainService(final boolean cancelCoinsReceived)
+	{
+		if (cancelCoinsReceived)
+			startService(blockchainServiceCancelCoinsReceivedIntent);
+		else
+			startService(blockchainServiceIntent);
+	}
+
+	public void stopBlockchainService()
+	{
+		stopService(blockchainServiceIntent);
 	}
 
 	public void resetBlockchain()
 	{
-		// stop service to make sure peers do not get in the way
-		final Intent serviceIntent = new Intent(this, BlockchainServiceImpl.class);
-		stopService(serviceIntent);
-
-		// remove block chain
-		final File blockChainFile = new File(getDir("blockstore", Context.MODE_WORLD_READABLE | Context.MODE_WORLD_WRITEABLE),
-				Constants.BLOCKCHAIN_FILENAME);
-		blockChainFile.delete();
-
-		// clear transactions from wallet, keep keys
-		wallet.clearTransactions(0);
-
-		// start service again
-		startService(serviceIntent);
+		// actually stops the service
+		startService(blockchainServiceResetBlockchainIntent);
 	}
 
 	public final int applicationVersionCode()
@@ -441,5 +405,14 @@ public class WalletApplication extends Application
 		{
 			return "unknown";
 		}
+	}
+
+	public int maxConnectedPeers()
+	{
+		final int memoryClass = activityManager.getMemoryClass();
+		if (memoryClass <= Constants.MEMORY_CLASS_LOWEND)
+			return 4;
+		else
+			return 6;
 	}
 }

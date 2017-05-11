@@ -1,5 +1,5 @@
 /*
- * Copyright 2011-2012 the original author or authors.
+ * Copyright 2011-2013 the original author or authors.
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -20,64 +20,60 @@ package de.schildbach.wallet.util;
 import java.nio.charset.Charset;
 import java.util.Arrays;
 
-import android.annotation.TargetApi;
 import android.app.Activity;
 import android.nfc.NdefMessage;
 import android.nfc.NdefRecord;
 import android.nfc.NfcAdapter;
 import android.nfc.NfcManager;
-import android.os.Build;
-import de.schildbach.wallet.Constants;
 
 /**
  * @author Andreas Schildbach
  */
-@TargetApi(Build.VERSION_CODES.GINGERBREAD_MR1)
 public class NfcTools
 {
 	private static final Charset UTF_8 = Charset.forName("UTF-8");
 	private static final Charset US_ASCII = Charset.forName("US-ASCII");
 	private static final byte[] RTD_ANDROID_APP = "android.com:pkg".getBytes(US_ASCII);
 
-	public static boolean publishUri(final Object nfcManager, final Activity activity, final String uri)
+	public static boolean publishUri(final NfcManager nfcManager, final Activity activity, final String uri)
 	{
-		final NfcAdapter adapter = ((NfcManager) nfcManager).getDefaultAdapter();
+		final NfcAdapter adapter = nfcManager.getDefaultAdapter();
 		if (adapter == null)
 			return false;
 
 		final NdefRecord uriRecord = wellKnownUriRecord(uri);
-		adapter.enableForegroundNdefPush(activity, ndefMessage(uriRecord, true));
+		adapter.enableForegroundNdefPush(activity, ndefMessage(uriRecord, true, activity.getPackageName()));
 
 		return true;
 	}
 
-	public static boolean publishMimeObject(final Object nfcManager, final Activity activity, final String mimeType, final byte[] payload,
+	public static boolean publishMimeObject(final NfcManager nfcManager, final Activity activity, final String mimeType, final byte[] payload,
 			final boolean includeApplicationRecord)
 	{
-		final NfcAdapter adapter = ((NfcManager) nfcManager).getDefaultAdapter();
+		final NfcAdapter adapter = nfcManager.getDefaultAdapter();
 		if (adapter == null)
 			return false;
 
 		final NdefRecord mimeRecord = mimeRecord(mimeType, payload);
-		adapter.enableForegroundNdefPush(activity, ndefMessage(mimeRecord, includeApplicationRecord));
+		adapter.enableForegroundNdefPush(activity, ndefMessage(mimeRecord, includeApplicationRecord, activity.getPackageName()));
 
 		return true;
 	}
 
-	public static void unpublish(final Object nfcManager, final Activity activity)
+	public static void unpublish(final NfcManager nfcManager, final Activity activity)
 	{
-		final NfcAdapter adapter = ((NfcManager) nfcManager).getDefaultAdapter();
+		final NfcAdapter adapter = nfcManager.getDefaultAdapter();
 		if (adapter == null)
 			return;
 
 		adapter.disableForegroundNdefPush(activity);
 	}
 
-	private static NdefMessage ndefMessage(final NdefRecord record, final boolean includeApplicationRecord)
+	private static NdefMessage ndefMessage(final NdefRecord record, final boolean includeApplicationRecord, final String packageName)
 	{
 		if (includeApplicationRecord)
 		{
-			final NdefRecord appRecord = androidApplicationRecord(Constants.PACKAGE_NAME);
+			final NdefRecord appRecord = androidApplicationRecord(packageName);
 			return new NdefMessage(new NdefRecord[] { record, appRecord });
 		}
 		else
@@ -112,12 +108,11 @@ public class NfcTools
 		return new NdefRecord(NdefRecord.TNF_EXTERNAL_TYPE, RTD_ANDROID_APP, new byte[0], packageName.getBytes(US_ASCII));
 	}
 
-	public static byte[] extractMimePayload(final String mimeType, final Object message)
+	public static byte[] extractMimePayload(final String mimeType, final NdefMessage message)
 	{
 		byte[] mimeBytes = mimeType.getBytes(US_ASCII);
 
-		final NdefMessage ndefMessage = (NdefMessage) message;
-		for (final NdefRecord record : ndefMessage.getRecords())
+		for (final NdefRecord record : message.getRecords())
 		{
 			if (record.getTnf() == NdefRecord.TNF_MIME_MEDIA && Arrays.equals(record.getType(), mimeBytes))
 				return record.getPayload();
