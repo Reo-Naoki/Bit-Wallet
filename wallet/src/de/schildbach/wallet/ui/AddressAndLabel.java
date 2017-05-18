@@ -1,5 +1,5 @@
 /*
- * Copyright 2013 the original author or authors.
+ * Copyright 2013-2014 the original author or authors.
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -17,6 +17,9 @@
 
 package de.schildbach.wallet.ui;
 
+import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
+
 import android.os.Parcel;
 import android.os.Parcelable;
 
@@ -33,18 +36,20 @@ public class AddressAndLabel implements Parcelable
 	public final Address address;
 	public final String label;
 
-	public AddressAndLabel(final NetworkParameters addressParams, final String address, final String label) throws WrongNetworkException,
-			AddressFormatException
+	public AddressAndLabel(@Nonnull final NetworkParameters addressParams, @Nonnull final String address, @Nullable final String label)
+			throws WrongNetworkException, AddressFormatException
 	{
 		this.address = new Address(addressParams, address);
 		this.label = label;
 	}
 
+	@Override
 	public int describeContents()
 	{
 		return 0;
 	}
 
+	@Override
 	public void writeToParcel(final Parcel dest, final int flags)
 	{
 		dest.writeSerializable(address.getParameters());
@@ -55,11 +60,13 @@ public class AddressAndLabel implements Parcelable
 
 	public static final Parcelable.Creator<AddressAndLabel> CREATOR = new Parcelable.Creator<AddressAndLabel>()
 	{
+		@Override
 		public AddressAndLabel createFromParcel(final Parcel in)
 		{
 			return new AddressAndLabel(in);
 		}
 
+		@Override
 		public AddressAndLabel[] newArray(final int size)
 		{
 			return new AddressAndLabel[size];

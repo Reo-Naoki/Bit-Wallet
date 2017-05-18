@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2013 the original author or authors.
+ * Copyright 2012-2014 the original author or authors.
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -21,8 +21,10 @@ import java.io.IOException;
 import java.util.EnumMap;
 import java.util.Map;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import android.app.Activity;
-import android.app.AlertDialog;
 import android.app.Dialog;
 import android.content.Context;
 import android.content.DialogInterface;
@@ -35,6 +37,7 @@ import android.graphics.Paint;
 import android.graphics.Rect;
 import android.hardware.Camera;
 import android.hardware.Camera.PreviewCallback;
+import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.HandlerThread;
@@ -76,6 +79,15 @@ public final class ScanActivity extends Activity implements SurfaceHolder.Callba
 
 	private static final int DIALOG_CAMERA_PROBLEM = 0;
 
+	private static boolean DISABLE_CONTINUOUS_AUTOFOCUS = Build.MODEL.equals("GT-I9100") // Galaxy S2
+			|| Build.MODEL.equals("SGH-T989") // Galaxy S2
+			|| Build.MODEL.equals("SGH-T989D") // Galaxy S2 X
+			|| Build.MODEL.equals("SAMSUNG-SGH-I727") // Galaxy S2 Skyrocket
+			|| Build.MODEL.equals("GT-I9300") // Galaxy S3
+			|| Build.MODEL.equals("GT-N7000"); // Galaxy Note
+
+	private static final Logger log = LoggerFactory.getLogger(ScanActivity.class);
+
 	@Override
 	public void onCreate(final Bundle savedInstanceState)
 	{
@@ -103,15 +115,18 @@ public final class ScanActivity extends Activity implements SurfaceHolder.Callba
 		surfaceHolder.setType(SurfaceHolder.SURFACE_TYPE_PUSH_BUFFERS);
 	}
 
+	@Override
 	public void surfaceCreated(final SurfaceHolder holder)
 	{
 		cameraHandler.post(openRunnable);
 	}
 
+	@Override
 	public void surfaceDestroyed(final SurfaceHolder holder)
 	{
 	}
 
+	@Override
 	public void surfaceChanged(final SurfaceHolder holder, final int format, final int width, final int height)
 	{
 	}
@@ -146,6 +161,7 @@ public final class ScanActivity extends Activity implements SurfaceHolder.Callba
 			case KeyEvent.KEYCODE_VOLUME_UP:
 				cameraHandler.post(new Runnable()
 				{
+					@Override
 					public void run()
 					{
 						cameraManager.setTorch(keyCode == KeyEvent.KEYCODE_VOLUME_UP);
@@ -157,7 +173,7 @@ public final class ScanActivity extends Activity implements SurfaceHolder.Callba
 		return super.onKeyDown(keyCode, event);
 	}
 
-	public void handleResult(final Result scanResult, final Bitmap scanImage)
+	public void handleResult(final Result scanResult, final Bitmap thumbnailImage, final float thumbnailScaleFactor)
 	{
 		vibrator.vibrate(VIBRATE_DURATION);
 
@@ -169,12 +185,13 @@ public final class ScanActivity extends Activity implements SurfaceHolder.Callba
 			paint.setColor(getResources().getColor(R.color.scan_result_dots));
 			paint.setStrokeWidth(10.0f);
 
-			final Canvas canvas = new Canvas(scanImage);
+			final Canvas canvas = new Canvas(thumbnailImage);
+			canvas.scale(thumbnailScaleFactor, thumbnailScaleFactor);
 			for (final ResultPoint point : points)
 				canvas.drawPoint(point.getX(), point.getY(), paint);
 		}
 
-		scannerView.drawResultBitmap(scanImage);
+		scannerView.drawResultBitmap(thumbnailImage);
 
 		final Intent result = new Intent();
 		result.putExtra(INTENT_EXTRA_RESULT, scanResult.getText());
@@ -183,6 +200,7 @@ public final class ScanActivity extends Activity implements SurfaceHolder.Callba
 		// delayed finish
 		new Handler().post(new Runnable()
 		{
+			@Override
 			public void run()
 			{
 				finish();
@@ -192,34 +210,42 @@ public final class ScanActivity extends Activity implements SurfaceHolder.Callba
 
 	private final Runnable openRunnable = new Runnable()
 	{
+		@Override
 		public void run()
 		{
 			try
 			{
-				cameraManager.open(surfaceHolder);
+				final Camera camera = cameraManager.open(surfaceHolder, !DISABLE_CONTINUOUS_AUTOFOCUS);
 
 				final Rect framingRect = cameraManager.getFrame();
 				final Rect framingRectInPreview = cameraManager.getFramePreview();
 
 				runOnUiThread(new Runnable()
 				{
+					@Override
 					public void run()
 					{
 						scannerView.setFraming(framingRect, framingRectInPreview);
 					}
 				});
 
-				cameraHandler.post(autofocusRunnable);
+				final String focusMode = camera.getParameters().getFocusMode();
+				final boolean nonContinuousAutoFocus = Camera.Parameters.FOCUS_MODE_AUTO.equals(focusMode)
+						|| Camera.Parameters.FOCUS_MODE_MACRO.equals(focusMode);
+
+				if (nonContinuousAutoFocus)
+					cameraHandler.post(new AutoFocusRunnable(camera));
+
 				cameraHandler.post(fetchAndDecodeRunnable);
 			}
 			catch (final IOException x)
 			{
-				x.printStackTrace();
+				log.info("problem opening camera", x);
 				showDialog(DIALOG_CAMERA_PROBLEM);
 			}
 			catch (final RuntimeException x)
 			{
-				x.printStackTrace();
+				log.info("problem opening camera", x);
 				showDialog(DIALOG_CAMERA_PROBLEM);
 			}
 		}
@@ -227,6 +253,7 @@ public final class ScanActivity extends Activity implements SurfaceHolder.Callba
 
 	private final Runnable closeRunnable = new Runnable()
 	{
+		@Override
 		public void run()
 		{
 			cameraManager.close();
@@ -237,38 +264,41 @@ public final class ScanActivity extends Activity implements SurfaceHolder.Callba
 		}
 	};
 
-	private final Runnable autofocusRunnable = new Runnable()
+	private final class AutoFocusRunnable implements Runnable
 	{
+		private final Camera camera;
+
+		public AutoFocusRunnable(final Camera camera)
+		{
+			this.camera = camera;
+		}
+
+		@Override
 		public void run()
 		{
-			final Camera camera = cameraManager.getCamera();
-			final String focusMode = camera.getParameters().getFocusMode();
-			final boolean useAutoFocus = Camera.Parameters.FOCUS_MODE_AUTO.equals(focusMode) || Camera.Parameters.FOCUS_MODE_MACRO.equals(focusMode);
-
-			if (useAutoFocus)
+			camera.autoFocus(new Camera.AutoFocusCallback()
 			{
-				camera.autoFocus(new Camera.AutoFocusCallback()
+				@Override
+				public void onAutoFocus(final boolean success, final Camera camera)
 				{
-					public void onAutoFocus(final boolean success, final Camera camera)
-					{
-					}
-				});
-
-				// schedule again
-				cameraHandler.postDelayed(autofocusRunnable, AUTO_FOCUS_INTERVAL_MS);
-			}
+					// schedule again
+					cameraHandler.postDelayed(AutoFocusRunnable.this, AUTO_FOCUS_INTERVAL_MS);
+				}
+			});
 		}
-	};
+	}
 
 	private final Runnable fetchAndDecodeRunnable = new Runnable()
 	{
 		private final QRCodeReader reader = new QRCodeReader();
 		private final Map<DecodeHintType, Object> hints = new EnumMap<DecodeHintType, Object>(DecodeHintType.class);
 
+		@Override
 		public void run()
 		{
 			cameraManager.requestPreviewFrame(new PreviewCallback()
 			{
+				@Override
 				public void onPreviewFrame(final byte[] data, final Camera camera)
 				{
 					decode(data);
@@ -285,10 +315,12 @@ public final class ScanActivity extends Activity implements SurfaceHolder.Callba
 			{
 				hints.put(DecodeHintType.NEED_RESULT_POINT_CALLBACK, new ResultPointCallback()
 				{
+					@Override
 					public void foundPossibleResultPoint(final ResultPoint dot)
 					{
 						runOnUiThread(new Runnable()
 						{
+							@Override
 							public void run()
 							{
 								scannerView.addDot(dot);
@@ -298,18 +330,19 @@ public final class ScanActivity extends Activity implements SurfaceHolder.Callba
 				});
 				final Result scanResult = reader.decode(bitmap, hints);
 
-				// success
-				final int sourceWidth = source.getWidth();
-				final int sourceHeight = source.getHeight();
+				final int thumbnailWidth = source.getThumbnailWidth();
+				final int thumbnailHeight = source.getThumbnailHeight();
+				final float thumbnailScaleFactor = (float) thumbnailWidth / source.getWidth();
 
-				final Bitmap grayscaleBitmap = Bitmap.createBitmap(sourceWidth, sourceHeight, Bitmap.Config.ARGB_8888);
-				grayscaleBitmap.setPixels(source.renderCroppedGreyscaleBitmap(), 0, sourceWidth, 0, 0, sourceWidth, sourceHeight);
+				final Bitmap thumbnailImage = Bitmap.createBitmap(thumbnailWidth, thumbnailHeight, Bitmap.Config.ARGB_8888);
+				thumbnailImage.setPixels(source.renderThumbnail(), 0, thumbnailWidth, 0, 0, thumbnailWidth, thumbnailHeight);
 
 				runOnUiThread(new Runnable()
 				{
+					@Override
 					public void run()
 					{
-						handleResult(scanResult, grayscaleBitmap);
+						handleResult(scanResult, thumbnailImage, thumbnailScaleFactor);
 					}
 				});
 			}
@@ -328,29 +361,32 @@ public final class ScanActivity extends Activity implements SurfaceHolder.Callba
 	@Override
 	protected Dialog onCreateDialog(final int id)
 	{
-		final AlertDialog.Builder builder = new AlertDialog.Builder(this);
-
 		if (id == DIALOG_CAMERA_PROBLEM)
 		{
-			builder.setIcon(android.R.drawable.ic_dialog_alert);
-			builder.setTitle(R.string.scan_camera_problem_dialog_title);
-			builder.setMessage(R.string.scan_camera_problem_dialog_message);
-			builder.setNeutralButton(R.string.button_dismiss, new OnClickListener()
+			final DialogBuilder dialog = DialogBuilder.warn(this, R.string.scan_camera_problem_dialog_title);
+			dialog.setMessage(R.string.scan_camera_problem_dialog_message);
+			dialog.singleDismissButton(new OnClickListener()
 			{
+				@Override
 				public void onClick(final DialogInterface dialog, final int which)
 				{
 					finish();
 				}
 			});
-			builder.setOnCancelListener(new OnCancelListener()
+			dialog.setOnCancelListener(new OnCancelListener()
 			{
+				@Override
 				public void onCancel(final DialogInterface dialog)
 				{
 					finish();
 				}
 			});
-		}
 
-		return builder.create();
+			return dialog.create();
+		}
+		else
+		{
+			throw new IllegalArgumentException();
+		}
 	}
 }

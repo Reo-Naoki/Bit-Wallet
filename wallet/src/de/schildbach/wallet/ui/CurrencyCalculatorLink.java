@@ -1,5 +1,5 @@
 /*
- * Copyright 2013 the original author or authors.
+ * Copyright 2013-2014 the original author or authors.
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -18,6 +18,10 @@
 package de.schildbach.wallet.ui;
 
 import java.math.BigInteger;
+
+import javax.annotation.CheckForNull;
+import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
 
 import android.view.View;
 import de.schildbach.wallet.ExchangeRatesProvider.ExchangeRate;
@@ -39,29 +43,19 @@ public final class CurrencyCalculatorLink
 
 	private final CurrencyAmountView.Listener btcAmountViewListener = new CurrencyAmountView.Listener()
 	{
+		@Override
 		public void changed()
 		{
 			if (btcAmountView.getAmount() != null)
-			{
-				exchangeDirection = true;
-
-				update();
-			}
+				setExchangeDirection(true);
 			else
-			{
 				localAmountView.setHint(null);
-			}
 
 			if (listener != null)
 				listener.changed();
 		}
 
-		public void done()
-		{
-			if (listener != null)
-				listener.done();
-		}
-
+		@Override
 		public void focusChanged(final boolean hasFocus)
 		{
 			if (listener != null)
@@ -71,29 +65,19 @@ public final class CurrencyCalculatorLink
 
 	private final CurrencyAmountView.Listener localAmountViewListener = new CurrencyAmountView.Listener()
 	{
+		@Override
 		public void changed()
 		{
 			if (localAmountView.getAmount() != null)
-			{
-				exchangeDirection = false;
-
-				update();
-			}
+				setExchangeDirection(false);
 			else
-			{
 				btcAmountView.setHint(null);
-			}
 
 			if (listener != null)
 				listener.changed();
 		}
 
-		public void done()
-		{
-			if (listener != null)
-				listener.done();
-		}
-
+		@Override
 		public void focusChanged(final boolean hasFocus)
 		{
 			if (listener != null)
@@ -101,7 +85,7 @@ public final class CurrencyCalculatorLink
 		}
 	};
 
-	public CurrencyCalculatorLink(final CurrencyAmountView btcAmountView, final CurrencyAmountView localAmountView)
+	public CurrencyCalculatorLink(@Nonnull final CurrencyAmountView btcAmountView, @Nonnull final CurrencyAmountView localAmountView)
 	{
 		this.btcAmountView = btcAmountView;
 		this.btcAmountView.setListener(btcAmountViewListener);
@@ -112,7 +96,7 @@ public final class CurrencyCalculatorLink
 		update();
 	}
 
-	public void setListener(final Listener listener)
+	public void setListener(@Nullable final Listener listener)
 	{
 		this.listener = listener;
 	}
@@ -124,13 +108,14 @@ public final class CurrencyCalculatorLink
 		update();
 	}
 
-	public void setExchangeRate(final ExchangeRate exchangeRate)
+	public void setExchangeRate(@Nonnull final ExchangeRate exchangeRate)
 	{
 		this.exchangeRate = exchangeRate;
 
 		update();
 	}
 
+	@CheckForNull
 	public BigInteger getAmount()
 	{
 		if (exchangeDirection)
@@ -184,21 +169,39 @@ public final class CurrencyCalculatorLink
 		}
 	}
 
-	public View activeView()
+	public void setExchangeDirection(final boolean exchangeDirection)
+	{
+		this.exchangeDirection = exchangeDirection;
+
+		update();
+	}
+
+	public boolean getExchangeDirection()
+	{
+		return exchangeDirection;
+	}
+
+	public View activeTextView()
 	{
 		if (exchangeDirection)
-			return btcAmountView;
+			return btcAmountView.getTextView();
 		else
-			return localAmountView;
+			return localAmountView.getTextView();
 	}
 
 	public void requestFocus()
 	{
-		activeView().requestFocus();
+		activeTextView().requestFocus();
 	}
 
-	public void setBtcAmount(final BigInteger amount)
+	public void setBtcAmount(@Nonnull final BigInteger amount)
 	{
 		btcAmountView.setAmount(amount, true);
+	}
+
+	public void setNextFocusId(final int nextFocusId)
+	{
+		btcAmountView.setNextFocusId(nextFocusId);
+		localAmountView.setNextFocusId(nextFocusId);
 	}
 }

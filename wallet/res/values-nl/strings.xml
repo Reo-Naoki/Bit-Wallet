@@ -4,7 +4,7 @@
 
 	<string name="toast_wallet_reset">Wallet is gereset,\nherstel zal enige tijd duren</string>
 
-	<string name="wallet_disclaimer">Gebruik op eigen risico. Lees de &lt;u>veiligheids voorschriften&lt;/u>.</string>
+	<string name="wallet_disclaimer_fragment_remind_safety">Gebruik op eigen risico. Lees de &lt;u>veiligheids voorschriften&lt;/u>.</string>
 	<string name="wallet_address_fragment_your">Uw Bitcoin Adres:</string>
 	<string name="wallet_address_fragment_clipboard_msg">Bitcoin adres gekopieërd naar klembord</string>
 	<string name="wallet_addresses_fragment_add_dialog_title">Voeg Bitcoin Adres toe</string>
@@ -25,7 +25,6 @@
 	<string name="send_coins_fragment_receiving_address_label">Betalen naar</string>
 	<string name="send_coins_fragment_receiving_address_hint">typ adres of naam</string>
 	<string name="send_coins_fragment_receiving_address_error">Ongeldig Bitcoin Adres!</string>
-	<string name="send_coins_fragment_available_label">Beschikbaar voor besteding</string>
 	<string name="send_coins_fragment_pending">(BTC %s wachtend op bevestiging)</string>
 	<string name="send_coins_fragment_amount_label">Bedrag te betalen</string>
 	<string name="send_coins_fragment_button_send">Verzenden</string>
@@ -34,8 +33,8 @@
 
 	<string name="request_coins_activity_title">Verzoek Bitcoins</string>
 	<string name="request_coins_fragment_amount_label">Verzocht bedrag (optioneel)</string>
-	<string name="request_coins_fragment_qr_label">Laat deze code scannen door de zender.</string>
-	<string name="request_coins_fragment_nfc_enabled">of raak aan met een NFC gereed apparaat.</string>
+	<string name="request_coins_fragment_initiate_request_qr">Laat deze code scannen door de zender.</string>
+	<string name="request_coins_fragment_initiate_request_nfc">of raak aan met een NFC gereed apparaat.</string>
 	<string name="request_coins_clipboard_msg">Bitcoin verzoek gekopieërd naar klembord</string>
 	<string name="request_coins_share_dialog_title">Deel verzoek voor Bitcoins…</string>
 
@@ -60,10 +59,10 @@
 	<string name="about_credits_icon_title">"Deze app gebruikt een icoon door 'bitboy'"</string>
 	<string name="about_author_twitter_title">Auteur op Twitter</string>
 	<string name="about_author_googleplus_title">Auteur op Google+</string>
-	<string name="about_credits_market_app_title">Google Play App Pagina</string>
+	<string name="about_market_app_title">Google Play App Pagina</string>
 	<string name="about_credits_market_publisher_title">Andere Apps van Author</string>
 
-	<string name="notification_coins_received_msg">Ontvangen BTC %s</string>
+	<string name="notification_coins_received_msg">Ontvangen %s</string>
 	<string name="notification_peers_connected_msg">%d verbindingen</string>
 
 	<!-- generic buttons -->

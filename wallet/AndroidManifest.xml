@@ -3,8 +3,8 @@
 	xmlns:tools="http://schemas.android.com/tools"
 	package="de.schildbach.wallet_test"
 	android:installLocation="internalOnly"
-	android:versionCode="131"
-	android:versionName="3.11-test" >
+	android:versionCode="158"
+	android:versionName="3.37-test" >
 
 	<uses-sdk
 		android:minSdkVersion="10"
@@ -20,6 +20,7 @@
 	<uses-permission android:name="android.permission.WAKE_LOCK" />
 	<uses-permission android:name="android.permission.BROADCAST_STICKY" />
 	<uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+	<uses-permission android:name="android.permission.BLUETOOTH" />
 
 	<uses-feature
 		android:name="android.hardware.touchscreen"
@@ -41,6 +42,9 @@
 		android:required="false" />
 	<uses-feature
 		android:name="android.hardware.screen.landscape"
+		android:required="false" />
+	<uses-feature
+		android:name="android.hardware.bluetooth"
 		android:required="false" />
 
 	<supports-screens
@@ -70,6 +74,13 @@
 
 				<category android:name="android.intent.category.LAUNCHER" />
 			</intent-filter>
+			<intent-filter>
+				<action android:name="android.nfc.action.NDEF_DISCOVERED" />
+
+				<data android:mimeType="application/x-btctx" />
+
+				<category android:name="android.intent.category.DEFAULT" />
+			</intent-filter>
 		</activity-alias>
 
 		<activity
@@ -93,6 +104,25 @@
 
 				<category android:name="android.intent.category.DEFAULT" />
 			</intent-filter>
+			<intent-filter android:label="@string/send_coins_activity_title">
+				<action android:name="android.intent.action.VIEW" />
+
+				<data android:mimeType="application/bitcoin-paymentrequest" />
+
+				<category android:name="android.intent.category.DEFAULT" />
+			</intent-filter>
+			<intent-filter android:label="@string/send_coins_activity_title" >
+				<action android:name="android.nfc.action.NDEF_DISCOVERED" />
+
+				<data android:mimeType="application/bitcoin-paymentrequest" />
+
+				<category android:name="android.intent.category.DEFAULT" />
+			</intent-filter>
+		</activity>
+		<activity
+			android:name="de.schildbach.wallet.ui.SendCoinsQrActivity"
+			android:configChanges="keyboard|keyboardHidden"
+			android:theme="@android:style/Theme.Translucent.NoTitleBar" >
 		</activity>
 		<activity
 			android:name="de.schildbach.wallet.ui.RequestCoinsActivity"
@@ -100,27 +130,6 @@
 			android:label="@string/request_coins_activity_title"
 			android:screenOrientation="behind"
 			android:windowSoftInputMode="adjustResize" />
-		<activity
-			android:name="de.schildbach.wallet.ui.TransactionActivity"
-			android:configChanges="keyboard|keyboardHidden"
-			android:label="@string/transaction_activity_title"
-			android:screenOrientation="behind" >
-			<intent-filter>
-				<action android:name="android.intent.action.VIEW" />
-
-				<data android:scheme="btctx" />
-
-				<category android:name="android.intent.category.DEFAULT" />
-				<category android:name="android.intent.category.BROWSABLE" />
-			</intent-filter>
-			<intent-filter>
-				<action android:name="android.nfc.action.NDEF_DISCOVERED" />
-
-				<data android:mimeType="application/x-btctx" />
-
-				<category android:name="android.intent.category.DEFAULT" />
-			</intent-filter>
-		</activity>
 		<activity
 			android:name="de.schildbach.wallet.ui.AddressBookActivity"
 			android:configChanges="keyboard|keyboardHidden"
@@ -189,11 +198,12 @@
 		<service
 			android:name="de.schildbach.wallet.service.BlockchainServiceImpl"
 			android:exported="false" />
+		<service
+			android:name="de.schildbach.wallet.offline.AcceptBluetoothService"
+			android:exported="false" />
 
 		<receiver android:name="de.schildbach.wallet.service.AutosyncReceiver" >
 			<intent-filter>
-				<action android:name="android.intent.action.ACTION_POWER_CONNECTED" />
-				<action android:name="android.intent.action.ACTION_POWER_DISCONNECTED" />
 				<action android:name="android.intent.action.BOOT_COMPLETED" />
 			</intent-filter>
 			<intent-filter>
