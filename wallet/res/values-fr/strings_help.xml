@@ -1,14 +1,13 @@
-<?xml version="1.0" encoding="utf-8"?>
+<?xml version='1.0' encoding='UTF-8'?>
 <resources>
-
-	<string name="help_wallet">
+  <string name="help_wallet">
 <![CDATA[
 		<p>
 			La partie supérieure gauche de l\'écran affiche votre adresse Bitcoin choisie et que d\'autres personnes doivent connaître pour vous envoyer des bitcoins.
 			Toquer pour changer cette adresse.
 		</p>
 		<p>
-			Le code QR à droite contient votre adresse bitcoin et peut être numérisée par un tiers.
+			Le code QR à droite contient votre adresse Bitcoin et peut être numérisée par un tiers.
 			Toquer le code QR pour l\'agrandir.
 		</p>
 		<p>
@@ -28,7 +27,7 @@
 		</p>
 	]]>
 	</string>
-	<string name="help_request_coins">
+  <string name="help_request_coins">
 <![CDATA[
 		<p>
 			En utilisant cette zone de dialogue vous pouvez demander des pièces à une autre personne (qui devrait déjà avoir installé le Bitcoin Wallet).
@@ -46,15 +45,15 @@
 		</p>
 	]]>
 	</string>
-	<string name="help_send_coins">
+  <string name="help_send_coins">
 <![CDATA[
 		<p>
 			Vous avez commencé le processus d\'envoi de bitcoins.
 			Vous êtes arrivé ici depuis l\'écran principal ou en cliquant sur une URL bitcoin dans votre navigateur.
 		</p>
 		<p>
-			D\'abord, saisir l\'adresse bitcoin de destination.
-			L\'adresse sera auto-complétée pour les adresses enregistrées dans votre carnet.
+			D\'abord, saisir l\'adresse Bitcoin de destination.
+			L\'adresse sera complétée automatiquement pour les adresses enregistrées dans votre carnet.
 			Vous pouvez aussi numériser des codes QR avec des adresses bitcoin ou des demandes de bitcoins en pressant le bouton QR dans la barre des actions.
 		</p>
 		<p>
@@ -76,7 +75,7 @@
 		</p>
 	]]>
 	</string>
-	<string name="help_safety">
+  <string name="help_safety">
 <![CDATA[
 		<p>
 			<b>Notes de sécurité importantes :</b>
@@ -86,29 +85,28 @@
 			<b>Si vous le perdez, vous perdez vos bitcoins.</b>
 		</p>
 		<p>
-			Cela signifie que vous devez <b>sauvegarder votre portefeuille</b>!
-			Utiliser la fonction de sauvegarde de l\'appli plutôt qu\'une appli de sauvegarde tierce.
-			Garder votre sauvegarde en sûreté et souvenez-vous de votre mot de passe.
+			Cela signifie que vous devez <b>sauvegarder votre portefeuille</b> !
+			Utilisez la fonction de sauvegarde de l\'appli plutôt qu\'une appli de sauvegarde tierce.
+			Gardez votre sauvegarde en sûreté et souvenez-vous de votre mot de passe.
 		</p>
 		<p>
-			<b>Avant de désinstaller Bitcoin Wallet</b> (ou d\'effacer les données de l\'appli/effacer les données de votre appareil), <b>transférer vos bitcoins vers un autre portefeuille</b>.
-			Les bitcoins restant seront perdus.
+			<b>Avant de désinstaller Bitcoin Wallet</b> (ou d\'effacer les données de l\'appli/effacer les données de votre appareil), <b>transférez vos bitcoins vers un autre portefeuille</b>.
+			Les bitcoins restants seront perdus.
 		</p>
 		<p>
 			<b>Les paiements sont irréversibles</b>.
 			Si vous envoyez vos bitcoins dans le vide, il n\'y a presque aucun moyen de les récupérer.
 		</p>
 		<p>
-			<b>Garder votre appareil mobile en sécurité !</b>
-			Ne pas rooter votre appareil.
-			N\'installer que des applications de confiance.
+			<b>Assurez la sécurité de votre appareil mobile !</b>
+			Ne rootez pas votre appareil.
+			N\'installez que des applications de confiance.
 			Des applications malveillantes pourraient essayer de voler votre portefeuille.
 		</p>
 		<p>
-			Minimiser les risques !
-			<b>N\'utiliser que pour des petits montants</b> pour un usage quotidien.
+			Minimisez les risques !
+			<b>N\'utilisez que pour des petits montants,</b> pour un usage quotidien.
 		</p>
 	]]>
 	</string>
-
 </resources>

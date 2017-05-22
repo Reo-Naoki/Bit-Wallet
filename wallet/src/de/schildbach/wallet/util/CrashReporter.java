@@ -33,6 +33,9 @@ import java.util.Set;
 
 import javax.annotation.Nonnull;
 
+import org.bitcoinj.core.Transaction;
+import org.bitcoinj.core.TransactionOutput;
+import org.bitcoinj.core.Wallet;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -44,9 +47,7 @@ import android.content.res.Configuration;
 import android.content.res.Resources;
 import android.os.Build;
 
-import com.google.bitcoin.core.Transaction;
-import com.google.bitcoin.core.TransactionOutput;
-import com.google.bitcoin.core.Wallet;
+import com.google.common.base.Charsets;
 
 import de.schildbach.wallet.Constants;
 import de.schildbach.wallet.WalletApplication;
@@ -85,7 +86,7 @@ public class CrashReporter
 
 		try
 		{
-			reader = new BufferedReader(new InputStreamReader(new FileInputStream(backgroundTracesFile), Constants.UTF_8));
+			reader = new BufferedReader(new InputStreamReader(new FileInputStream(backgroundTracesFile), Charsets.UTF_8));
 			copy(reader, report);
 		}
 		finally
@@ -108,7 +109,7 @@ public class CrashReporter
 
 		try
 		{
-			reader = new BufferedReader(new InputStreamReader(new FileInputStream(crashTraceFile), Constants.UTF_8));
+			reader = new BufferedReader(new InputStreamReader(new FileInputStream(crashTraceFile), Charsets.UTF_8));
 			copy(reader, report);
 		}
 		finally
@@ -264,7 +265,7 @@ public class CrashReporter
 
 			try
 			{
-				writer = new PrintWriter(new OutputStreamWriter(new FileOutputStream(backgroundTracesFile, true), Constants.UTF_8));
+				writer = new PrintWriter(new OutputStreamWriter(new FileOutputStream(backgroundTracesFile, true), Charsets.UTF_8));
 
 				final long now = System.currentTimeMillis();
 				writer.println(String.format("\n--- collected at %tF %tT %tz on version %s (%d)", now, now, now, packageInfo.versionName,
@@ -309,6 +310,8 @@ public class CrashReporter
 		@Override
 		public synchronized void uncaughtException(final Thread t, final Throwable exception)
 		{
+			log.warn("crashing because of uncaught exception", exception);
+
 			try
 			{
 				saveCrashTrace(exception);
@@ -323,7 +326,7 @@ public class CrashReporter
 
 		private void saveCrashTrace(@Nonnull final Throwable throwable) throws IOException
 		{
-			final PrintWriter writer = new PrintWriter(new OutputStreamWriter(new FileOutputStream(crashTraceFile), Constants.UTF_8));
+			final PrintWriter writer = new PrintWriter(new OutputStreamWriter(new FileOutputStream(crashTraceFile), Charsets.UTF_8));
 			appendTrace(writer, throwable);
 			writer.close();
 		}

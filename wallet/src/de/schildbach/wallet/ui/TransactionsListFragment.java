@@ -17,7 +17,6 @@
 
 package de.schildbach.wallet.ui;
 
-import java.math.BigInteger;
 import java.text.DateFormat;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -31,13 +30,25 @@ import javax.annotation.CheckForNull;
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 
+import org.bitcoinj.core.Address;
+import org.bitcoinj.core.Coin;
+import org.bitcoinj.core.ScriptException;
+import org.bitcoinj.core.Transaction;
+import org.bitcoinj.core.Transaction.Purpose;
+import org.bitcoinj.core.TransactionConfidence.ConfidenceType;
+import org.bitcoinj.core.Wallet;
+import org.bitcoinj.utils.Threading;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import android.app.Activity;
+import android.app.LoaderManager;
+import android.app.LoaderManager.LoaderCallbacks;
+import android.content.AsyncTaskLoader;
 import android.content.ContentResolver;
 import android.content.Context;
 import android.content.Intent;
+import android.content.Loader;
 import android.content.SharedPreferences;
 import android.content.SharedPreferences.OnSharedPreferenceChangeListener;
 import android.database.ContentObserver;
@@ -47,29 +58,15 @@ import android.net.Uri;
 import android.nfc.NfcManager;
 import android.os.Bundle;
 import android.os.Handler;
-import android.support.v4.app.LoaderManager;
-import android.support.v4.app.LoaderManager.LoaderCallbacks;
-import android.support.v4.content.AsyncTaskLoader;
-import android.support.v4.content.Loader;
 import android.text.SpannableStringBuilder;
 import android.text.format.DateUtils;
 import android.text.style.StyleSpan;
+import android.view.ActionMode;
+import android.view.Menu;
+import android.view.MenuInflater;
+import android.view.MenuItem;
 import android.view.View;
 import android.widget.ListView;
-
-import com.actionbarsherlock.app.SherlockListFragment;
-import com.actionbarsherlock.view.ActionMode;
-import com.actionbarsherlock.view.Menu;
-import com.actionbarsherlock.view.MenuInflater;
-import com.actionbarsherlock.view.MenuItem;
-import com.google.bitcoin.core.Address;
-import com.google.bitcoin.core.ScriptException;
-import com.google.bitcoin.core.Transaction;
-import com.google.bitcoin.core.Transaction.Purpose;
-import com.google.bitcoin.core.TransactionConfidence.ConfidenceType;
-import com.google.bitcoin.core.Wallet;
-import com.google.bitcoin.utils.Threading;
-
 import de.schildbach.wallet.AddressBookProvider;
 import de.schildbach.wallet.Configuration;
 import de.schildbach.wallet.Constants;
@@ -84,7 +81,7 @@ import de.schildbach.wallet_test.R;
 /**
  * @author Andreas Schildbach
  */
-public class TransactionsListFragment extends SherlockListFragment implements LoaderCallbacks<List<Transaction>>, OnSharedPreferenceChangeListener
+public class TransactionsListFragment extends FancyListFragment implements LoaderCallbacks<List<Transaction>>, OnSharedPreferenceChangeListener
 {
 	public enum Direction
 	{
@@ -151,7 +148,7 @@ public class TransactionsListFragment extends SherlockListFragment implements Lo
 	{
 		super.onCreate(savedInstanceState);
 
-		setRetainInstance(true);
+		setRetainInstance(false);
 
 		this.direction = (Direction) getArguments().getSerializable(KEY_DIRECTION);
 
@@ -175,21 +172,6 @@ public class TransactionsListFragment extends SherlockListFragment implements Lo
 		wallet.addEventListener(transactionChangeListener, Threading.SAME_THREAD);
 
 		updateView();
-	}
-
-	@Override
-	public void onViewCreated(final View view, final Bundle savedInstanceState)
-	{
-		super.onViewCreated(view, savedInstanceState);
-
-		final SpannableStringBuilder emptyText = new SpannableStringBuilder(
-				getString(direction == Direction.SENT ? R.string.wallet_transactions_fragment_empty_text_sent
-						: R.string.wallet_transactions_fragment_empty_text_received));
-		emptyText.setSpan(new StyleSpan(Typeface.BOLD), 0, emptyText.length(), SpannableStringBuilder.SPAN_POINT_MARK);
-		if (direction != Direction.SENT)
-			emptyText.append("\n\n").append(getString(R.string.wallet_transactions_fragment_empty_text_howto));
-
-		setEmptyText(emptyText);
 	}
 
 	@Override
@@ -250,10 +232,10 @@ public class TransactionsListFragment extends SherlockListFragment implements Lo
 					mode.setTitle(time != null ? (DateUtils.isToday(time.getTime()) ? getString(R.string.time_today) : dateFormat.format(time))
 							+ ", " + timeFormat.format(time) : null);
 
-					final BigInteger value = tx.getValue(wallet);
+					final Coin value = tx.getValue(wallet);
 					final boolean sent = value.signum() < 0;
 
-					address = sent ? WalletUtils.getFirstToAddress(tx) : WalletUtils.getFirstFromAddress(tx);
+					address = sent ? WalletUtils.getWalletAddressOfReceived(tx, wallet) : WalletUtils.getFirstFromAddress(tx);
 
 					final String label;
 					if (tx.isCoinBase())
@@ -277,7 +259,7 @@ public class TransactionsListFragment extends SherlockListFragment implements Lo
 
 					menu.findItem(R.id.wallet_transactions_context_show_qr).setVisible(serializedTx.length < SHOW_QR_THRESHOLD_BYTES);
 
-					Nfc.publishMimeObject(nfcManager, activity, Constants.MIMETYPE_TRANSACTION, serializedTx, false);
+					Nfc.publishMimeObject(nfcManager, activity, Constants.MIMETYPE_TRANSACTION, serializedTx);
 
 					return true;
 				}
@@ -340,7 +322,7 @@ public class TransactionsListFragment extends SherlockListFragment implements Lo
 
 	private void handleBackupWarningClick()
 	{
-		((WalletActivity) activity).handleExportKeys();
+		((WalletActivity) activity).handleBackupWallet();
 	}
 
 	@Override
@@ -353,6 +335,15 @@ public class TransactionsListFragment extends SherlockListFragment implements Lo
 	public void onLoadFinished(final Loader<List<Transaction>> loader, final List<Transaction> transactions)
 	{
 		adapter.replace(transactions);
+
+		final SpannableStringBuilder emptyText = new SpannableStringBuilder(
+				getString(direction == Direction.SENT ? R.string.wallet_transactions_fragment_empty_text_sent
+						: R.string.wallet_transactions_fragment_empty_text_received));
+		emptyText.setSpan(new StyleSpan(Typeface.BOLD), 0, emptyText.length(), SpannableStringBuilder.SPAN_POINT_MARK);
+		if (direction != Direction.SENT)
+			emptyText.append("\n\n").append(getString(R.string.wallet_transactions_fragment_empty_text_howto));
+
+		setEmptyText(emptyText);
 	}
 
 	@Override
@@ -410,18 +401,14 @@ public class TransactionsListFragment extends SherlockListFragment implements Lo
 			final Set<Transaction> transactions = wallet.getTransactions(true);
 			final List<Transaction> filteredTransactions = new ArrayList<Transaction>(transactions.size());
 
-			try
+			for (final Transaction tx : transactions)
 			{
-				for (final Transaction tx : transactions)
-				{
-					final boolean sent = tx.getValue(wallet).signum() < 0;
-					if ((direction == Direction.RECEIVED && !sent) || direction == null || (direction == Direction.SENT && sent))
-						filteredTransactions.add(tx);
-				}
-			}
-			catch (final ScriptException x)
-			{
-				throw new RuntimeException(x);
+				final boolean sent = tx.getValue(wallet).signum() < 0;
+				final boolean isInternal = WalletUtils.isInternal(tx);
+
+				if ((direction == Direction.RECEIVED && !sent && !isInternal) || direction == null
+						|| (direction == Direction.SENT && sent && !isInternal))
+					filteredTransactions.add(tx);
 			}
 
 			Collections.sort(filteredTransactions, TRANSACTION_COMPARATOR);
@@ -461,12 +448,10 @@ public class TransactionsListFragment extends SherlockListFragment implements Lo
 				final Date updateTime2 = tx2.getUpdateTime();
 				final long time2 = updateTime2 != null ? updateTime2.getTime() : 0;
 
-				if (time1 > time2)
-					return -1;
-				else if (time1 < time2)
-					return 1;
-				else
-					return 0;
+				if (time1 != time2)
+					return time1 > time2 ? -1 : 1;
+
+				return tx1.getHash().compareTo(tx2.getHash());
 			}
 		};
 	}
@@ -480,10 +465,7 @@ public class TransactionsListFragment extends SherlockListFragment implements Lo
 
 	private void updateView()
 	{
-		final int btcPrecision = config.getBtcPrecision();
-		final int btcShift = config.getBtcShift();
-
-		adapter.setPrecision(btcPrecision, btcShift);
+		adapter.setFormat(config.getFormat());
 		adapter.clearLabelCache();
 	}
 }

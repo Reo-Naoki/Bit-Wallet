@@ -24,6 +24,7 @@ import javax.annotation.Nonnull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import android.app.ActionBar;
 import android.content.ComponentName;
 import android.content.DialogInterface;
 import android.content.DialogInterface.OnClickListener;
@@ -31,26 +32,29 @@ import android.content.Intent;
 import android.content.SharedPreferences;
 import android.os.Build;
 import android.os.Bundle;
+import android.os.Handler;
 import android.preference.Preference;
 import android.preference.Preference.OnPreferenceChangeListener;
+import android.preference.PreferenceActivity;
 import android.preference.PreferenceScreen;
-
-import com.actionbarsherlock.app.ActionBar;
-import com.actionbarsherlock.app.SherlockPreferenceActivity;
-import com.actionbarsherlock.view.MenuItem;
-
+import android.view.MenuItem;
 import de.schildbach.wallet.Configuration;
 import de.schildbach.wallet.Constants;
 import de.schildbach.wallet.WalletApplication;
+import de.schildbach.wallet.WalletBalanceWidgetProvider;
 import de.schildbach.wallet.util.CrashReporter;
 import de.schildbach.wallet_test.R;
 
 /**
  * @author Andreas Schildbach
  */
-public final class PreferencesActivity extends SherlockPreferenceActivity implements OnPreferenceChangeListener
+public final class PreferencesActivity extends PreferenceActivity implements OnPreferenceChangeListener
 {
 	private WalletApplication application;
+
+	private Handler handler = new Handler();
+
+	private Preference btcPrecisionPreference;
 	private Preference trustedPeerPreference;
 	private Preference trustedPeerOnlyPreference;
 
@@ -75,6 +79,9 @@ public final class PreferencesActivity extends SherlockPreferenceActivity implem
 		application = (WalletApplication) getApplication();
 		addPreferencesFromResource(R.xml.preferences);
 
+		btcPrecisionPreference = findPreference(Configuration.PREFS_KEY_BTC_PRECISION);
+		btcPrecisionPreference.setOnPreferenceChangeListener(this);
+
 		trustedPeerPreference = findPreference(Configuration.PREFS_KEY_TRUSTED_PEER);
 		trustedPeerPreference.setOnPreferenceChangeListener(this);
 
@@ -84,10 +91,7 @@ public final class PreferencesActivity extends SherlockPreferenceActivity implem
 		final Preference dataUsagePreference = findPreference(PREFS_KEY_DATA_USAGE);
 		dataUsagePreference.setEnabled(getPackageManager().resolveActivity(dataUsageIntent, 0) != null);
 
-		final Preference bluetoothOfflineTransactionsPreference = findPreference(Configuration.PREFS_KEY_LABS_BLUETOOTH_OFFLINE_TRANSACTIONS);
-		bluetoothOfflineTransactionsPreference.setEnabled(Build.VERSION.SDK_INT >= Constants.SDK_JELLY_BEAN_MR2);
-
-		final ActionBar actionBar = getSupportActionBar();
+		final ActionBar actionBar = getActionBar();
 		actionBar.setDisplayHomeAsUpEnabled(true);
 
 		final SharedPreferences prefs = getPreferenceManager().getSharedPreferences();
@@ -98,7 +102,9 @@ public final class PreferencesActivity extends SherlockPreferenceActivity implem
 	@Override
 	protected void onDestroy()
 	{
+		trustedPeerOnlyPreference.setOnPreferenceChangeListener(null);
 		trustedPeerPreference.setOnPreferenceChangeListener(null);
+		btcPrecisionPreference.setOnPreferenceChangeListener(null);
 
 		super.onDestroy();
 	}
@@ -198,15 +204,27 @@ public final class PreferencesActivity extends SherlockPreferenceActivity implem
 	@Override
 	public boolean onPreferenceChange(final Preference preference, final Object newValue)
 	{
-		if (preference.equals(trustedPeerPreference))
+		// delay action because preference isn't persisted until after this method returns
+		handler.post(new Runnable()
 		{
-			application.stopBlockchainService();
-			updateTrustedPeer((String) newValue);
-		}
-		else if (preference.equals(trustedPeerOnlyPreference))
-		{
-			application.stopBlockchainService();
-		}
+			@Override
+			public void run()
+			{
+				if (preference.equals(btcPrecisionPreference))
+				{
+					WalletBalanceWidgetProvider.updateWidgets(PreferencesActivity.this, application.getWallet());
+				}
+				else if (preference.equals(trustedPeerPreference))
+				{
+					application.stopBlockchainService();
+					updateTrustedPeer((String) newValue);
+				}
+				else if (preference.equals(trustedPeerOnlyPreference))
+				{
+					application.stopBlockchainService();
+				}
+			}
+		});
 
 		return true;
 	}

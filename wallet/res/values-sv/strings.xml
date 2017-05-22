@@ -2,7 +2,7 @@
 <resources>
 
 	<string name="toast_wallet_reset">Plånboken nollställdes,\ndet kan ta ett tag innan den återställts</string>
-	<string name="wallet_disclaimer_fragment_remind_safety">Använd på egen risk. Läs &lt;u>säkerhetsråden&lt;/u>.</string>
+	<string name="wallet_disclaimer_fragment_remind_safety">Använd på egen risk. Läs &lt;u&gt;säkerhetsråden&lt;/u&gt;.</string>
 	<string name="blockchain_state_progress_hours">Blockkedjan %1$s, %2$d timmar efter</string>
 	<string name="blockchain_state_progress_days">Blockkedjan %1$s, %2$d dagar efter</string>
 	<string name="blockchain_state_progress_weeks">Blockkedjan %1$s, %2$d veckor efter</string>
@@ -13,8 +13,6 @@
 	<string name="blockchain_state_progress_problem_network">Blockkedjan laddas inte ner: Nätverksproblem</string>
 	<string name="wallet_address_fragment_your">Din Bitcoin adress:</string>
 	<string name="wallet_address_fragment_clipboard_msg">Bitcoin adressen kopierad till klippbordet</string>
-	<string name="wallet_addresses_fragment_add_dialog_title">Lägg till Bitcoin adress</string>
-	<string name="wallet_addresses_fragment_add_dialog_message">Bitcoin adresser kan inte tas bort. Vill du lägga till en ny adress till din plånbok?</string>
 	<string name="exchange_rates_fragment_empty_text">Kunde inte ladda ner växlingskurser</string>
 	<string name="exchange_rates_context_set_as_default_title">Ange som standard utländsk valuta</string>
 	<string name="wallet_transactions_fragment_tab_received">Mottagna</string>
@@ -40,7 +38,7 @@
 	<string name="send_coins_fragment_receiving_address_error">Ogiltig Bitcoin adress!</string>
 	<string name="send_coins_fragment_receiving_address_error_cross_network">Kan inte använda %s adressen med denna plånbok!</string>
 	<string name="send_coins_fragment_receiving_address_error_cross_network_unknown">Kan inte använda adressen från det okända nätverket med denna plånbok!</string>
-	<string name="send_coins_fragment_pending">(%s BTC väntar på att bekräftas)</string>
+	<string name="send_coins_fragment_pending">(%s väntar på att bekräftas)</string>
 	<string name="send_coins_fragment_amount_label">Belopp att skicka</string>
 	<string name="send_coins_fragment_button_send">Skicka</string>
 	<string name="send_coins_fragment_button_back">Tillbaka</string>
@@ -49,8 +47,6 @@
 	<string name="send_coins_error_msg">Problem att skicka Bitcoins!</string>
 	<string name="send_coins_address_context_clear_title">Ange ny adress</string>
 	<string name="request_coins_activity_title">Ta emot Bitcoins</string>
-	<string name="request_coins_fragment_address_label">Adress att begära till</string>
-	<string name="request_coins_fragment_include_address_label">inkluderar etiketten med adressen</string>
 	<string name="request_coins_fragment_amount_label">Begärt belopp (frivilligt)</string>
 	<string name="request_coins_fragment_initiate_request_qr">Den som skickar dig Bitcoins ska scanna denna kod.</string>
 	<string name="request_coins_fragment_initiate_request_nfc">Eller skicka med en telefon som har NFC.</string>
@@ -63,9 +59,7 @@
 	<string name="address_book_context_send_title">Skicka Bitcoins till adressen</string>
 	<string name="address_book_context_edit_title">Ändra adress</string>
 	<string name="address_book_context_remove_title">Ta bort adressen</string>
-	<string name="address_book_context_show_qr_title">Visa QR-kod</string>
 	<string name="address_book_context_copy_to_clipboard_title">Kopiera till urklipp</string>
-	<string name="address_book_context_default_title">Sätt som standardadress</string>
 	<string name="address_book_options_paste_from_clipboard_title">Klistra in från urklipp</string>
 	<string name="address_book_options_paste_from_clipboard_empty">Urklippet är tomt</string>
 	<string name="address_book_options_scan_title">Skanna adress</string>
@@ -88,7 +82,6 @@
 	<string name="about_credits_market_publisher_title">Andra appar från utvecklaren</string>
 	<string name="notification_coins_received_msg">Tagit emot %s</string>
 	<string name="notification_peers_connected_msg">Ansluten till %d noder</string>
-
 	<!-- generic buttons -->
 	<string name="button_dismiss">Avsluta</string>
 	<string name="button_cancel">Avbryt</string>
@@ -105,6 +98,7 @@
 	<string name="button_edit_address">Lägg till/ändra etikett</string>
 	<string name="button_scan">Skanna</string>
 	<string name="button_settings">Inställningar</string>
+	<string name="action_show_qr">Visa QR-kod</string>
 	<string name="time_today">idag</string>
 	<string name="address_unlabeled">(saknar etikett)</string>
 

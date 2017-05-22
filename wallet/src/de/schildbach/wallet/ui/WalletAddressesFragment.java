@@ -23,34 +23,32 @@ import java.util.List;
 
 import javax.annotation.Nonnull;
 
+import org.bitcoinj.core.AbstractWalletEventListener;
+import org.bitcoinj.core.Address;
+import org.bitcoinj.core.ECKey;
+import org.bitcoinj.core.Wallet;
+import org.bitcoinj.core.WalletEventListener;
+import org.bitcoinj.uri.BitcoinURI;
+import org.bitcoinj.utils.Threading;
+
 import android.app.Activity;
+import android.app.ListFragment;
 import android.content.ContentResolver;
 import android.content.Context;
-import android.content.DialogInterface;
 import android.content.Intent;
 import android.database.ContentObserver;
 import android.net.Uri;
 import android.os.Bundle;
 import android.os.Handler;
 import android.text.ClipboardManager;
+import android.view.ActionMode;
+import android.view.Menu;
+import android.view.MenuInflater;
+import android.view.MenuItem;
 import android.view.View;
 import android.widget.BaseAdapter;
 import android.widget.ListAdapter;
 import android.widget.ListView;
-
-import com.actionbarsherlock.app.SherlockListFragment;
-import com.actionbarsherlock.view.ActionMode;
-import com.actionbarsherlock.view.Menu;
-import com.actionbarsherlock.view.MenuInflater;
-import com.actionbarsherlock.view.MenuItem;
-import com.google.bitcoin.core.AbstractWalletEventListener;
-import com.google.bitcoin.core.Address;
-import com.google.bitcoin.core.ECKey;
-import com.google.bitcoin.core.Wallet;
-import com.google.bitcoin.core.WalletEventListener;
-import com.google.bitcoin.uri.BitcoinURI;
-import com.google.bitcoin.utils.Threading;
-
 import de.schildbach.wallet.AddressBookProvider;
 import de.schildbach.wallet.Configuration;
 import de.schildbach.wallet.Constants;
@@ -58,12 +56,13 @@ import de.schildbach.wallet.WalletApplication;
 import de.schildbach.wallet.util.BitmapFragment;
 import de.schildbach.wallet.util.Qr;
 import de.schildbach.wallet.util.WalletUtils;
+import de.schildbach.wallet.util.WholeStringBuilder;
 import de.schildbach.wallet_test.R;
 
 /**
  * @author Andreas Schildbach
  */
-public final class WalletAddressesFragment extends SherlockListFragment
+public final class WalletAddressesFragment extends ListFragment
 {
 	private AddressBookActivity activity;
 	private WalletApplication application;
@@ -92,12 +91,17 @@ public final class WalletAddressesFragment extends SherlockListFragment
 
 		setHasOptionsMenu(true);
 
-		adapter = new WalletAddressesAdapter(activity, wallet, true);
-
-		final Address selectedAddress = application.determineSelectedAddress();
-		adapter.setSelectedAddress(selectedAddress.toString());
+		adapter = new WalletAddressesAdapter(activity, wallet);
 
 		setListAdapter(adapter);
+	}
+
+	@Override
+	public void onViewCreated(final View view, final Bundle savedInstanceState)
+	{
+		super.onViewCreated(view, savedInstanceState);
+
+		setEmptyText(WholeStringBuilder.bold(getString(R.string.address_book_empty_text)));
 	}
 
 	@Override
@@ -108,7 +112,7 @@ public final class WalletAddressesFragment extends SherlockListFragment
 		contentResolver.registerContentObserver(AddressBookProvider.contentUri(activity.getPackageName()), true, contentObserver);
 
 		wallet.addEventListener(walletListener, Threading.SAME_THREAD);
-		walletListener.onKeysAdded(null, null); // trigger initial load of keys
+		walletListener.onKeysAdded(null); // trigger initial load of keys
 
 		updateView();
 	}
@@ -129,38 +133,6 @@ public final class WalletAddressesFragment extends SherlockListFragment
 		inflater.inflate(R.menu.wallet_addresses_fragment_options, menu);
 
 		super.onCreateOptionsMenu(menu, inflater);
-	}
-
-	@Override
-	public boolean onOptionsItemSelected(final MenuItem item)
-	{
-		switch (item.getItemId())
-		{
-			case R.id.wallet_addresses_options_add:
-				handleAddAddress();
-				return true;
-		}
-
-		return super.onOptionsItemSelected(item);
-	}
-
-	private void handleAddAddress()
-	{
-		final DialogBuilder dialog = new DialogBuilder(activity);
-		dialog.setTitle(R.string.wallet_addresses_fragment_add_dialog_title);
-		dialog.setMessage(R.string.wallet_addresses_fragment_add_dialog_message);
-		dialog.setPositiveButton(R.string.button_add, new DialogInterface.OnClickListener()
-		{
-			@Override
-			public void onClick(final DialogInterface dialog, final int which)
-			{
-				application.addNewKeyToWallet();
-
-				activity.updateFragments();
-			}
-		});
-		dialog.setNegativeButton(R.string.button_cancel, null);
-		dialog.show();
 	}
 
 	@Override
@@ -212,12 +184,6 @@ public final class WalletAddressesFragment extends SherlockListFragment
 						mode.finish();
 						return true;
 
-					case R.id.wallet_addresses_context_default:
-						handleDefault(getAddress(position));
-
-						mode.finish();
-						return true;
-
 					case R.id.wallet_addresses_context_browse:
 						startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse(Constants.EXPLORE_BASE_URL + "address/"
 								+ getAddress(position).toString())));
@@ -262,13 +228,6 @@ public final class WalletAddressesFragment extends SherlockListFragment
 				clipboardManager.setText(address.toString());
 				activity.toast(R.string.wallet_address_fragment_clipboard_msg);
 			}
-
-			private void handleDefault(@Nonnull final Address address)
-			{
-				final String addressStr = address.toString();
-				config.setSelectedAddress(addressStr);
-				adapter.setSelectedAddress(addressStr);
-			}
 		});
 	}
 
@@ -293,9 +252,9 @@ public final class WalletAddressesFragment extends SherlockListFragment
 	private final WalletEventListener walletListener = new AbstractWalletEventListener()
 	{
 		@Override
-		public void onKeysAdded(final Wallet w, final List<ECKey> keysAdded)
+		public void onKeysAdded(final List<ECKey> keysAdded)
 		{
-			final List<ECKey> keys = wallet.getKeys();
+			final List<ECKey> keys = wallet.getImportedKeys();
 
 			Collections.sort(keys, new Comparator<ECKey>()
 			{

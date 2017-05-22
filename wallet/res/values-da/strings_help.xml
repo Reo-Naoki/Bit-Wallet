@@ -1,7 +1,6 @@
-<?xml version="1.0" encoding="utf-8"?>
+<?xml version='1.0' encoding='UTF-8'?>
 <resources>
-
-	<string name="help_wallet">
+  <string name="help_wallet">
 <![CDATA[
 		<p>
 			Den øverste venstre del af skærmen viser din valgte Bitcoin-adresse, som andre har brug for at vide for at sende
@@ -30,7 +29,7 @@
 		</p>
 	]]>
 	</string>
-	<string name="help_request_coins">
+  <string name="help_request_coins">
 <![CDATA[
 		<p>
 			Ved at bruge denne dialog kan du forespørge mønter fra en anden person (som allerede skal have installeret Bitcoin Wallet).
@@ -49,7 +48,7 @@
 		</p>
 	]]>
 	</string>
-	<string name="help_send_coins">
+  <string name="help_send_coins">
 <![CDATA[
 		<p>
 			Du har startet processen for at sende mønter.
@@ -79,7 +78,7 @@
 		</p>
 	]]>
 	</string>
-	<string name="help_safety">
+  <string name="help_safety">
 <![CDATA[
 		<p>
 			<b>Vigtige bemærkninger om sikkerhed:</b>
@@ -113,5 +112,4 @@
 		</p>
 	]]>
 	</string>
-
 </resources>

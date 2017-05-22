@@ -3,12 +3,12 @@
 	xmlns:tools="http://schemas.android.com/tools"
 	package="de.schildbach.wallet_test"
 	android:installLocation="internalOnly"
-	android:versionCode="158"
-	android:versionName="3.37-test" >
+	android:versionCode="191"
+	android:versionName="4.01-test" >
 
 	<uses-sdk
-		android:minSdkVersion="10"
-		android:targetSdkVersion="11"
+		android:minSdkVersion="15"
+		android:targetSdkVersion="16"
 		tools:ignore="OldTargetApi" />
 
 	<uses-permission android:name="android.permission.INTERNET" />
@@ -18,7 +18,6 @@
 	<uses-permission android:name="android.permission.CAMERA" />
 	<uses-permission android:name="android.permission.VIBRATE" />
 	<uses-permission android:name="android.permission.WAKE_LOCK" />
-	<uses-permission android:name="android.permission.BROADCAST_STICKY" />
 	<uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
 	<uses-permission android:name="android.permission.BLUETOOTH" />
 
@@ -57,7 +56,6 @@
 	<application
 		android:name="de.schildbach.wallet.WalletApplication"
 		android:allowBackup="false"
-		android:hardwareAccelerated="true"
 		android:icon="@drawable/app_icon"
 		android:label="@string/app_name"
 		android:theme="@style/My.Theme" >
@@ -84,7 +82,7 @@
 		</activity-alias>
 
 		<activity
-			android:name="de.schildbach.wallet.ui.SendCoinsActivity"
+			android:name="de.schildbach.wallet.ui.send.SendCoinsActivity"
 			android:configChanges="keyboard|keyboardHidden"
 			android:label="@string/send_coins_activity_title"
 			android:screenOrientation="behind"
@@ -104,7 +102,7 @@
 
 				<category android:name="android.intent.category.DEFAULT" />
 			</intent-filter>
-			<intent-filter android:label="@string/send_coins_activity_title">
+			<intent-filter android:label="@string/send_coins_activity_title" >
 				<action android:name="android.intent.action.VIEW" />
 
 				<data android:mimeType="application/bitcoin-paymentrequest" />
@@ -154,7 +152,7 @@
 			android:label="@string/about_title"
 			android:screenOrientation="behind" />
 		<activity
-			android:name="de.schildbach.wallet.ui.ImportKeysActivity"
+			android:name="de.schildbach.wallet.ui.RestoreWalletActivity"
 			android:configChanges="orientation|keyboard|keyboardHidden"
 			android:theme="@style/My.Theme.Dialog" >
 			<intent-filter android:label="@string/import_keys_intent_filter_action" >
@@ -162,7 +160,7 @@
 
 				<category android:name="android.intent.category.DEFAULT" />
 
-				<data android:mimeType="x-bitcoin/private-keys" />
+				<data android:mimeType="application/x-bitcoin-wallet-backup" />
 				<data android:mimeType="application/octet-stream" />
 			</intent-filter>
 		</activity>
@@ -173,6 +171,12 @@
 			android:stateNotNeeded="true"
 			android:theme="@style/My.Theme.Fullscreen"
 			android:windowSoftInputMode="stateAlwaysHidden" />
+		<activity
+			android:name="de.schildbach.wallet.ui.send.SweepWalletActivity"
+			android:configChanges="keyboard|keyboardHidden"
+			android:label="@string/sweep_wallet_activity_title"
+			android:screenOrientation="behind"
+			android:windowSoftInputMode="adjustResize" />
 
 		<provider
 			android:name="de.schildbach.wallet.AddressBookProvider"
@@ -212,6 +216,10 @@
 				<data android:scheme="package" />
 			</intent-filter>
 		</receiver>
+
+		<service
+			android:name="de.schildbach.wallet.service.UpgradeWalletService"
+			android:exported="false" />
 	</application>
 
 </manifest>

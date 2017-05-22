@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+<?xml version='1.0' encoding='UTF-8'?>
 <resources>
 
 	<string-array name="preferences_precision_labels">
@@ -6,6 +6,7 @@
 		<item>BTC, 6 decimaler</item>
 		<item>BTC, 4 decimaler</item>
 		<item>mBTC, 2 decimaler</item>
+		<item>µBTC, uden decimaler</item>
 	</string-array>
 
 </resources>

@@ -27,16 +27,6 @@
 		android:textSize="@dimen/font_size_normal" />
 
 	<TextView
-		android:id="@+id/send_coins_payee_organization"
-		android:layout_width="match_parent"
-		android:layout_height="wrap_content"
-		android:layout_marginLeft="@dimen/list_entry_padding_horizontal_lax"
-		android:layout_marginRight="@dimen/list_entry_padding_horizontal_lax"
-		android:singleLine="true"
-		android:textColor="@color/fg_significant"
-		android:textSize="@dimen/font_size_normal" />
-
-	<TextView
 		android:id="@+id/send_coins_payee_verified_by"
 		android:layout_width="match_parent"
 		android:layout_height="wrap_content"
@@ -61,7 +51,7 @@
 
 	<LinearLayout
 		android:id="@+id/send_coins_receiving_static"
-		style="@style/My.Widget.EditText"
+		style="@android:style/Widget.Holo.Light.EditText"
 		android:layout_width="match_parent"
 		android:layout_height="wrap_content"
 		android:layout_marginLeft="@dimen/list_entry_padding_horizontal"
@@ -75,6 +65,9 @@
 			android:layout_height="wrap_content"
 			android:layout_gravity="left"
 			android:layout_weight="1"
+			android:ellipsize="end"
+			android:maxLines="3"
+			android:singleLine="false"
 			android:textSize="@dimen/font_size_normal"
 			android:textStyle="bold" />
 
@@ -152,6 +145,15 @@
 		android:layout_width="0px"
 		android:layout_height="0px"
 		android:layout_weight="1" />
+
+	<TextView
+		android:id="@+id/send_coins_hint"
+		android:layout_width="match_parent"
+		android:layout_height="wrap_content"
+		android:layout_marginBottom="@dimen/list_entry_padding_vertical"
+		android:layout_marginLeft="@dimen/list_entry_padding_horizontal_lax"
+		android:layout_marginRight="@dimen/list_entry_padding_horizontal_lax"
+		android:textSize="@dimen/font_size_small" />
 
 	<TextView
 		android:id="@+id/send_coins_direct_payment_message"

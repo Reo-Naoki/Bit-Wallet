@@ -14,8 +14,6 @@
 	<string name="blockchain_state_progress_problem_network">Sinkronisasi: Masalah jaringan</string>
 	<string name="wallet_address_fragment_your">Alamat Bitcoin Anda:</string>
 	<string name="wallet_address_fragment_clipboard_msg">Alamat Bitcoin disalin</string>
-	<string name="wallet_addresses_fragment_add_dialog_title">Tambahkan alamat Bitcoin</string>
-	<string name="wallet_addresses_fragment_add_dialog_message">Alamat Bitcoin tidak dapat dihapus. Apakah Anda ingin menambahkan alamat baru?</string>
 	<string name="wallet_balance_fragment_replaying">Saldo tidak tersedia saat pengulangan.</string>
 	<string name="exchange_rates_activity_title">Nilai Tukar</string>
 	<string name="exchange_rates_fragment_empty_text">Tidak dapat memuat nilai tukar</string>
@@ -33,7 +31,6 @@
 	<string name="wallet_transactions_row_warning_backup">Selamat, Anda menerima pembayaran pertama Anda! Sudahkah Anda &lt;u&gt;mencadangkan dompet Anda&lt;/u&gt;, utk hindari kehilangan?</string>
 	<string name="wallet_transactions_fragment_coinbase">ditambang</string>
 	<string name="wallet_transactions_fragment_internal">Internal</string>
-	<string name="wallet_options_backup">Cadangkan Kunci</string>
 	<string name="wallet_options_safety">Nota keamanan</string>
 	<string name="wallet_options_donate">Tip / Donasi</string>
 	<string name="wallet_donate_address_label">Donasi untuk Bitcoin Wallet</string>
@@ -54,7 +51,7 @@
 	<string name="send_coins_fragment_receiving_address_error">Alamat Bitcoin Salah!</string>
 	<string name="send_coins_fragment_receiving_address_error_cross_network">Tidak dapat menggunakan %s dgn dompet ini!</string>
 	<string name="send_coins_fragment_receiving_address_error_cross_network_unknown">Tidak dapat menggunakan alamat dari jaringan tak diketahui dgn dompet ini!</string>
-	<string name="send_coins_fragment_pending">(BTC %s menunggu konfirmasi)</string>
+	<string name="send_coins_fragment_pending">(%s menunggu konfirmasi)</string>
 	<string name="send_coins_fragment_amount_label">Jumlah pembayaran</string>
 	<string name="send_coins_fragment_button_send">Kirim</string>
 	<string name="send_coins_fragment_button_back">Kembali</string>
@@ -66,8 +63,6 @@
 	<string name="send_coins_options_empty">Dompet kosong</string>
 	<string name="send_coins_address_context_clear_title">Masukkan alamat baru</string>
 	<string name="request_coins_activity_title">Meminta BItcoin</string>
-	<string name="request_coins_fragment_address_label">Alamat untuk diminta ke</string>
-	<string name="request_coins_fragment_include_address_label">masukkan label dgn alamat</string>
 	<string name="request_coins_fragment_amount_label">Jumlah permintaan (pilihan)</string>
 	<string name="request_coins_fragment_initiate_request_qr">Berikan kode untuk dipindai oleh pengirim.</string>
 	<string name="request_coins_fragment_initiate_request_nfc">Atau tempelkan pada ponsel dgn NFC</string>
@@ -81,9 +76,7 @@
 	<string name="address_book_context_send_title">Kirim Bitcoin ke alamat</string>
 	<string name="address_book_context_edit_title">Mengubah alamat</string>
 	<string name="address_book_context_remove_title">Hapus alamat</string>
-	<string name="address_book_context_show_qr_title">Tampilkan kode QR</string>
 	<string name="address_book_context_copy_to_clipboard_title">Salin</string>
-	<string name="address_book_context_default_title">Tetapkan sebagai alamat standar</string>
 	<string name="address_book_options_paste_from_clipboard_title">Tempelkan</string>
 	<string name="address_book_options_paste_from_clipboard_empty">Salinan kosong</string>
 	<string name="address_book_options_scan_title">Pindai alamat</string>
@@ -113,11 +106,7 @@
 	<string name="import_keys_dialog_file_created_automatic">pencadangan otomatis %s</string>
 	<string name="import_keys_dialog_file_created_manual">dicadangkan manual %s</string>
 	<string name="import_keys_dialog_button_import">Pulihkan</string>
-	<string name="import_keys_dialog_success_imported">%d kunci pribadi telah dipulihkan.</string>
-	<string name="import_keys_dialog_success_existing">%d kunci pribadi tidak dipulihkan, karena Anda telah mempunyainya di dompet.</string>
-	<string name="import_keys_dialog_success_reset">Anda perlu mengatur-ulang rantai-blok untuk perbarui saldo Anda. Apakah Anda ingin lakukan?</string>
 	<string name="import_keys_dialog_failure">Kunci pribadi tidak dpt dipulihkan:\n\n%s\n\nKata sandi salah?</string>
-	<string name="import_keys_dialog_button_reset_blockchain">Atur-ulang</string>
 	<string name="export_keys_dialog_title">Cadangkan kunci pribadi</string>
 	<string name="export_keys_dialog_message">Kunci pribadi Anda akan dienkripsi dgn kata sandi terpilih dan akan disimpan ke penyimpanan eksternal.</string>
 	<string name="export_keys_dialog_button_export">Cadangkan</string>
@@ -174,7 +163,6 @@
 	<string name="about_credits_market_publisher_title">Apl lain oleh Pembuat</string>
 	<string name="notification_coins_received_msg">Diterima %s</string>
 	<string name="notification_peers_connected_msg">%d peer terhubung</string>
-
 	<!-- generic buttons -->
 	<string name="button_ok">IYA</string>
 	<string name="button_dismiss">Tolak</string>
@@ -192,6 +180,7 @@
 	<string name="button_scan">Pindai</string>
 	<string name="button_edit_address">Tambah/ubah alamat</string>
 	<string name="button_settings">Pengaturan</string>
+	<string name="action_show_qr">Tampilkan kode QR</string>
 	<string name="time_today">hari ini</string>
 	<string name="address_unlabeled">(tak berlabel)</string>
 

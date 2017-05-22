@@ -14,8 +14,6 @@
 	<string name="blockchain_state_progress_problem_network">Synchronizowanie: Problem z siecią</string>
 	<string name="wallet_address_fragment_your">Twój adres Bitcoin:</string>
 	<string name="wallet_address_fragment_clipboard_msg">Adres Bitcoin skopiowano do schowka</string>
-	<string name="wallet_addresses_fragment_add_dialog_title">Dodaj adres Bitcoin</string>
-	<string name="wallet_addresses_fragment_add_dialog_message">Adresy Bitcoin nie mogą zostać usunięte. Czy chcesz dodać nowy adres do portfela?</string>
 	<string name="wallet_balance_fragment_replaying">Saldo nie jest dostępne w trakcie odtwarzania.</string>
 	<string name="exchange_rates_activity_title">Kursy wymiany walut</string>
 	<string name="exchange_rates_fragment_empty_text">Załadowanie kursu wymiany walut nie powiodło się</string>
@@ -33,8 +31,6 @@
 	<string name="wallet_transactions_row_warning_backup">Gratulacje, otrzymałeś swoją pierwszą płatność! Czy już &lt;u&gt;wykonałeś kopię zapasową swojego portfela&lt;/u&gt;, by ochronić się przed jej utratą?</string>
 	<string name="wallet_transactions_fragment_coinbase">wykopany</string>
 	<string name="wallet_transactions_fragment_internal">wewnętrzny</string>
-	<string name="wallet_transactions_context_show_qr_title">Pokaż kod QR</string>
-	<string name="wallet_options_backup">Utwórz kopię zapasową kluczy</string>
 	<string name="wallet_options_safety">Wskazówki bezpieczeństwa</string>
 	<string name="wallet_options_donate">Podaruj</string>
 	<string name="wallet_donate_address_label">Dotacje dla Bitcoin Wallet</string>
@@ -55,7 +51,7 @@
 	<string name="send_coins_fragment_receiving_address_error">Nieprawidłowy adres Bitcoin!</string>
 	<string name="send_coins_fragment_receiving_address_error_cross_network">W tym portfelu nie można użyć adresu %s!</string>
 	<string name="send_coins_fragment_receiving_address_error_cross_network_unknown">W tym portfelu nie można użyć adresu z nieznanej sieci!</string>
-	<string name="send_coins_fragment_pending">(%s BTC oczekuje na potwierdzenie)</string>
+	<string name="send_coins_fragment_pending">(%s oczekuje na potwierdzenie)</string>
 	<string name="send_coins_fragment_amount_label">Kwota do zapłacenia</string>
 	<string name="send_coins_fragment_button_send">Wyślij</string>
 	<string name="send_coins_fragment_button_back">Cofnij</string>
@@ -67,12 +63,9 @@
 	<string name="send_coins_options_empty">Opróżnij portfel</string>
 	<string name="send_coins_address_context_clear_title">Podaj nowy adres</string>
 	<string name="request_coins_activity_title">Poproś o Bitcoiny</string>
-	<string name="request_coins_fragment_address_label">Adres do żądania</string>
-	<string name="request_coins_fragment_include_address_label">dołącz etykietę z adresem</string>
 	<string name="request_coins_fragment_amount_label">Żądana kwota (opcjonalnie)</string>
 	<string name="request_coins_fragment_initiate_request_qr">Niech nadawca zeskanuje ten kod QR</string>
 	<string name="request_coins_fragment_initiate_request_nfc">Lub zbliż do siebie urządzenia z aktywnym NFC</string>
-	<string name="request_coins_fragment_bluetooth_enabled">Akceptacja płatności przez Bluetooth</string>
 	<string name="request_coins_clipboard_msg">Prośbę o Bitcoiny skopiowano do schowka</string>
 	<string name="request_coins_share_dialog_title">Udostępnij prośbę o Bitcoiny…</string>
 	<string name="request_coins_options_local_app_title">Żądanie z lokalnej aplikacji</string>
@@ -83,9 +76,7 @@
 	<string name="address_book_context_send_title">Wyślij Bitcoiny na adres</string>
 	<string name="address_book_context_edit_title">Zmień adres</string>
 	<string name="address_book_context_remove_title">Usuń adres</string>
-	<string name="address_book_context_show_qr_title">Pokaż kod QR</string>
 	<string name="address_book_context_copy_to_clipboard_title">Skopiuj do schowka</string>
-	<string name="address_book_context_default_title">Ustaw jako domyślny adres</string>
 	<string name="address_book_options_paste_from_clipboard_title">Wklej ze schowka</string>
 	<string name="address_book_options_paste_from_clipboard_empty">Schowek jest pusty</string>
 	<string name="address_book_options_scan_title">Zeskanuj adres</string>
@@ -115,11 +106,7 @@
 	<string name="import_keys_dialog_file_created_automatic">automatyczna kopia bezpieczeństwa %s</string>
 	<string name="import_keys_dialog_file_created_manual">Ręcznie zapisano %s</string>
 	<string name="import_keys_dialog_button_import">Odzyskaj</string>
-	<string name="import_keys_dialog_success_imported">Odzyskano %d kluczy prywatnych</string>
-	<string name="import_keys_dialog_success_existing">Nie zaimportowano %d prywatnych kluczy, ponieważ już znajdują się w Twoim portfelu.</string>
-	<string name="import_keys_dialog_success_reset">Musisz zresetować łańcuch bloków by zaktualizować saldo portfela. Czy chcesz to zrobić?</string>
 	<string name="import_keys_dialog_failure">Nie udało się zaimportować kluczy prywatnych:\n\n%s\n\nBłędne hasło?</string>
-	<string name="import_keys_dialog_button_reset_blockchain">Resetuj</string>
 	<string name="export_keys_dialog_title">Eksportuj prywatne klucze</string>
 	<string name="export_keys_dialog_message">Twoje prywatne klucze zostaną zaszyfrowane wybranym hasłem a następnie zapisane na zewnętrznym nośniku.</string>
 	<string name="export_keys_dialog_button_export">Kopia zapasowa</string>
@@ -201,6 +188,7 @@
 	<string name="button_scan">Skanuj</string>
 	<string name="button_edit_address">Dodaj/zmień adres</string>
 	<string name="button_settings">Ustawienia</string>
+	<string name="action_show_qr">Pokaż kod QR</string>
 	<string name="action_browse">Przeglądaj</string>
 	<string name="time_today">dzisiaj</string>
 	<string name="address_unlabeled">(nieopisane)</string>

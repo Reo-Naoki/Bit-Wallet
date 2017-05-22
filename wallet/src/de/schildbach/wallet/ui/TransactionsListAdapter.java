@@ -17,7 +17,6 @@
 
 package de.schildbach.wallet.ui;
 
-import java.math.BigInteger;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Date;
@@ -26,6 +25,16 @@ import java.util.List;
 import java.util.Map;
 
 import javax.annotation.Nonnull;
+
+import org.bitcoinj.core.Address;
+import org.bitcoinj.core.Coin;
+import org.bitcoinj.core.Transaction;
+import org.bitcoinj.core.Transaction.Purpose;
+import org.bitcoinj.core.TransactionConfidence;
+import org.bitcoinj.core.TransactionConfidence.ConfidenceType;
+import org.bitcoinj.core.Wallet;
+import org.bitcoinj.utils.MonetaryFormat;
+import org.bitcoinj.wallet.DefaultCoinSelector;
 
 import android.content.Context;
 import android.content.res.Resources;
@@ -38,16 +47,6 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.BaseAdapter;
 import android.widget.TextView;
-
-import com.google.bitcoin.core.Address;
-import com.google.bitcoin.core.ScriptException;
-import com.google.bitcoin.core.Transaction;
-import com.google.bitcoin.core.Transaction.Purpose;
-import com.google.bitcoin.core.TransactionConfidence;
-import com.google.bitcoin.core.TransactionConfidence.ConfidenceType;
-import com.google.bitcoin.core.Wallet;
-import com.google.bitcoin.wallet.DefaultCoinSelector;
-
 import de.schildbach.wallet.AddressBookProvider;
 import de.schildbach.wallet.Constants;
 import de.schildbach.wallet.util.CircularProgressView;
@@ -65,8 +64,7 @@ public class TransactionsListAdapter extends BaseAdapter
 	private final int maxConnectedPeers;
 
 	private final List<Transaction> transactions = new ArrayList<Transaction>();
-	private int precision = 0;
-	private int shift = 0;
+	private MonetaryFormat format;
 	private boolean showEmptyText = false;
 	private boolean showBackupWarning = false;
 
@@ -103,10 +101,9 @@ public class TransactionsListAdapter extends BaseAdapter
 		textInternal = context.getString(R.string.wallet_transactions_fragment_internal);
 	}
 
-	public void setPrecision(final int precision, final int shift)
+	public void setFormat(final MonetaryFormat format)
 	{
-		this.precision = precision;
-		this.shift = shift;
+		this.format = format.noCode();
 
 		notifyDataSetChanged();
 	}
@@ -229,163 +226,170 @@ public class TransactionsListAdapter extends BaseAdapter
 		final boolean isCoinBase = tx.isCoinBase();
 		final boolean isInternal = WalletUtils.isInternal(tx);
 
-		try
+		final Coin value = tx.getValue(wallet);
+		final boolean sent = value.signum() < 0;
+		final Coin fee = tx.getFee();
+		final boolean hasFee = fee != null && !fee.isZero();
+
+		final CircularProgressView rowConfidenceCircular = (CircularProgressView) row.findViewById(R.id.transaction_row_confidence_circular);
+		final TextView rowConfidenceTextual = (TextView) row.findViewById(R.id.transaction_row_confidence_textual);
+
+		// confidence
+		if (confidenceType == ConfidenceType.PENDING)
 		{
-			final BigInteger value = tx.getValue(wallet);
-			final boolean sent = value.signum() < 0;
+			rowConfidenceCircular.setVisibility(View.VISIBLE);
+			rowConfidenceTextual.setVisibility(View.GONE);
 
-			final CircularProgressView rowConfidenceCircular = (CircularProgressView) row.findViewById(R.id.transaction_row_confidence_circular);
-			final TextView rowConfidenceTextual = (TextView) row.findViewById(R.id.transaction_row_confidence_textual);
-
-			// confidence
-			if (confidenceType == ConfidenceType.PENDING)
-			{
-				rowConfidenceCircular.setVisibility(View.VISIBLE);
-				rowConfidenceTextual.setVisibility(View.GONE);
-
-				rowConfidenceCircular.setProgress(1);
-				rowConfidenceCircular.setMaxProgress(1);
-				rowConfidenceCircular.setSize(confidence.numBroadcastPeers());
-				rowConfidenceCircular.setMaxSize(maxConnectedPeers / 2); // magic value
-				rowConfidenceCircular.setColors(colorInsignificant, colorInsignificant);
-			}
-			else if (confidenceType == ConfidenceType.BUILDING)
-			{
-				rowConfidenceCircular.setVisibility(View.VISIBLE);
-				rowConfidenceTextual.setVisibility(View.GONE);
-
-				rowConfidenceCircular.setProgress(confidence.getDepthInBlocks());
-				rowConfidenceCircular.setMaxProgress(isCoinBase ? Constants.NETWORK_PARAMETERS.getSpendableCoinbaseDepth()
-						: Constants.MAX_NUM_CONFIRMATIONS);
-				rowConfidenceCircular.setSize(1);
-				rowConfidenceCircular.setMaxSize(1);
-				rowConfidenceCircular.setColors(colorCircularBuilding, Color.DKGRAY);
-			}
-			else if (confidenceType == ConfidenceType.DEAD)
-			{
-				rowConfidenceCircular.setVisibility(View.GONE);
-				rowConfidenceTextual.setVisibility(View.VISIBLE);
-
-				rowConfidenceTextual.setText(CONFIDENCE_SYMBOL_DEAD);
-				rowConfidenceTextual.setTextColor(Color.RED);
-			}
-			else
-			{
-				rowConfidenceCircular.setVisibility(View.GONE);
-				rowConfidenceTextual.setVisibility(View.VISIBLE);
-
-				rowConfidenceTextual.setText(CONFIDENCE_SYMBOL_UNKNOWN);
-				rowConfidenceTextual.setTextColor(colorInsignificant);
-			}
-
-			// spendability
-			final int textColor;
-			if (confidenceType == ConfidenceType.DEAD)
-				textColor = Color.RED;
-			else
-				textColor = DefaultCoinSelector.isSelectable(tx) ? colorSignificant : colorInsignificant;
-
-			// time
-			final TextView rowTime = (TextView) row.findViewById(R.id.transaction_row_time);
-			if (rowTime != null)
-			{
-				final Date time = tx.getUpdateTime();
-				rowTime.setText(time != null ? (DateUtils.getRelativeTimeSpanString(context, time.getTime())) : null);
-				rowTime.setTextColor(textColor);
-			}
-
-			// receiving or sending
-			final TextView rowFromTo = (TextView) row.findViewById(R.id.transaction_row_fromto);
-			if (isInternal)
-				rowFromTo.setText(R.string.symbol_internal);
-			else if (sent)
-				rowFromTo.setText(R.string.symbol_to);
-			else
-				rowFromTo.setText(R.string.symbol_from);
-			rowFromTo.setTextColor(textColor);
-
-			// coinbase
-			final View rowCoinbase = row.findViewById(R.id.transaction_row_coinbase);
-			rowCoinbase.setVisibility(isCoinBase ? View.VISIBLE : View.GONE);
-
-			// address
-			final TextView rowAddress = (TextView) row.findViewById(R.id.transaction_row_address);
-			final Address address = sent ? WalletUtils.getFirstToAddress(tx) : WalletUtils.getFirstFromAddress(tx);
-			final String label;
-			if (isCoinBase)
-				label = textCoinBase;
-			else if (isInternal)
-				label = textInternal;
-			else if (address != null)
-				label = resolveLabel(address.toString());
-			else
-				label = "?";
-			rowAddress.setTextColor(textColor);
-			rowAddress.setText(label != null ? label : address.toString());
-			rowAddress.setTypeface(label != null ? Typeface.DEFAULT : Typeface.MONOSPACE);
-
-			// value
-			final CurrencyTextView rowValue = (CurrencyTextView) row.findViewById(R.id.transaction_row_value);
-			rowValue.setTextColor(textColor);
-			rowValue.setAlwaysSigned(true);
-			rowValue.setPrecision(precision, shift);
-			rowValue.setAmount(value);
-
-			// extended message
-			final View rowExtend = row.findViewById(R.id.transaction_row_extend);
-			if (rowExtend != null)
-			{
-				final TextView rowMessage = (TextView) row.findViewById(R.id.transaction_row_message);
-				final boolean isTimeLocked = tx.isTimeLocked();
-				rowExtend.setVisibility(View.GONE);
-
-				if (tx.getPurpose() == Purpose.KEY_ROTATION)
-				{
-					rowExtend.setVisibility(View.VISIBLE);
-					rowMessage.setText(Html.fromHtml(context.getString(R.string.transaction_row_message_purpose_key_rotation)));
-					rowMessage.setTextColor(colorSignificant);
-				}
-				else if (isOwn && confidenceType == ConfidenceType.PENDING && confidence.numBroadcastPeers() == 0)
-				{
-					rowExtend.setVisibility(View.VISIBLE);
-					rowMessage.setText(R.string.transaction_row_message_own_unbroadcasted);
-					rowMessage.setTextColor(colorInsignificant);
-				}
-				else if (!isOwn && confidenceType == ConfidenceType.PENDING && confidence.numBroadcastPeers() == 0)
-				{
-					rowExtend.setVisibility(View.VISIBLE);
-					rowMessage.setText(R.string.transaction_row_message_received_direct);
-					rowMessage.setTextColor(colorInsignificant);
-				}
-				else if (!sent && value.compareTo(Transaction.MIN_NONDUST_OUTPUT) < 0)
-				{
-					rowExtend.setVisibility(View.VISIBLE);
-					rowMessage.setText(R.string.transaction_row_message_received_dust);
-					rowMessage.setTextColor(colorInsignificant);
-				}
-				else if (!sent && confidenceType == ConfidenceType.PENDING && isTimeLocked)
-				{
-					rowExtend.setVisibility(View.VISIBLE);
-					rowMessage.setText(R.string.transaction_row_message_received_unconfirmed_locked);
-					rowMessage.setTextColor(colorError);
-				}
-				else if (!sent && confidenceType == ConfidenceType.PENDING && !isTimeLocked)
-				{
-					rowExtend.setVisibility(View.VISIBLE);
-					rowMessage.setText(R.string.transaction_row_message_received_unconfirmed_unlocked);
-					rowMessage.setTextColor(colorInsignificant);
-				}
-				else if (!sent && confidenceType == ConfidenceType.DEAD)
-				{
-					rowExtend.setVisibility(View.VISIBLE);
-					rowMessage.setText(R.string.transaction_row_message_received_dead);
-					rowMessage.setTextColor(colorError);
-				}
-			}
+			rowConfidenceCircular.setProgress(1);
+			rowConfidenceCircular.setMaxProgress(1);
+			rowConfidenceCircular.setSize(confidence.numBroadcastPeers());
+			rowConfidenceCircular.setMaxSize(maxConnectedPeers / 2); // magic value
+			rowConfidenceCircular.setColors(colorInsignificant, colorInsignificant);
 		}
-		catch (final ScriptException x)
+		else if (confidenceType == ConfidenceType.BUILDING)
 		{
-			throw new RuntimeException(x);
+			rowConfidenceCircular.setVisibility(View.VISIBLE);
+			rowConfidenceTextual.setVisibility(View.GONE);
+
+			rowConfidenceCircular.setProgress(confidence.getDepthInBlocks());
+			rowConfidenceCircular.setMaxProgress(isCoinBase ? Constants.NETWORK_PARAMETERS.getSpendableCoinbaseDepth()
+					: Constants.MAX_NUM_CONFIRMATIONS);
+			rowConfidenceCircular.setSize(1);
+			rowConfidenceCircular.setMaxSize(1);
+			rowConfidenceCircular.setColors(colorCircularBuilding, Color.DKGRAY);
+		}
+		else if (confidenceType == ConfidenceType.DEAD)
+		{
+			rowConfidenceCircular.setVisibility(View.GONE);
+			rowConfidenceTextual.setVisibility(View.VISIBLE);
+
+			rowConfidenceTextual.setText(CONFIDENCE_SYMBOL_DEAD);
+			rowConfidenceTextual.setTextColor(Color.RED);
+		}
+		else
+		{
+			rowConfidenceCircular.setVisibility(View.GONE);
+			rowConfidenceTextual.setVisibility(View.VISIBLE);
+
+			rowConfidenceTextual.setText(CONFIDENCE_SYMBOL_UNKNOWN);
+			rowConfidenceTextual.setTextColor(colorInsignificant);
+		}
+
+		// spendability
+		final int textColor;
+		if (confidenceType == ConfidenceType.DEAD)
+			textColor = Color.RED;
+		else
+			textColor = DefaultCoinSelector.isSelectable(tx) ? colorSignificant : colorInsignificant;
+
+		// time
+		final TextView rowTime = (TextView) row.findViewById(R.id.transaction_row_time);
+		if (rowTime != null)
+		{
+			final Date time = tx.getUpdateTime();
+			rowTime.setText(time != null ? (DateUtils.getRelativeTimeSpanString(context, time.getTime())) : null);
+			rowTime.setTextColor(textColor);
+		}
+
+		// receiving or sending
+		final TextView rowFromTo = (TextView) row.findViewById(R.id.transaction_row_fromto);
+		if (isInternal)
+			rowFromTo.setText(R.string.symbol_internal);
+		else if (sent)
+			rowFromTo.setText(R.string.symbol_to);
+		else
+			rowFromTo.setText(R.string.symbol_from);
+		rowFromTo.setTextColor(textColor);
+
+		// coinbase
+		final View rowCoinbase = row.findViewById(R.id.transaction_row_coinbase);
+		rowCoinbase.setVisibility(isCoinBase ? View.VISIBLE : View.GONE);
+
+		// address
+		final TextView rowAddress = (TextView) row.findViewById(R.id.transaction_row_address);
+		final Address address = sent ? WalletUtils.getWalletAddressOfReceived(tx, wallet) : WalletUtils.getFirstFromAddress(tx);
+		final String label;
+		if (isCoinBase)
+			label = textCoinBase;
+		else if (isInternal)
+			label = textInternal;
+		else if (address != null)
+			label = resolveLabel(address.toString());
+		else
+			label = "?";
+		rowAddress.setTextColor(textColor);
+		rowAddress.setText(label != null ? label : address.toString());
+		rowAddress.setTypeface(label != null ? Typeface.DEFAULT : Typeface.MONOSPACE);
+
+		// fee
+		final View rowExtendFee = row.findViewById(R.id.transaction_row_extend_fee);
+		if (rowExtendFee != null)
+		{
+			final CurrencyTextView rowFee = (CurrencyTextView) row.findViewById(R.id.transaction_row_fee);
+			rowExtendFee.setVisibility(hasFee ? View.VISIBLE : View.GONE);
+			rowFee.setAlwaysSigned(true);
+			rowFee.setFormat(format);
+			if (hasFee)
+				rowFee.setAmount(fee.negate());
+		}
+
+		// value
+		final CurrencyTextView rowValue = (CurrencyTextView) row.findViewById(R.id.transaction_row_value);
+		rowValue.setTextColor(textColor);
+		rowValue.setAlwaysSigned(true);
+		rowValue.setFormat(format);
+		rowValue.setAmount(hasFee && rowExtendFee != null ? value.add(fee) : value);
+
+		// message
+		final View rowExtendMessage = row.findViewById(R.id.transaction_row_extend_message);
+		if (rowExtendMessage != null)
+		{
+			final TextView rowMessage = (TextView) row.findViewById(R.id.transaction_row_message);
+			final boolean isTimeLocked = tx.isTimeLocked();
+			rowExtendMessage.setVisibility(View.GONE);
+
+			if (tx.getPurpose() == Purpose.KEY_ROTATION)
+			{
+				rowExtendMessage.setVisibility(View.VISIBLE);
+				rowMessage.setText(Html.fromHtml(context.getString(R.string.transaction_row_message_purpose_key_rotation)));
+				rowMessage.setTextColor(colorSignificant);
+			}
+			else if (isOwn && confidenceType == ConfidenceType.PENDING && confidence.numBroadcastPeers() == 0)
+			{
+				rowExtendMessage.setVisibility(View.VISIBLE);
+				rowMessage.setText(R.string.transaction_row_message_own_unbroadcasted);
+				rowMessage.setTextColor(colorInsignificant);
+			}
+			else if (!isOwn && confidenceType == ConfidenceType.PENDING && confidence.numBroadcastPeers() == 0)
+			{
+				rowExtendMessage.setVisibility(View.VISIBLE);
+				rowMessage.setText(R.string.transaction_row_message_received_direct);
+				rowMessage.setTextColor(colorInsignificant);
+			}
+			else if (!sent && value.compareTo(Transaction.MIN_NONDUST_OUTPUT) < 0)
+			{
+				rowExtendMessage.setVisibility(View.VISIBLE);
+				rowMessage.setText(R.string.transaction_row_message_received_dust);
+				rowMessage.setTextColor(colorInsignificant);
+			}
+			else if (!sent && confidenceType == ConfidenceType.PENDING && isTimeLocked)
+			{
+				rowExtendMessage.setVisibility(View.VISIBLE);
+				rowMessage.setText(R.string.transaction_row_message_received_unconfirmed_locked);
+				rowMessage.setTextColor(colorError);
+			}
+			else if (!sent && confidenceType == ConfidenceType.PENDING && !isTimeLocked)
+			{
+				rowExtendMessage.setVisibility(View.VISIBLE);
+				rowMessage.setText(R.string.transaction_row_message_received_unconfirmed_unlocked);
+				rowMessage.setTextColor(colorInsignificant);
+			}
+			else if (!sent && confidenceType == ConfidenceType.DEAD)
+			{
+				rowExtendMessage.setVisibility(View.VISIBLE);
+				rowMessage.setText(R.string.transaction_row_message_received_dead);
+				rowMessage.setTextColor(colorError);
+			}
 		}
 	}
 
