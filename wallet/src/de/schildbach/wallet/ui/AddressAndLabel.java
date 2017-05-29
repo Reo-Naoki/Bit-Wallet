@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2014 the original author or authors.
+ * Copyright 2013-2015 the original author or authors.
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -17,7 +17,6 @@
 
 package de.schildbach.wallet.ui;
 
-import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 
 import org.bitcoinj.core.Address;
@@ -36,8 +35,8 @@ public class AddressAndLabel implements Parcelable
 	public final Address address;
 	public final String label;
 
-	public AddressAndLabel(@Nonnull final NetworkParameters addressParams, @Nonnull final String address, @Nullable final String label)
-			throws WrongNetworkException, AddressFormatException
+	public AddressAndLabel(final NetworkParameters addressParams, final String address, @Nullable final String label) throws WrongNetworkException,
+			AddressFormatException
 	{
 		this.address = new Address(addressParams, address);
 		this.label = label;

@@ -22,9 +22,8 @@ Your wallet can be manually backed up to and restored from external storage:
 
 	Testnet: /sdcard/Download/bitcoin-wallet-backup-testnet-<yyyy-MM-dd>
 
-The manual backup files are encrypted using your chosen backup password. You can use OpenSSL to decrypt:
-
-	openssl enc -d -aes-256-cbc -a -in <filename>
+If you want to recover coins from manual backups and for whatever reason you cannot use the app
+itself to restore from the backup, see the separate README.recover guide.
 
 
 DEBUGGING
@@ -48,14 +47,11 @@ is world readable/writeable. The goal is to be able to debug easily.
 
 You can probably skip some steps, especially if you built Android apps before.
 
-You'll need git, a Java SDK 6 (or later) and Maven 3.0.4 for this. I'll assume Ubuntu Linux for
-the package installs.
+You'll need git, a Java SDK 6 (or later) and Maven 3.0.5 (or later) for this. I'll assume Ubuntu Linux
+for the package installs.
 
 	# first time only
 	sudo apt-get install git maven openjdk-6-jdk libstdc++6:i386
-
-If you want to use Maven 3.1.0 or later, you need edit pom.xml to use android-maven-plugin version
-3.8.2 or later.
 
 Get the Android SDK (Tools only) from
 
@@ -68,7 +64,7 @@ and switch to it. Use
 	tools/android update sdk --no-ui --force --filter tools
 
 	# fetch required android dependencies
-	tools/android update sdk --no-ui --force --filter build-tools-20.0.0,android-10,android-16,extra-android-m2repository
+	tools/android update sdk --no-ui --force --filter build-tools-22.0.1,android-15,android-16,extra-android-m2repository
 
 to download the necessary API level.
 

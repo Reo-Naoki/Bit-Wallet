@@ -11,7 +11,6 @@
 	<string name="blockchain_state_progress_stalled">Tiến trình đồng bộ hóa đã ngưng lại</string>
 	<string name="blockchain_state_progress_problem_storage">Đồng bộ hóa: Gặp vấn đề về dung lượng lưu trữ</string>
 	<string name="blockchain_state_progress_problem_network">Đồng bộ hóa: Vấn đề về mạng lưới</string>
-	<string name="wallet_address_fragment_your">Địa chỉ Bitcoin của bạn:</string>
 	<string name="wallet_address_fragment_clipboard_msg">Địa chỉ Bitcoin đã được sao chép vào bộ nhớ ảo</string>
 	<string name="wallet_balance_fragment_replaying">Tính năng cân bằng tài khoản không thể được thao tác trong quá trình replay.</string>
 	<string name="exchange_rates_activity_title">Tỉ lệ hoán đổi</string>
@@ -21,9 +20,9 @@
 	<string name="exchange_rates_fragment_balance">cân bằng</string>
 	<string name="exchange_rates_fragment_source">Giá được tải về từ %s</string>
 	<string name="exchange_rates_context_set_as_default_title">Đặc làm đơn vị ngoại tệ mặc định</string>
-	<string name="wallet_transactions_fragment_tab_received">Đã nhận</string>
-	<string name="wallet_transactions_fragment_tab_all">Cả hai</string>
-	<string name="wallet_transactions_fragment_tab_sent">Đã gửi</string>
+	<string name="wallet_transactions_options_filter_received">Đã nhận</string>
+	<string name="wallet_transactions_options_filter_all">Cả hai</string>
+	<string name="wallet_transactions_options_filter_sent">Đã gửi</string>
 	<string name="wallet_transactions_fragment_empty_text_received">Hiện vẫn chưa nhận được Bitcoin nào.</string>
 	<string name="wallet_transactions_fragment_empty_text_sent">Hiện vẫn chưa gửi Bitcoin nào.</string>
 	<string name="wallet_transactions_fragment_empty_text_howto">Làm cách nào để nhận được Bitcoins?\n\nSử dụng cho các giao dịch bằng tiền như truyền thống,\nbán các sản phẩm hoặc dịch vụ hoặc\ndùng cho việc nhận thanh toán.</string>
@@ -47,8 +46,6 @@
 	<string name="send_coins_fragment_receiving_address_label">Trả cho</string>
 	<string name="send_coins_fragment_receiving_address_hint">loại địa chỉ hoặc tên</string>
 	<string name="send_coins_fragment_receiving_address_error">Địa chỉ Bitcoin không hợp lệ!</string>
-	<string name="send_coins_fragment_receiving_address_error_cross_network">Không thể sử dụng địa chỉ %s với ví tiền này!</string>
-	<string name="send_coins_fragment_receiving_address_error_cross_network_unknown">Không thể sử dụng địa chỉ của những mạng chưa rõ thông tin với ví tiền này!</string>
 	<string name="send_coins_fragment_pending">(%s đợi xác nhận)</string>
 	<string name="send_coins_fragment_amount_label">Số lượng chi trả</string>
 	<string name="send_coins_fragment_button_send">Gửi</string>
@@ -58,7 +55,6 @@
 	<string name="send_coins_sent_msg">Đã gửi!</string>
 	<string name="send_coins_failed_msg">Thất bại!</string>
 	<string name="send_coins_error_msg">Xảy ra vấn đề khi gửi coin!</string>
-	<string name="send_coins_address_context_clear_title">Điền vào giá trị mới</string>
 	<string name="request_coins_activity_title">Yêu cầu Bitcoin</string>
 	<string name="request_coins_fragment_amount_label">Số lượng đã yêu cầu (tùy chọn)</string>
 	<string name="request_coins_fragment_initiate_request_qr">Đã nhận được mã này được quét từ người gửi.</string>
@@ -84,7 +80,6 @@
 	<string name="edit_address_book_entry_dialog_button_edit">Lưu</string>
 	<string name="transaction_row_message_own_unbroadcasted">Phần chi trả này vẫn chưa được thực hiện.</string>
 	<string name="transaction_row_message_received_unconfirmed_unlocked">Phần chi trả này nên trở thành dạng có thể gửi đi trong vài phút nữa.</string>
-	<string name="transaction_row_message_received_unconfirmed_locked">Phần chi trả này không theo đúng tiêu chuẩn và bởi thế không đáng tin cậy</string>
 	<string name="transaction_row_message_received_dead">Phần chi trả này đã được chuyển ngược về phía người gửi.</string>
 	<string name="transaction_row_message_received_dust">Số lượng nhỏ này có thể không mang tính kinh tế cho lắm khi dành cho chi tiêu.</string>
 	<string name="network_monitor_activity_title">Giám sát mạng</string>
@@ -103,7 +98,7 @@
 	<string name="import_keys_dialog_button_import">Nhập dữ liệu</string>
 	<string name="import_keys_dialog_failure">Khóa cá nhân không thể được nhập vào:\n\n%s\n\nDo sai mật khẩu?</string>
 	<string name="export_keys_dialog_title">Xuất dữ liệu từ các khóa cá nhân</string>
-	<string name="export_keys_dialog_message">Các khóa cá nhân của bạn sẽ được mã hóa với một mật khẩu do bạn chọn và sau đó ghi dữ liệu mã hóa vào thẻ nhớ.</string>
+	<string name="backup_wallet_dialog_message">Các khóa cá nhân của bạn sẽ được mã hóa với một mật khẩu do bạn chọn và sau đó ghi dữ liệu mã hóa vào thẻ nhớ.</string>
 	<string name="export_keys_dialog_button_export">Xuất dữ liệu</string>
 	<string name="export_keys_dialog_success">Khóa cá nhân đã được xuất đến\n\n%s\n\nGiữ các khóa này ở nơi an toàn cũng ghi nhớ mật khẩu bạn đã đặt!\n\nBạn có muốn lưu giữ các khóa của bạn khi sử dụng ứng này không?</string>
 	<string name="export_keys_dialog_failure">Khóa cá nhân của bạn vẫn chưa được xuất dữ liệu:\n%s</string>
@@ -120,7 +115,6 @@
 	<string name="input_parser_invalid_bitcoin_uri">Bitcoin URI không hợp lệ:\n%s</string>
 	<string name="input_parser_invalid_address">Đã nhận được địa chỉ bitcoin không hợp lệ!\n(Nhầm lẫn giữa Mainnet/Testnet?)</string>
 	<string name="preferences_activity_title">Thiết lập</string>
-	<string name="preferences_category_main">Tùy biến</string>
 	<string name="preferences_category_diagnostics">Chẩn đoán</string>
 	<string name="preferences_category_labs">Thí nghiệm</string>
 	<string name="preferences_connectivity_notification_title">Chỉ định kết nối</string>
@@ -150,10 +144,7 @@
 	<string name="about_credits_bitcoinj_title">Ứng dụng này đang sử dụng bitcoinj %s</string>
 	<string name="about_credits_zxing_title">Ứng dụng này sử dụng \'zxing\'</string>
 	<string name="about_credits_icon_title">Ứng dụng này sử dụng biểu tượng bởi \'bitboy\'</string>
-	<string name="about_author_twitter_title">Liên hệ tác giả bằng Twitter</string>
-	<string name="about_author_googleplus_title">Liên hệ tác giả bằng Google+</string>
 	<string name="about_market_app_title">Trang web của ứng dụng trên Google Play</string>
-	<string name="about_credits_market_publisher_title">Các tác giả khác</string>
 	<string name="notification_coins_received_msg">đã nhận %s</string>
 	<string name="notification_peers_connected_msg">%d mạng ngang hàng đã kết nối</string>
 	<!-- generic buttons -->
@@ -171,7 +162,6 @@
 	<string name="button_request_coins">Yêu cầu coin</string>
 	<string name="button_send_coins">Gửi coin</string>
 	<string name="button_scan">Quét</string>
-	<string name="button_edit_address">Thêm/chỉnh sửa địa chỉ</string>
 	<string name="button_settings">Thiết lập</string>
 	<string name="action_show_qr">Hiển thị mã QR</string>
 	<string name="time_today">hôm nay</string>

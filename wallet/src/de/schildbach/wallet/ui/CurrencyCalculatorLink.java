@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2014 the original author or authors.
+ * Copyright 2013-2015 the original author or authors.
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -17,8 +17,6 @@
 
 package de.schildbach.wallet.ui;
 
-import javax.annotation.CheckForNull;
-import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 
 import org.bitcoinj.core.Coin;
@@ -85,7 +83,7 @@ public final class CurrencyCalculatorLink
 		}
 	};
 
-	public CurrencyCalculatorLink(@Nonnull final CurrencyAmountView btcAmountView, @Nonnull final CurrencyAmountView localAmountView)
+	public CurrencyCalculatorLink(final CurrencyAmountView btcAmountView, final CurrencyAmountView localAmountView)
 	{
 		this.btcAmountView = btcAmountView;
 		this.btcAmountView.setListener(btcAmountViewListener);
@@ -108,14 +106,19 @@ public final class CurrencyCalculatorLink
 		update();
 	}
 
-	public void setExchangeRate(@Nonnull final ExchangeRate exchangeRate)
+	public void setExchangeRate(final ExchangeRate exchangeRate)
 	{
 		this.exchangeRate = exchangeRate;
 
 		update();
 	}
 
-	@CheckForNull
+	public ExchangeRate getExchangeRate()
+	{
+		return exchangeRate;
+	}
+
+	@Nullable
 	public Coin getAmount()
 	{
 		if (exchangeDirection)
@@ -125,7 +128,14 @@ public final class CurrencyCalculatorLink
 		else if (exchangeRate != null)
 		{
 			final Fiat localAmount = (Fiat) localAmountView.getAmount();
-			return localAmount != null ? exchangeRate.fiatToCoin(localAmount) : null;
+			try
+			{
+				return localAmount != null ? exchangeRate.fiatToCoin(localAmount) : null;
+			}
+			catch (ArithmeticException x)
+			{
+				return null;
+			}
 		}
 		else
 		{
@@ -162,9 +172,16 @@ public final class CurrencyCalculatorLink
 				final Fiat localAmount = (Fiat) localAmountView.getAmount();
 				if (localAmount != null)
 				{
-					btcAmountView.setAmount(null, false);
-					btcAmountView.setHint(exchangeRate.fiatToCoin(localAmount));
 					localAmountView.setHint(null);
+					btcAmountView.setAmount(null, false);
+					try
+					{
+						btcAmountView.setHint(exchangeRate.fiatToCoin(localAmount));
+					}
+					catch (final ArithmeticException x)
+					{
+						btcAmountView.setHint(null);
+					}
 				}
 			}
 		}
@@ -201,7 +218,7 @@ public final class CurrencyCalculatorLink
 		activeTextView().requestFocus();
 	}
 
-	public void setBtcAmount(@Nonnull final Coin amount)
+	public void setBtcAmount(final Coin amount)
 	{
 		final Listener listener = this.listener;
 		this.listener = null;

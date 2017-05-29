@@ -1,5 +1,5 @@
 /*
- * Copyright 2011-2014 the original author or authors.
+ * Copyright 2011-2015 the original author or authors.
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -19,15 +19,10 @@ package de.schildbach.wallet.util;
 
 import java.util.Arrays;
 
-import javax.annotation.CheckForNull;
-import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 
-import android.app.Activity;
 import android.nfc.NdefMessage;
 import android.nfc.NdefRecord;
-import android.nfc.NfcAdapter;
-import android.nfc.NfcManager;
 
 import com.google.common.base.Charsets;
 
@@ -36,77 +31,15 @@ import com.google.common.base.Charsets;
  */
 public class Nfc
 {
-	public static boolean publishUri(@Nullable final NfcManager nfcManager, final Activity activity, @Nonnull final String uri)
-	{
-		if (nfcManager == null)
-			return false;
-
-		final NfcAdapter adapter = nfcManager.getDefaultAdapter();
-		if (adapter == null)
-			return false;
-
-		final NdefRecord uriRecord = wellKnownUriRecord(uri);
-		adapter.enableForegroundNdefPush(activity, ndefMessage(uriRecord));
-
-		return true;
-	}
-
-	public static boolean publishMimeObject(@Nullable final NfcManager nfcManager, final Activity activity, @Nonnull final String mimeType,
-			@Nonnull final byte[] payload)
-	{
-		if (nfcManager == null)
-			return false;
-
-		final NfcAdapter adapter = nfcManager.getDefaultAdapter();
-		if (adapter == null)
-			return false;
-
-		final NdefRecord mimeRecord = mimeRecord(mimeType, payload);
-		adapter.enableForegroundNdefPush(activity, ndefMessage(mimeRecord));
-
-		return true;
-	}
-
-	public static void unpublish(@Nullable final NfcManager nfcManager, final Activity activity)
-	{
-		if (nfcManager == null)
-			return;
-
-		final NfcAdapter adapter = nfcManager.getDefaultAdapter();
-		if (adapter == null)
-			return;
-
-		adapter.disableForegroundNdefPush(activity);
-	}
-
-	private static NdefMessage ndefMessage(@Nonnull final NdefRecord record)
-	{
-		return new NdefMessage(new NdefRecord[] { record });
-	}
-
-	private static NdefRecord absoluteUriRecord(@Nonnull final String uri)
-	{
-		return new NdefRecord(NdefRecord.TNF_ABSOLUTE_URI, NdefRecord.RTD_URI, new byte[0], uri.getBytes(Charsets.UTF_8));
-	}
-
-	private static NdefRecord wellKnownUriRecord(@Nonnull final String uri)
-	{
-		final byte[] uriBytes = uri.getBytes(Charsets.UTF_8);
-		final byte[] recordBytes = new byte[uriBytes.length + 1];
-		recordBytes[0] = (byte) 0x0; // prefix, always 0 for bitcoin scheme
-		System.arraycopy(uriBytes, 0, recordBytes, 1, uriBytes.length);
-		return new NdefRecord(NdefRecord.TNF_WELL_KNOWN, NdefRecord.RTD_URI, new byte[0], recordBytes);
-	}
-
-	private static NdefRecord mimeRecord(@Nonnull final String mimeType, @Nonnull final byte[] payload)
+	public static NdefRecord createMime(final String mimeType, final byte[] payload)
 	{
 		final byte[] mimeBytes = mimeType.getBytes(Charsets.US_ASCII);
 		final NdefRecord mimeRecord = new NdefRecord(NdefRecord.TNF_MIME_MEDIA, mimeBytes, new byte[0], payload);
 		return mimeRecord;
 	}
 
-	@CheckForNull
-	public static byte[] extractMimePayload(@Nonnull final String mimeType, @Nonnull final NdefMessage message)
+	@Nullable
+	public static byte[] extractMimePayload(final String mimeType, final NdefMessage message)
 	{
 		final byte[] mimeBytes = mimeType.getBytes(Charsets.US_ASCII);
 

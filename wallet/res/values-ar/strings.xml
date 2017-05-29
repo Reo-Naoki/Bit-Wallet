@@ -12,7 +12,6 @@
 	<string name="blockchain_state_progress_stalled">مزامنة البيانات متوقفة</string>
 	<string name="blockchain_state_progress_problem_storage">مزامنة بيانات: توجد مشكلة بوحدة التخزين</string>
 	<string name="blockchain_state_progress_problem_network">مزامنة بيانات: توجد مشكلة بالشبكة</string>
-	<string name="wallet_address_fragment_your">عنوان محفظة البيتكوين الخاصة بك:</string>
 	<string name="wallet_address_fragment_clipboard_msg">تم نسخ عنوان محفظتك إلى الحافظة</string>
 	<string name="wallet_balance_fragment_replaying">الرصيد غير متاح في حالة إعادة التشغيل.</string>
 	<string name="exchange_rates_activity_title">أسعار صرف العملات</string>
@@ -22,9 +21,9 @@
 	<string name="exchange_rates_fragment_balance">رصيد</string>
 	<string name="exchange_rates_fragment_source">تم جلب السعر من %s</string>
 	<string name="exchange_rates_context_set_as_default_title">تعيين كعملة أجنبية افتراضية</string>
-	<string name="wallet_transactions_fragment_tab_received">تم الاستلام</string>
-	<string name="wallet_transactions_fragment_tab_all">كلاهما</string>
-	<string name="wallet_transactions_fragment_tab_sent">تم الارسال</string>
+	<string name="wallet_transactions_options_filter_received">تم الاستلام</string>
+	<string name="wallet_transactions_options_filter_all">كلاهما</string>
+	<string name="wallet_transactions_options_filter_sent">تم الارسال</string>
 	<string name="wallet_transactions_fragment_empty_text_received">لم يتم استلام مبالغ بيتكوين إلى الآن</string>
 	<string name="wallet_transactions_fragment_empty_text_sent">لم يتم ارسال مبالغ بيتكوين إلى الآن</string>
 	<string name="wallet_transactions_fragment_empty_text_howto">كيفية الحصول على البيتكوين Bitcoins؟\n\nالتجارة التقليدية مقابل المال،\nبيع السلع أو الخدمات أو\nالكسب من خلال العمل.</string>
@@ -54,8 +53,6 @@
 	<string name="send_coins_fragment_receiving_address_label">إدفع إلى</string>
 	<string name="send_coins_fragment_receiving_address_hint">أكتب العنوان أو الاسم</string>
 	<string name="send_coins_fragment_receiving_address_error">عنوان بيتكوين غير صحيح!</string>
-	<string name="send_coins_fragment_receiving_address_error_cross_network">لا يمكنك استخدام عنوان  %s مع هذه المحفظة!</string>
-	<string name="send_coins_fragment_receiving_address_error_cross_network_unknown">لا يمكنك استخدام عنوان من شبكة مجهولة مع هذه المحفظة!</string>
 	<string name="send_coins_fragment_receiving_address_complex">مركب\nعنوان</string>
 	<string name="send_coins_fragment_pending">(جاري تأكيد مبلغ %s)</string>
 	<string name="send_coins_fragment_amount_label">المبلغ المطلوب دفعه</string>
@@ -75,7 +72,6 @@
 	<string name="send_coins_failed_msg">فشلت العملية!</string>
 	<string name="send_coins_error_msg">تمت مواجهة مشكلة خلال الإرسال!</string>
 	<string name="send_coins_options_empty">تفريغ المحفظة</string>
-	<string name="send_coins_address_context_clear_title">أدخل عنوان جديد</string>
 	<string name="request_coins_activity_title">طلب مبلغ بيتكوين</string>
 	<string name="request_coins_fragment_amount_label">المبلغ المطلوب (اختياري)</string>
 	<string name="request_coins_fragment_initiate_request_qr">اطلب من المرسل بمسح لهذا الرمز بصريا Scan.</string>
@@ -106,7 +102,6 @@
 	<string name="transaction_row_message_own_unbroadcasted">لم يتم إرسال هذه الدفعة بعد.</string>
 	<string name="transaction_row_message_received_direct">تم استلام هذه الدفعة مباشرة. توجد خطورة عدم القدرة على إنفاقها.</string>
 	<string name="transaction_row_message_received_unconfirmed_unlocked">سيمكنك دفع هذه الدفعة في غضون دقائق.</string>
-	<string name="transaction_row_message_received_unconfirmed_locked">لا يجدر عليك الوثوق بهذه الدفعة كونها غير قياسية.</string>
 	<string name="transaction_row_message_received_dead">تم إرجاع هذه الدفعة من قبل المرسل.</string>
 	<string name="transaction_row_message_received_dust">قد لايمكن  إنفاق هذا المبلغ صغير اقتصاديا.</string>
 	<string name="network_monitor_activity_title">مراقب الشبكة</string>
@@ -125,7 +120,7 @@
 	<string name="import_keys_dialog_button_import">استعادة</string>
 	<string name="import_keys_dialog_failure">لم تم استعادة المفاتيح خاصة:\n\n%s\n\nيحتمل وجود خطأ في كلمة المرور</string>
 	<string name="export_keys_dialog_title">حفظ احتياطي للمفاتيح الخاصة</string>
-	<string name="export_keys_dialog_message">سيتم تشفير مفاتيحك الخاصة مع كلمة المرور الخاصة  بك  وتسجيلها في وحدة تخزين خارجية.</string>
+	<string name="backup_wallet_dialog_message">سيتم تشفير مفاتيحك الخاصة مع كلمة المرور الخاصة  بك  وتسجيلها في وحدة تخزين خارجية.</string>
 	<string name="export_keys_dialog_button_export">حفظ احتياطي</string>
 	<string name="export_keys_dialog_success">تم الحفظ الاحتياطي للمفاتيح الخاصة بك إلى\n\n%s\n \nيرجى الاحتفاظ بها بشكل آمن، والحفاظ على كلمة المرور الخاصة بك بشكل آمن!\n \nهل تريد أرشفة المفاتيح الخاصة بك باستخدام تطبيق؟</string>
 	<string name="export_keys_dialog_failure">تعذر الحفظ الاحتياطي للمفاتيح الخاصة بك:\n%s</string>
@@ -148,7 +143,6 @@
 	<string name="input_parser_invalid_paymentrequest">طلب دفع غير صالح:\n%s</string>
 	<string name="input_parser_invalid_transaction">معاملة غير صالحة:\n%s</string>
 	<string name="preferences_activity_title">الإعدادات</string>
-	<string name="preferences_category_main">التفضيلات</string>
 	<string name="preferences_category_diagnostics">التشخيصات</string>
 	<string name="preferences_category_labs">المختبرات</string>
 	<string name="preferences_precision_title">وحدات القياس والدقة</string>
@@ -186,11 +180,8 @@
 	<string name="about_credits_icon_title">هذا البرنامج يستخدم أيقونة من إعداد ’bitboy’</string>
 	<string name="about_community_googleplus_title">مجتمع جوجل بلس +Google</string>
 	<string name="about_community_googleplus_summary">مناقشات حول التطبيق</string>
-	<string name="about_author_twitter_title">حساب تويتر Twitter للمؤلف </string>
-	<string name="about_author_googleplus_title">حساب جوجل بلس +Google للمؤلف</string>
 	<string name="about_market_app_title">صفحة متجر جوجل بلاي Google Play</string>
 	<string name="about_market_app_summary">إعداد تقرير أو تقييم للتطبيق</string>
-	<string name="about_credits_market_publisher_title">برامج أخرى للمؤلف</string>
 	<string name="notification_coins_received_msg">تم إستلام %s</string>
 	<string name="notification_peers_connected_msg">الأقران المتصلة peers %d </string>
 	<!-- generic buttons -->
@@ -209,7 +200,6 @@
 	<string name="button_request_coins">طلب بيتكوين</string>
 	<string name="button_send_coins">إرسال بيتكوين</string>
 	<string name="button_scan">مسح بصري</string>
-	<string name="button_edit_address">إضافة/تحرير عنوان</string>
 	<string name="button_settings">الإعدادات</string>
 	<string name="action_show_qr">عرض رمز الاستجابة السريعة QR-code</string>
 	<string name="action_browse">تصفح</string>

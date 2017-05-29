@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2014 the original author or authors.
+ * Copyright 2013-2015 the original author or authors.
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -19,7 +19,7 @@ package de.schildbach.wallet.ui;
 
 import java.util.Set;
 
-import javax.annotation.CheckForNull;
+import javax.annotation.Nullable;
 
 import android.app.Activity;
 import android.app.Fragment;
@@ -54,7 +54,7 @@ public final class WalletDisclaimerFragment extends Fragment implements OnShared
 	private Configuration config;
 	private LoaderManager loaderManager;
 
-	@CheckForNull
+	@Nullable
 	private BlockchainState blockchainState = null;
 
 	private TextView messageView;
@@ -82,11 +82,7 @@ public final class WalletDisclaimerFragment extends Fragment implements OnShared
 			@Override
 			public void onClick(final View v)
 			{
-				final boolean showBackup = config.remindBackup();
-				if (showBackup)
-					((WalletActivity) activity).handleBackupWallet();
-				else
-					HelpDialogFragment.page(getFragmentManager(), R.string.help_safety);
+				HelpDialogFragment.page(getFragmentManager(), R.string.help_safety);
 			}
 		});
 
@@ -118,7 +114,7 @@ public final class WalletDisclaimerFragment extends Fragment implements OnShared
 	@Override
 	public void onSharedPreferenceChanged(final SharedPreferences sharedPreferences, final String key)
 	{
-		if (Configuration.PREFS_KEY_DISCLAIMER.equals(key) || Configuration.PREFS_KEY_REMIND_BACKUP.equals(key))
+		if (Configuration.PREFS_KEY_DISCLAIMER.equals(key))
 			updateView();
 	}
 
@@ -127,7 +123,6 @@ public final class WalletDisclaimerFragment extends Fragment implements OnShared
 		if (!isResumed())
 			return;
 
-		final boolean showBackup = config.remindBackup();
 		final boolean showDisclaimer = config.getDisclaimerEnabled();
 
 		int progressResId = 0;
@@ -143,11 +138,7 @@ public final class WalletDisclaimerFragment extends Fragment implements OnShared
 		final SpannableStringBuilder text = new SpannableStringBuilder();
 		if (progressResId != 0)
 			text.append(Html.fromHtml("<b>" + getString(progressResId) + "</b>"));
-		if (progressResId != 0 && (showBackup || showDisclaimer))
-			text.append('\n');
-		if (showBackup)
-			text.append(Html.fromHtml(getString(R.string.wallet_disclaimer_fragment_remind_backup)));
-		if (showBackup && showDisclaimer)
+		if (progressResId != 0 && showDisclaimer)
 			text.append('\n');
 		if (showDisclaimer)
 			text.append(Html.fromHtml(getString(R.string.wallet_disclaimer_fragment_remind_safety)));

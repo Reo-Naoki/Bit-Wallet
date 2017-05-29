@@ -12,7 +12,6 @@
 	<string name="blockchain_state_progress_stalled">A szinkronizálás szünetel</string>
 	<string name="blockchain_state_progress_problem_storage">Szinkronizálás: tárolóhely probléma</string>
 	<string name="blockchain_state_progress_problem_network">Szinkronizálás: Hálózati probléma</string>
-	<string name="wallet_address_fragment_your">Bitcoin címed:</string>
 	<string name="wallet_address_fragment_clipboard_msg">Bitcoin cím a vágólapra másolva</string>
 	<string name="wallet_balance_fragment_replaying">A frissítés során az egyenleg nem elérhető.</string>
 	<string name="exchange_rates_activity_title">Árfolyamok</string>
@@ -22,9 +21,9 @@
 	<string name="exchange_rates_fragment_balance">egyenleg</string>
 	<string name="exchange_rates_fragment_source">Ár letöltve innen: %s</string>
 	<string name="exchange_rates_context_set_as_default_title">Alapértelmezett külföldi pénznem beállítása</string>
-	<string name="wallet_transactions_fragment_tab_received">Fogadott</string>
-	<string name="wallet_transactions_fragment_tab_all">Mindkettő</string>
-	<string name="wallet_transactions_fragment_tab_sent">Küldött</string>
+	<string name="wallet_transactions_options_filter_received">Fogadott</string>
+	<string name="wallet_transactions_options_filter_all">Mindkettő</string>
+	<string name="wallet_transactions_options_filter_sent">Küldött</string>
 	<string name="wallet_transactions_fragment_empty_text_received">Nem érkezett Bitcoin eddig.</string>
 	<string name="wallet_transactions_fragment_empty_text_sent">Bitcoin küldés nem történt eddig.</string>
 	<string name="wallet_transactions_fragment_empty_text_howto">Hogy szerezz Bitcoin-t?\n\nVásárolj hagyományos pénzért,\nárusíts termékeket, kínálj szolgáltatásokat vagy\nkeress munkával.</string>
@@ -49,8 +48,6 @@
 	<string name="send_coins_fragment_receiving_address_label">Fizetés</string>
 	<string name="send_coins_fragment_receiving_address_hint">írd be a címet vagy nevet</string>
 	<string name="send_coins_fragment_receiving_address_error">Érvénytelen Bitcoin cím!</string>
-	<string name="send_coins_fragment_receiving_address_error_cross_network">a %s cím nem használható ezzel a tárcával!</string>
-	<string name="send_coins_fragment_receiving_address_error_cross_network_unknown">Ismeretlen hálózat címzettje nem használható ezzel a tárcával!</string>
 	<string name="send_coins_fragment_pending">(%s várakozik jóváhagyásra)</string>
 	<string name="send_coins_fragment_amount_label">Fizetendő összeg</string>
 	<string name="send_coins_fragment_button_send">Küldés</string>
@@ -61,7 +58,6 @@
 	<string name="send_coins_failed_msg">Sikertelen!</string>
 	<string name="send_coins_error_msg">Probléma merült fel a küldés során!</string>
 	<string name="send_coins_options_empty">Üres tárca</string>
-	<string name="send_coins_address_context_clear_title">Adj meg egy új címet</string>
 	<string name="request_coins_activity_title">Bitcoin kérés</string>
 	<string name="request_coins_fragment_amount_label">Igényelt összeg (opcionális)</string>
 	<string name="request_coins_fragment_initiate_request_qr">A kód a küldő által beolvasva.</string>
@@ -89,7 +85,6 @@
 	<string name="transaction_row_message_purpose_key_rotation">A művelet megerősíti a tárcád védelmét a lopások ellen. &lt;u&gt;Bővebb információ&lt;/u&gt;</string>
 	<string name="transaction_row_message_own_unbroadcasted">Ez a kifizetés még nem került elküldésre.</string>
 	<string name="transaction_row_message_received_unconfirmed_unlocked">Ez a kifizetés perceken belül hozzáférhetővé válik.</string>
-	<string name="transaction_row_message_received_unconfirmed_locked">Ez nem egy hagyományos fizetés, nem megbízható.</string>
 	<string name="transaction_row_message_received_dead">A kifizetés visszafordítva a küldő által.</string>
 	<string name="transaction_row_message_received_dust">Ilyen kis összeg felhasználása -valószínűleg- nem történhet meg gazdaságosan.</string>
 	<string name="network_monitor_activity_title">Hálózati állapot</string>
@@ -108,7 +103,7 @@
 	<string name="import_keys_dialog_button_import">Visszaállítás</string>
 	<string name="import_keys_dialog_failure">Az alábbi privát kulcsok visszaállítása nem sikerült:\n\n%s\n\nRossz a jelszó esetleg?</string>
 	<string name="export_keys_dialog_title">Privát kulcsok mentése</string>
-	<string name="export_keys_dialog_message">A privát kulcsaid a választott titkosított jelszóval kerülnek mentésre a külső tárolóra.</string>
+	<string name="backup_wallet_dialog_message">A privát kulcsaid a választott titkosított jelszóval kerülnek mentésre a külső tárolóra.</string>
 	<string name="export_keys_dialog_button_export">Mentés</string>
 	<string name="export_keys_dialog_success">A privát kulcsaid visszaállításra kerültek ide:\n\n%s\n\nTartsd biztonságos helyen, csakúgy mint a jelszavaidat!\n\nSzeretnéd menteni a kulcsokat?</string>
 	<string name="export_keys_dialog_failure">A privát kulcsaid visszaállítása nem sikerült:\n%s</string>
@@ -127,7 +122,6 @@
 	<string name="input_parser_invalid_address">Érvénytelen bitcoin cím!\n(Keveredés a Mainnet/Testnet-tel?)</string>
 	<string name="input_parser_invalid_transaction">Érvénytelen tranzakció:\n%s</string>
 	<string name="preferences_activity_title">Beállítások</string>
-	<string name="preferences_category_main">Beállítások</string>
 	<string name="preferences_category_diagnostics">Diagnosztika</string>
 	<string name="preferences_category_labs">Labs</string>
 	<string name="preferences_precision_title">Pontosítás és egyszerűsítés</string>
@@ -164,11 +158,8 @@
 	<string name="about_credits_icon_title">Az app \'bitboy\' ikonját használja</string>
 	<string name="about_community_googleplus_title">Google+ közösség</string>
 	<string name="about_community_googleplus_summary">Fórumok az applikációról</string>
-	<string name="about_author_twitter_title">A Twitter-en</string>
-	<string name="about_author_googleplus_title">A Google+-on</string>
 	<string name="about_market_app_title">Google Play oldal</string>
 	<string name="about_market_app_summary">Értékelések</string>
-	<string name="about_credits_market_publisher_title">A szerző egyéb applikációi</string>
 	<string name="notification_coins_received_msg">Fogadott mennyiség: %s</string>
 	<string name="notification_peers_connected_msg">%d peer kapcsolódva</string>
 	<!-- generic buttons -->
@@ -186,7 +177,6 @@
 	<string name="button_request_coins">Érmék igénylése</string>
 	<string name="button_send_coins">Érmék küldése</string>
 	<string name="button_scan">Szkennelés</string>
-	<string name="button_edit_address">Cím hozzáadása/szerkesztése</string>
 	<string name="button_settings">Beállítások</string>
 	<string name="action_show_qr">QR-kód megtekintése</string>
 	<string name="time_today">ma</string>

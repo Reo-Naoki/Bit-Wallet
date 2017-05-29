@@ -1,5 +1,5 @@
 /*
- * Copyright 2014 the original author or authors.
+ * Copyright 2014-2015 the original author or authors.
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -108,5 +108,16 @@ public class FormatsTest
 
 		final Matcher signOnly = Formats.PATTERN_MONETARY_SPANNABLE.matcher("+");
 		assertFalse(signOnly.find());
+	}
+
+	@Test
+	public void maybeRemoveOuterHtmlParagraph()
+	{
+		assertEquals("<tt>mr6m</tt>&#8201;<tt>LeGW</tt>&#8201;<tt>27A7</tt>",
+				Formats.maybeRemoveOuterHtmlParagraph("<p dir=\"ltr\"><tt>mr6m</tt>&#8201;<tt>LeGW</tt>&#8201;<tt>27A7</tt></p>"));
+		assertEquals("\n", Formats.maybeRemoveOuterHtmlParagraph("<p>\n</p>\n"));
+		assertEquals("", Formats.maybeRemoveOuterHtmlParagraph("<P></P>"));
+		assertEquals("<tt>mr6m</tt>&#8201;<tt>LeGW</tt>&#8201;<tt>27A7</tt>",
+				Formats.maybeRemoveOuterHtmlParagraph("<tt>mr6m</tt>&#8201;<tt>LeGW</tt>&#8201;<tt>27A7</tt>"));
 	}
 }

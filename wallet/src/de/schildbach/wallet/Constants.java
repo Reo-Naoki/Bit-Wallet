@@ -1,5 +1,5 @@
 /*
- * Copyright 2011-2014 the original author or authors.
+ * Copyright 2011-2015 the original author or authors.
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -23,6 +23,8 @@ import org.bitcoinj.core.NetworkParameters;
 import org.bitcoinj.params.MainNetParams;
 import org.bitcoinj.params.TestNet3Params;
 import org.bitcoinj.utils.MonetaryFormat;
+
+import com.google.common.io.BaseEncoding;
 
 import android.os.Build;
 import android.os.Environment;
@@ -69,7 +71,7 @@ public final class Constants
 	}
 
 	/** Maximum size of backups. Files larger will be rejected. */
-	public static final long BACKUP_MAX_CHARS = 5000000;
+	public static final long BACKUP_MAX_CHARS = 10000000;
 
 	private static final String EXPLORE_BASE_URL_PROD = "https://www.biteasy.com/";
 	private static final String EXPLORE_BASE_URL_TEST = "https://www.biteasy.com/testnet/";
@@ -105,7 +107,7 @@ public final class Constants
 	public static final String DONATION_ADDRESS = "18CK5k1gajRKKSC7yVSTXT9LUzbheh1XY4";
 
 	/** Recipient e-mail address for reports. */
-	public static final String REPORT_EMAIL = "wallet@schildbach.de";
+	public static final String REPORT_EMAIL = "bitcoin.wallet.developers@gmail.com";
 
 	/** Subject line for manually reported issues. */
 	public static final String REPORT_SUBJECT_ISSUE = "Reported issue";
@@ -125,26 +127,22 @@ public final class Constants
 
 	public static final MonetaryFormat LOCAL_FORMAT = new MonetaryFormat().noCode().minDecimals(2).optionalDecimals();
 
-	public static final String LICENSE_URL = "http://www.gnu.org/licenses/gpl-3.0.txt";
+	public static final BaseEncoding HEX = BaseEncoding.base16().lowerCase();
+
 	public static final String SOURCE_URL = "https://github.com/schildbach/bitcoin-wallet";
 	public static final String BINARY_URL = "https://github.com/schildbach/bitcoin-wallet/releases";
-	public static final String CREDITS_BITCOINJ_URL = "http://code.google.com/p/bitcoinj/";
-	public static final String CREDITS_ZXING_URL = "https://github.com/zxing/zxing";
-	public static final String CREDITS_ICON_URL = "https://bitcointalk.org/index.php?action=profile;u=2062";
-	public static final String AUTHOR_TWITTER_URL = "https://twitter.com/#!/bitcoin_wallet";
-	public static final String AUTHOR_GOOGLEPLUS_URL = "https://profiles.google.com/andreas.schildbach";
-	public static final String COMMUNITY_GOOGLEPLUS_URL = "https://plus.google.com/communities/105515929887248493912";
 	public static final String MARKET_APP_URL = "market://details?id=%s";
 	public static final String WEBMARKET_APP_URL = "https://play.google.com/store/apps/details?id=%s";
-	public static final String MARKET_PUBLISHER_URL = "market://search?q=pub:\"Andreas Schildbach\"";
 
 	public static final int HTTP_TIMEOUT_MS = 15 * (int) DateUtils.SECOND_IN_MILLIS;
+	public static final int PEER_TIMEOUT_MS = 15 * (int) DateUtils.SECOND_IN_MILLIS;
 
 	public static final long LAST_USAGE_THRESHOLD_JUST_MS = DateUtils.HOUR_IN_MILLIS;
 	public static final long LAST_USAGE_THRESHOLD_RECENTLY_MS = 2 * DateUtils.DAY_IN_MILLIS;
 
 	public static final int SDK_JELLY_BEAN = 16;
 	public static final int SDK_JELLY_BEAN_MR2 = 18;
+	public static final int SDK_LOLLIPOP = 21;
 
 	public static final int SDK_DEPRECATED_BELOW = Build.VERSION_CODES.ICE_CREAM_SANDWICH;
 

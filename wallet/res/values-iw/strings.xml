@@ -12,7 +12,6 @@
 	<string name="blockchain_state_progress_stalled">סינכרון עוקב</string>
 	<string name="blockchain_state_progress_problem_storage">סינכרון: בעיית אחסון</string>
 	<string name="blockchain_state_progress_problem_network">סינכרון:בעיית רשת</string>
-	<string name="wallet_address_fragment_your">כתובת ארנק הביטקוין שלך:</string>
 	<string name="wallet_address_fragment_clipboard_msg">כתובת הביטקוין הועתקה ללוח</string>
 	<string name="wallet_balance_fragment_replaying">היתרה אינה זמינה במהלך שחזור</string>
 	<string name="exchange_rates_activity_title">שערי המרה</string>
@@ -22,9 +21,9 @@
 	<string name="exchange_rates_fragment_balance">מאזן</string>
 	<string name="exchange_rates_fragment_source">המחיר נתקבל מ: %s</string>
 	<string name="exchange_rates_context_set_as_default_title">שמור כמטבע ברירת מחדל</string>
-	<string name="wallet_transactions_fragment_tab_received">נתקבל</string>
-	<string name="wallet_transactions_fragment_tab_all">נשלח/נתקבל</string>
-	<string name="wallet_transactions_fragment_tab_sent">נשלח</string>
+	<string name="wallet_transactions_options_filter_received">נתקבל</string>
+	<string name="wallet_transactions_options_filter_all">נשלח/נתקבל</string>
+	<string name="wallet_transactions_options_filter_sent">נשלח</string>
 	<string name="wallet_transactions_fragment_empty_text_received">לא נתקבלו ביטקוינים עד כה.</string>
 	<string name="wallet_transactions_fragment_empty_text_sent">לא נשלחו ביטקוינים עד כה.</string>
 	<string name="wallet_transactions_fragment_empty_text_howto">איך להשיג ביטקוין ?\n\nהמר תמורת כסף פיאט,\nמכור סחורות או שירותים או\nהשג על ידי עבודה.</string>
@@ -55,8 +54,6 @@
 	<string name="send_coins_fragment_receiving_address_label">שלם ל</string>
 	<string name="send_coins_fragment_receiving_address_hint">הקש כתובת או שם</string>
 	<string name="send_coins_fragment_receiving_address_error">כתובת ביטקוין לא חוקית!</string>
-	<string name="send_coins_fragment_receiving_address_error_cross_network">לא ניתן להשתמש בכתובת %s בארנק זה</string>
-	<string name="send_coins_fragment_receiving_address_error_cross_network_unknown">לא ניתן להשתמש בכתובת  זו ברשת לא ידועה</string>
 	<string name="send_coins_fragment_receiving_address_complex">כתובת\nמסובכת</string>
 	<string name="send_coins_fragment_pending">(%s ביטקוין מחכים לאישור)</string>
 	<string name="send_coins_fragment_amount_label">סכום לתשלום</string>
@@ -76,7 +73,6 @@
 	<string name="send_coins_failed_msg">נכשל!</string>
 	<string name="send_coins_error_msg">בעיה בשליחת מטבעות</string>
 	<string name="send_coins_options_empty">ארנק ריק</string>
-	<string name="send_coins_address_context_clear_title">הקש כתובת חדשה</string>
 	<string name="request_coins_activity_title">בקש ביטקוין</string>
 	<string name="request_coins_fragment_amount_label">כמות לבקשה</string>
 	<string name="request_coins_fragment_accept_bluetooth_payment">קבל תשלום באמצעות Bluetooth לעיבוד מאובטח יותר</string>
@@ -108,7 +104,6 @@
 	<string name="transaction_row_message_own_unbroadcasted">התשלום עדיין לא שודר</string>
 	<string name="transaction_row_message_received_direct">התשלום התקבל ישירות. יש סיכון שהוא לעולם לא יהיה ניתן לניצול.</string>
 	<string name="transaction_row_message_received_unconfirmed_unlocked">התשלום יהיה זמין בעוד מספר דקות</string>
-	<string name="transaction_row_message_received_unconfirmed_locked">לא ניתן לבטוח בתשלום זה</string>
 	<string name="transaction_row_message_received_dead">תשלום זה בוטל על ידי השולח</string>
 	<string name="transaction_row_message_received_dust">כמות זעירה כזו ככל הנראה לא תוכל להיות בשימוש לעולם.</string>
 	<string name="network_monitor_activity_title">מוניטור רשת</string>
@@ -128,7 +123,7 @@
 	<string name="import_keys_dialog_button_import">ייבא</string>
 	<string name="import_keys_dialog_failure">לא ניתן לייבא מפתחות פרטיים, בדקת סיסמא ?</string>
 	<string name="export_keys_dialog_title">ייצא מפתחות פרטיים</string>
-	<string name="export_keys_dialog_message">המפתחות שלך יוצפנו בעזרת הסיסמא ויאוחסנו בהתקן החיצוני</string>
+	<string name="backup_wallet_dialog_message">המפתחות שלך יוצפנו בעזרת הסיסמא ויאוחסנו בהתקן החיצוני</string>
 	<string name="export_keys_dialog_button_export">ייצוא</string>
 	<string name="export_keys_dialog_success">המפתחות שלך יוצאו ל\n\n%s\n\nשמור עליהם בבטחה, ושמור על הססמא בטוחה!\n\nהאם אתה רוצה לארכב את המפתחות באמצעות אפליקציה?</string>
 	<string name="export_keys_dialog_failure">לא ניתן לייצא מפתחות פרטיים:\n%s</string>
@@ -151,7 +146,6 @@
 	<string name="input_parser_invalid_paymentrequest">בקשת תשלום לא חוקית:\n%s</string>
 	<string name="input_parser_invalid_transaction">עסקה לא חוקית:\n%s</string>
 	<string name="preferences_activity_title">הגדרות</string>
-	<string name="preferences_category_main">העדפות</string>
 	<string name="preferences_category_diagnostics">בדיקה</string>
 	<string name="preferences_category_labs">מעבדות</string>
 	<string name="preferences_precision_title">מטבע ודיוק</string>
@@ -189,11 +183,8 @@
 	<string name="about_credits_icon_title">אפליקציה זו משתמשת בסמליל של \'bitboy\'</string>
 	<string name="about_community_googleplus_title">קהילת גוגל+</string>
 	<string name="about_community_googleplus_summary">דיונים על אודות האפליקציה</string>
-	<string name="about_author_twitter_title">המחבר בטוויטר</string>
-	<string name="about_author_googleplus_title">המחבר בגוגל+</string>
 	<string name="about_market_app_title">Google Play App Page</string>
 	<string name="about_market_app_summary">כתוב ביקורת או דרג את האפליקציה</string>
-	<string name="about_credits_market_publisher_title">אפליקציות אחרות של המחבר</string>
 	<string name="notification_coins_received_msg">נתקבלו %s</string>
 	<string name="notification_peers_connected_msg">%d עמיתים מחוברים</string>
 	<!-- generic buttons -->
@@ -212,7 +203,6 @@
 	<string name="button_request_coins">בקש מטבעות</string>
 	<string name="button_send_coins">שלח מטבעות</string>
 	<string name="button_scan">סרוק</string>
-	<string name="button_edit_address">הוסף או ערוך כתובת</string>
 	<string name="button_settings">הגדרות</string>
 	<string name="action_show_qr">הראה ברקוד</string>
 	<string name="action_browse">גלוש</string>

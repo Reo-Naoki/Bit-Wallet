@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2014 the original author or authors.
+ * Copyright 2013-2015 the original author or authors.
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -27,7 +27,6 @@ import java.util.ArrayList;
 import java.util.Date;
 import java.util.regex.Pattern;
 
-import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 
 import org.bitcoin.protocols.payments.Protos;
@@ -39,6 +38,8 @@ import org.bitcoinj.core.NetworkParameters;
 import org.bitcoinj.core.ProtocolException;
 import org.bitcoinj.core.Transaction;
 import org.bitcoinj.core.VerificationException;
+import org.bitcoinj.core.VersionedChecksummedBytes;
+import org.bitcoinj.crypto.BIP38PrivateKey;
 import org.bitcoinj.crypto.TrustStoreLoader;
 import org.bitcoinj.protocols.payments.PaymentProtocol;
 import org.bitcoinj.protocols.payments.PaymentProtocol.PkiVerificationData;
@@ -73,7 +74,7 @@ public abstract class InputParser
 	{
 		private final String input;
 
-		public StringInputParser(@Nonnull final String input)
+		public StringInputParser(final String input)
 		{
 			this.input = input;
 		}
@@ -141,11 +142,27 @@ public abstract class InputParser
 					error(R.string.input_parser_invalid_address);
 				}
 			}
-			else if (PATTERN_PRIVATE_KEY_UNCOMPRESSED.matcher(input).matches() || PATTERN_PRIVATE_KEY_COMPRESSED.matcher(input).matches())
+			else if (PATTERN_DUMPED_PRIVATE_KEY_UNCOMPRESSED.matcher(input).matches()
+					|| PATTERN_DUMPED_PRIVATE_KEY_COMPRESSED.matcher(input).matches())
 			{
 				try
 				{
-					final DumpedPrivateKey key = new DumpedPrivateKey(Constants.NETWORK_PARAMETERS, input);
+					final VersionedChecksummedBytes key = new DumpedPrivateKey(Constants.NETWORK_PARAMETERS, input);
+
+					handlePrivateKey(key);
+				}
+				catch (final AddressFormatException x)
+				{
+					log.info("got invalid address", x);
+
+					error(R.string.input_parser_invalid_address);
+				}
+			}
+			else if (PATTERN_BIP38_PRIVATE_KEY.matcher(input).matches())
+			{
+				try
+				{
+					final VersionedChecksummedBytes key = new BIP38PrivateKey(Constants.NETWORK_PARAMETERS, input);
 
 					handlePrivateKey(key);
 				}
@@ -182,6 +199,13 @@ public abstract class InputParser
 				cannotClassify(input);
 			}
 		}
+
+		protected void handlePrivateKey(final VersionedChecksummedBytes key)
+		{
+			final Address address = new Address(Constants.NETWORK_PARAMETERS, ((DumpedPrivateKey) key).getKey().getPubKeyHash());
+
+			handlePaymentIntent(PaymentIntent.fromAddress(address, null));
+		}
 	}
 
 	public abstract static class BinaryInputParser extends InputParser
@@ -189,7 +213,7 @@ public abstract class InputParser
 		private final String inputType;
 		private final byte[] input;
 
-		public BinaryInputParser(@Nonnull final String inputType, @Nonnull final byte[] input)
+		public BinaryInputParser(final String inputType, final byte[] input)
 		{
 			this.inputType = inputType;
 			this.input = input;
@@ -239,13 +263,7 @@ public abstract class InputParser
 		}
 
 		@Override
-		protected final void handlePrivateKey(@Nonnull final DumpedPrivateKey key)
-		{
-			throw new UnsupportedOperationException();
-		}
-
-		@Override
-		protected final void handleDirectTransaction(@Nonnull final Transaction transaction) throws VerificationException
+		protected final void handleDirectTransaction(final Transaction transaction) throws VerificationException
 		{
 			throw new UnsupportedOperationException();
 		}
@@ -256,7 +274,7 @@ public abstract class InputParser
 		private final String inputType;
 		private final InputStream is;
 
-		public StreamInputParser(@Nonnull final String inputType, @Nonnull final InputStream is)
+		public StreamInputParser(final String inputType, final InputStream is)
 		{
 			this.inputType = inputType;
 			this.is = is;
@@ -322,13 +340,7 @@ public abstract class InputParser
 		}
 
 		@Override
-		protected final void handlePrivateKey(@Nonnull final DumpedPrivateKey key)
-		{
-			throw new UnsupportedOperationException();
-		}
-
-		@Override
-		protected final void handleDirectTransaction(@Nonnull final Transaction transaction) throws VerificationException
+		protected final void handleDirectTransaction(final Transaction transaction) throws VerificationException
 		{
 			throw new UnsupportedOperationException();
 		}
@@ -336,14 +348,14 @@ public abstract class InputParser
 
 	public abstract void parse();
 
-	protected final void parseAndHandlePaymentRequest(@Nonnull final byte[] serializedPaymentRequest) throws PaymentProtocolException
+	protected final void parseAndHandlePaymentRequest(final byte[] serializedPaymentRequest) throws PaymentProtocolException
 	{
 		final PaymentIntent paymentIntent = parsePaymentRequest(serializedPaymentRequest);
 
 		handlePaymentIntent(paymentIntent);
 	}
 
-	public static PaymentIntent parsePaymentRequest(@Nonnull final byte[] serializedPaymentRequest) throws PaymentProtocolException
+	public static PaymentIntent parsePaymentRequest(final byte[] serializedPaymentRequest) throws PaymentProtocolException
 	{
 		try
 		{
@@ -414,21 +426,16 @@ public abstract class InputParser
 		}
 	}
 
-	protected abstract void handlePaymentIntent(@Nonnull PaymentIntent paymentIntent);
+	protected abstract void handlePaymentIntent(PaymentIntent paymentIntent);
 
-	protected void handlePrivateKey(@Nonnull final DumpedPrivateKey key)
-	{
-		final Address address = new Address(Constants.NETWORK_PARAMETERS, key.getKey().getPubKeyHash());
-
-		handlePaymentIntent(PaymentIntent.fromAddress(address, null));
-	}
-
-	protected abstract void handleDirectTransaction(@Nonnull Transaction transaction) throws VerificationException;
+	protected abstract void handleDirectTransaction(Transaction transaction) throws VerificationException;
 
 	protected abstract void error(int messageResId, Object... messageArgs);
 
-	protected void cannotClassify(@Nonnull final String input)
+	protected void cannotClassify(final String input)
 	{
+		log.info("cannot classify: '{}'", input);
+
 		error(R.string.input_parser_cannot_classify, input);
 	}
 
@@ -444,11 +451,12 @@ public abstract class InputParser
 	}
 
 	private static final Pattern PATTERN_BITCOIN_ADDRESS = Pattern.compile("[" + new String(Base58.ALPHABET) + "]{20,40}");
-	private static final Pattern PATTERN_PRIVATE_KEY_UNCOMPRESSED = Pattern.compile((Constants.NETWORK_PARAMETERS.getId().equals(
+	private static final Pattern PATTERN_DUMPED_PRIVATE_KEY_UNCOMPRESSED = Pattern.compile((Constants.NETWORK_PARAMETERS.getId().equals(
 			NetworkParameters.ID_MAINNET) ? "5" : "9")
 			+ "[" + new String(Base58.ALPHABET) + "]{50}");
-	private static final Pattern PATTERN_PRIVATE_KEY_COMPRESSED = Pattern.compile((Constants.NETWORK_PARAMETERS.getId().equals(
+	private static final Pattern PATTERN_DUMPED_PRIVATE_KEY_COMPRESSED = Pattern.compile((Constants.NETWORK_PARAMETERS.getId().equals(
 			NetworkParameters.ID_MAINNET) ? "[KL]" : "c")
 			+ "[" + new String(Base58.ALPHABET) + "]{51}");
+	private static final Pattern PATTERN_BIP38_PRIVATE_KEY = Pattern.compile("6P" + "[" + new String(Base58.ALPHABET) + "]{56}");
 	private static final Pattern PATTERN_TRANSACTION = Pattern.compile("[0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ$\\*\\+\\-\\.\\/\\:]{100,}");
 }

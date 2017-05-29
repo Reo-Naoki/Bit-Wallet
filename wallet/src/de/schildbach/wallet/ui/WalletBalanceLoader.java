@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2014 the original author or authors.
+ * Copyright 2013-2015 the original author or authors.
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -19,8 +19,6 @@ package de.schildbach.wallet.ui;
 
 import java.util.concurrent.RejectedExecutionException;
 
-import javax.annotation.Nonnull;
-
 import org.bitcoinj.core.Coin;
 import org.bitcoinj.core.Wallet;
 import org.bitcoinj.core.Wallet.BalanceType;
@@ -29,7 +27,12 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import android.content.AsyncTaskLoader;
+import android.content.BroadcastReceiver;
 import android.content.Context;
+import android.content.Intent;
+import android.content.IntentFilter;
+import android.support.v4.content.LocalBroadcastManager;
+import de.schildbach.wallet.WalletApplication;
 import de.schildbach.wallet.util.ThrottlingWalletChangeListener;
 
 /**
@@ -37,14 +40,16 @@ import de.schildbach.wallet.util.ThrottlingWalletChangeListener;
  */
 public final class WalletBalanceLoader extends AsyncTaskLoader<Coin>
 {
+	private LocalBroadcastManager broadcastManager;
 	private final Wallet wallet;
 
 	private static final Logger log = LoggerFactory.getLogger(WalletBalanceLoader.class);
 
-	public WalletBalanceLoader(final Context context, @Nonnull final Wallet wallet)
+	public WalletBalanceLoader(final Context context, final Wallet wallet)
 	{
 		super(context);
 
+		this.broadcastManager = LocalBroadcastManager.getInstance(context.getApplicationContext());
 		this.wallet = wallet;
 	}
 
@@ -54,17 +59,29 @@ public final class WalletBalanceLoader extends AsyncTaskLoader<Coin>
 		super.onStartLoading();
 
 		wallet.addEventListener(walletChangeListener, Threading.SAME_THREAD);
+		broadcastManager.registerReceiver(walletChangeReceiver, new IntentFilter(WalletApplication.ACTION_WALLET_REFERENCE_CHANGED));
 
-		forceLoad();
+		safeForceLoad();
 	}
 
 	@Override
 	protected void onStopLoading()
 	{
+		broadcastManager.unregisterReceiver(walletChangeReceiver);
 		wallet.removeEventListener(walletChangeListener);
 		walletChangeListener.removeCallbacks();
 
 		super.onStopLoading();
+	}
+
+	@Override
+	protected void onReset()
+	{
+		broadcastManager.unregisterReceiver(walletChangeReceiver);
+		wallet.removeEventListener(walletChangeListener);
+		walletChangeListener.removeCallbacks();
+
+		super.onReset();
 	}
 
 	@Override
@@ -78,14 +95,28 @@ public final class WalletBalanceLoader extends AsyncTaskLoader<Coin>
 		@Override
 		public void onThrottledWalletChanged()
 		{
-			try
-			{
-				forceLoad();
-			}
-			catch (final RejectedExecutionException x)
-			{
-				log.info("rejected execution: " + WalletBalanceLoader.this.toString());
-			}
+			safeForceLoad();
 		}
 	};
+
+	private final BroadcastReceiver walletChangeReceiver = new BroadcastReceiver()
+	{
+		@Override
+		public void onReceive(final Context context, final Intent intent)
+		{
+			safeForceLoad();
+		}
+	};
+
+	private void safeForceLoad()
+	{
+		try
+		{
+			forceLoad();
+		}
+		catch (final RejectedExecutionException x)
+		{
+			log.info("rejected execution: " + WalletBalanceLoader.this.toString());
+		}
+	}
 }

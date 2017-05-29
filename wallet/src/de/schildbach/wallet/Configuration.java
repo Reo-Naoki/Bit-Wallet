@@ -1,5 +1,5 @@
 /*
- * Copyright 2014 the original author or authors.
+ * Copyright 2014-2015 the original author or authors.
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -16,8 +16,6 @@
  */
 
 package de.schildbach.wallet;
-
-import javax.annotation.Nonnull;
 
 import org.bitcoinj.core.Coin;
 import org.bitcoinj.utils.Fiat;
@@ -45,6 +43,7 @@ public class Configuration
 	public static final String PREFS_KEY_EXCHANGE_CURRENCY = "exchange_currency";
 	public static final String PREFS_KEY_TRUSTED_PEER = "trusted_peer";
 	public static final String PREFS_KEY_TRUSTED_PEER_ONLY = "trusted_peer_only";
+	public static final String PREFS_KEY_DATA_USAGE = "data_usage";
 	public static final String PREFS_KEY_DISCLAIMER = "disclaimer";
 	private static final String PREFS_KEY_LABS_QR_PAYMENT_REQUEST = "labs_qr_payment_request";
 
@@ -57,13 +56,14 @@ public class Configuration
 	private static final String PREFS_KEY_LAST_EXCHANGE_DIRECTION = "last_exchange_direction";
 	private static final String PREFS_KEY_CHANGE_LOG_VERSION = "change_log_version";
 	public static final String PREFS_KEY_REMIND_BACKUP = "remind_backup";
+	private static final String PREFS_KEY_LAST_BACKUP = "last_backup";
 
 	private static final int PREFS_DEFAULT_BTC_SHIFT = 3;
 	private static final int PREFS_DEFAULT_BTC_PRECISION = 2;
 
 	private static final Logger log = LoggerFactory.getLogger(Configuration.class);
 
-	public Configuration(@Nonnull final SharedPreferences prefs)
+	public Configuration(final SharedPreferences prefs)
 	{
 		this.prefs = prefs;
 
@@ -127,6 +127,11 @@ public class Configuration
 		return prefs.getBoolean(PREFS_KEY_REMIND_BACKUP, true);
 	}
 
+	public long getLastBackupTime()
+	{
+		return prefs.getLong(PREFS_KEY_LAST_BACKUP, 0);
+	}
+
 	public void armBackupReminder()
 	{
 		prefs.edit().putBoolean(PREFS_KEY_REMIND_BACKUP, true).commit();
@@ -134,7 +139,7 @@ public class Configuration
 
 	public void disarmBackupReminder()
 	{
-		prefs.edit().putBoolean(PREFS_KEY_REMIND_BACKUP, false).commit();
+		prefs.edit().putBoolean(PREFS_KEY_REMIND_BACKUP, false).putLong(PREFS_KEY_LAST_BACKUP, System.currentTimeMillis()).commit();
 	}
 
 	public boolean getDisclaimerEnabled()
@@ -197,9 +202,10 @@ public class Configuration
 		return prefs.getInt(PREFS_KEY_BEST_CHAIN_HEIGHT_EVER, 0);
 	}
 
-	public void setBestChainHeightEver(final int bestChainHeightEver)
+	public void maybeIncrementBestChainHeightEver(final int bestChainHeightEver)
 	{
-		prefs.edit().putInt(PREFS_KEY_BEST_CHAIN_HEIGHT_EVER, bestChainHeightEver).commit();
+		if (bestChainHeightEver > getBestChainHeightEver())
+			prefs.edit().putInt(PREFS_KEY_BEST_CHAIN_HEIGHT_EVER, bestChainHeightEver).commit();
 	}
 
 	public ExchangeRate getCachedExchangeRate()

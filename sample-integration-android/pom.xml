@@ -53,12 +53,17 @@
 		<sourceDirectory>src</sourceDirectory>
 		<plugins>
 			<plugin>
-				<groupId>com.jayway.maven.plugins.android.generation2</groupId>
+				<groupId>com.simpligility.maven.plugins</groupId>
 				<artifactId>android-maven-plugin</artifactId>
 				<configuration>
+					<androidManifestFile>AndroidManifest.xml</androidManifestFile>
+					<resourceDirectory>res</resourceDirectory>
 					<sdk>
 						<platform>10</platform>
 					</sdk>
+					<excludeJarResources>
+						<excludeJarResource>.*\.jar$</excludeJarResource>
+					</excludeJarResources>
 				</configuration>
 			</plugin>
 			<plugin>

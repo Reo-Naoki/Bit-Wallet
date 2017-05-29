@@ -12,7 +12,6 @@
 	<string name="blockchain_state_progress_stalled">Usklajevanje zaustavljeno</string>
 	<string name="blockchain_state_progress_problem_storage">Usklajevanje: težava s hrambo podatkov</string>
 	<string name="blockchain_state_progress_problem_network">Usklajevanje: težava z omrežjem</string>
-	<string name="wallet_address_fragment_your">Vaš bitcoin naslov:</string>
 	<string name="wallet_address_fragment_clipboard_msg">Naslov kopiran na odložišče</string>
 	<string name="wallet_balance_fragment_replaying">Pregled stanja med ponastavitvijo ni mogoč.</string>
 	<string name="exchange_rates_activity_title">Menjalni tečaji</string>
@@ -22,9 +21,9 @@
 	<string name="exchange_rates_fragment_balance">stanje</string>
 	<string name="exchange_rates_fragment_source">Vir cene: %s</string>
 	<string name="exchange_rates_context_set_as_default_title">Nastavi kot privzeto tujo valuto</string>
-	<string name="wallet_transactions_fragment_tab_received">Prejeto</string>
-	<string name="wallet_transactions_fragment_tab_all">Vsa nakazila</string>
-	<string name="wallet_transactions_fragment_tab_sent">Poslano</string>
+	<string name="wallet_transactions_options_filter_received">Prejeto</string>
+	<string name="wallet_transactions_options_filter_all">Vsa nakazila</string>
+	<string name="wallet_transactions_options_filter_sent">Poslano</string>
 	<string name="wallet_transactions_fragment_empty_text_received">Prejeli niste še nobenih novcev.</string>
 	<string name="wallet_transactions_fragment_empty_text_sent">Poslali niste še nobenih novcev.</string>
 	<string name="wallet_transactions_fragment_empty_text_howto">Kako dobim bitcoine?\n\nLahko jih kupite,\nprodate kaj za bitcoin\nali pa zaslužite z delom.</string>
@@ -55,8 +54,6 @@
 	<string name="send_coins_fragment_receiving_address_label">V dobro</string>
 	<string name="send_coins_fragment_receiving_address_hint">vpišite naslov ali ime</string>
 	<string name="send_coins_fragment_receiving_address_error">Neveljaven naslov!</string>
-	<string name="send_coins_fragment_receiving_address_error_cross_network">Naslova %s ne morem uporabljati s to denarnico</string>
-	<string name="send_coins_fragment_receiving_address_error_cross_network_unknown">Naslova iz neznanega omrežja ne morem uporabljati s to denarnico!</string>
 	<string name="send_coins_fragment_receiving_address_complex">kompleksen\nnaslov</string>
 	<string name="send_coins_fragment_pending">(%s čaka na potrditev)</string>
 	<string name="send_coins_fragment_amount_label">Znesek za plačilo</string>
@@ -76,7 +73,6 @@
 	<string name="send_coins_failed_msg">Spodletelo!\n</string>
 	<string name="send_coins_error_msg">Težava pri pošiljanju novcev!</string>
 	<string name="send_coins_options_empty">Izprazni denarnico</string>
-	<string name="send_coins_address_context_clear_title">Vnesi nov naslov</string>
 	<string name="request_coins_activity_title">Zahtevaj novce</string>
 	<string name="request_coins_fragment_amount_label">Znesek za plačilo (neobvezno)</string>
 	<string name="request_coins_fragment_accept_bluetooth_payment">Sprejmi plačilo prek Bluetootha za bolj zanesljivo procesiranje</string>
@@ -108,7 +104,6 @@
 	<string name="transaction_row_message_own_unbroadcasted">To plačilo še ni bilo oddano.</string>
 	<string name="transaction_row_message_received_direct">To plačilo je bilo prejeto neposredno. Obstaja tveganje, da ga ne boste nikoli mogli potrošiti.</string>
 	<string name="transaction_row_message_received_unconfirmed_unlocked">Te prejete novce boste predvidoma lahko uporabili v nekaj minutah.</string>
-	<string name="transaction_row_message_received_unconfirmed_locked">To plačilo ni standardno in mu ni zaupati.</string>
 	<string name="transaction_row_message_received_dead">To plačilo je pošiljatelj storniral.</string>
 	<string name="transaction_row_message_received_dust">Tega malega zneska najbrž nikoli ne boste mogli smiselno porabiti.</string>
 	<string name="network_monitor_activity_title">Pregled omrežja</string>
@@ -128,7 +123,7 @@
 	<string name="import_keys_dialog_button_import">Obnovi</string>
 	<string name="import_keys_dialog_failure">Zasebnih ključev ni bilo mogoče obnoviti:\n\n%s\n\nNapačno geslo?</string>
 	<string name="export_keys_dialog_title">Rezervno kopiranje zasebnih ključev</string>
-	<string name="export_keys_dialog_message">Vaši zasebni ključi bodo šifrirani z izbranim geslom in zapisani na zunanji pomnilnik.</string>
+	<string name="backup_wallet_dialog_message">Vaši zasebni ključi bodo šifrirani z izbranim geslom in zapisani na zunanji pomnilnik.</string>
 	<string name="export_keys_dialog_button_export">Rezervno kopiraj</string>
 	<string name="export_keys_dialog_success">Vaši zasebni ključi so bili rezervno kopirani v datoteko:\n\n%s\n\nVarno jih hranite in pazite na geslo!\n\nŽelite rezervno kopijo arhivirati z drugo aplikacijo?</string>
 	<string name="export_keys_dialog_failure">Zasebnih ključev ni bilo mogoče rezervno kopirati:\n%s</string>
@@ -151,7 +146,6 @@
 	<string name="input_parser_invalid_paymentrequest">Neveljavna prošnja za plačilo:\n%s</string>
 	<string name="input_parser_invalid_transaction">Neveljavno nakazilo:\n%s</string>
 	<string name="preferences_activity_title">Nastavitve</string>
-	<string name="preferences_category_main">Nastavitve</string>
 	<string name="preferences_category_diagnostics">Diagnostika</string>
 	<string name="preferences_category_labs">V razvoju</string>
 	<string name="preferences_precision_title">Enota in prikaz številk</string>
@@ -189,11 +183,8 @@
 	<string name="about_credits_icon_title">Ta apl. uporablja ikono avtorja bitboy</string>
 	<string name="about_community_googleplus_title">Skupnost na Google+</string>
 	<string name="about_community_googleplus_summary">Razprave o aplikaciji</string>
-	<string name="about_author_twitter_title">Avtor na Twitterju</string>
-	<string name="about_author_googleplus_title">Avtor na Google+</string>
 	<string name="about_market_app_title">Stran na Google Play</string>
 	<string name="about_market_app_summary">Oceni aplikacijo</string>
-	<string name="about_credits_market_publisher_title">Druge aplikacije istega avtorja</string>
 	<string name="notification_coins_received_msg">Prejeto: %s</string>
 	<string name="notification_peers_connected_msg">Število povezanih vrstnikov: %d</string>
 	<!-- generic buttons -->
@@ -212,7 +203,6 @@
 	<string name="button_request_coins">Prejmi novce</string>
 	<string name="button_send_coins">Pošlji novce</string>
 	<string name="button_scan">Prečitaj</string>
-	<string name="button_edit_address">Dodaj/uredi naslov</string>
 	<string name="button_settings">Nastavitve</string>
 	<string name="action_show_qr">Prikazi QR-kodo</string>
 	<string name="action_browse">Ogled v brskalniku</string>

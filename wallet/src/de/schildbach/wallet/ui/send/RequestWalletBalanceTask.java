@@ -1,5 +1,5 @@
 /*
- * Copyright 2014 the original author or authors.
+ * Copyright 2014-2015 the original author or authors.
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -27,8 +27,6 @@ import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
 
-import javax.annotation.CheckForNull;
-import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 
 import org.bitcoinj.core.Address;
@@ -48,7 +46,6 @@ import android.os.Handler;
 import android.os.Looper;
 
 import com.google.common.base.Charsets;
-import com.google.common.io.BaseEncoding;
 
 import de.schildbach.wallet.Constants;
 import de.schildbach.wallet.util.Io;
@@ -62,12 +59,10 @@ public final class RequestWalletBalanceTask
 	private final Handler backgroundHandler;
 	private final Handler callbackHandler;
 	private final ResultCallback resultCallback;
-	@CheckForNull
+	@Nullable
 	private final String userAgent;
 
 	private static final Logger log = LoggerFactory.getLogger(RequestWalletBalanceTask.class);
-
-	private final BaseEncoding HEX = BaseEncoding.base16().lowerCase();
 
 	public interface ResultCallback
 	{
@@ -76,8 +71,7 @@ public final class RequestWalletBalanceTask
 		void onFail(int messageResId, Object... messageArgs);
 	}
 
-	public RequestWalletBalanceTask(@Nonnull final Handler backgroundHandler, @Nonnull final ResultCallback resultCallback,
-			@Nullable final String userAgent)
+	public RequestWalletBalanceTask(final Handler backgroundHandler, final ResultCallback resultCallback, @Nullable final String userAgent)
 	{
 		this.backgroundHandler = backgroundHandler;
 		this.callbackHandler = new Handler(Looper.myLooper());
@@ -152,7 +146,7 @@ public final class RequestWalletBalanceTask
 
 							final Sha256Hash uxtoHash = new Sha256Hash(jsonOutput.getString("transaction_hash"));
 							final int uxtoIndex = jsonOutput.getInt("transaction_index");
-							final byte[] uxtoScriptBytes = HEX.decode(jsonOutput.getString("script_pub_key"));
+							final byte[] uxtoScriptBytes = Constants.HEX.decode(jsonOutput.getString("script_pub_key"));
 							final Coin uxtoValue = Coin.valueOf(Long.parseLong(jsonOutput.getString("value")));
 
 							Transaction tx = transactions.get(uxtoHash);

@@ -1,5 +1,5 @@
 /*
- * Copyright 2011-2014 the original author or authors.
+ * Copyright 2011-2015 the original author or authors.
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -23,12 +23,8 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
-import java.util.Locale;
 import java.util.concurrent.TimeUnit;
 
-import javax.annotation.Nonnull;
-
-import org.bitcoinj.core.ECKey;
 import org.bitcoinj.core.Transaction;
 import org.bitcoinj.core.VerificationException;
 import org.bitcoinj.core.VersionMessage;
@@ -52,6 +48,7 @@ import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager.NameNotFoundException;
 import android.os.StrictMode;
 import android.preference.PreferenceManager;
+import android.support.v4.content.LocalBroadcastManager;
 import android.text.format.DateUtils;
 import android.widget.Toast;
 import ch.qos.logback.classic.Level;
@@ -83,6 +80,10 @@ public class WalletApplication extends Application
 	private File walletFile;
 	private Wallet wallet;
 	private PackageInfo packageInfo;
+
+	public static final String ACTION_WALLET_REFERENCE_CHANGED = WalletApplication.class.getPackage().getName() + ".wallet_reference_changed";
+
+	public static final int VERSION_CODE_SHOW_BACKUP_REMINDER = 205;
 
 	private static final Logger log = LoggerFactory.getLogger(WalletApplication.class);
 
@@ -129,9 +130,17 @@ public class WalletApplication extends Application
 
 		loadWalletFromProtobuf();
 
+		if (config.versionCodeCrossed(packageInfo.versionCode, VERSION_CODE_SHOW_BACKUP_REMINDER) && !wallet.getImportedKeys().isEmpty())
+		{
+			log.info("showing backup reminder once, because of imported keys being present");
+			config.armBackupReminder();
+		}
+
 		config.updateLastVersionCode(packageInfo.versionCode);
 
 		afterLoadWallet();
+
+		cleanupFiles();
 	}
 
 	private void afterLoadWallet()
@@ -193,11 +202,15 @@ public class WalletApplication extends Application
 		log.setLevel(Level.INFO);
 	}
 
+	private static final String BIP39_WORDLIST_FILENAME = "bip39-wordlist.txt";
+
 	private void initMnemonicCode()
 	{
 		try
 		{
-			MnemonicCode.INSTANCE = new MnemonicCode(getAssets().open("bip39-wordlist.txt"), null);
+			final long start = System.currentTimeMillis();
+			MnemonicCode.INSTANCE = new MnemonicCode(getAssets().open(BIP39_WORDLIST_FILENAME), null);
+			log.info("BIP39 wordlist loaded from: '" + BIP39_WORDLIST_FILENAME + "', took " + (System.currentTimeMillis() - start) + "ms");
 		}
 		catch (final IOException x)
 		{
@@ -301,11 +314,6 @@ public class WalletApplication extends Application
 
 			log.info("new wallet created");
 		}
-
-		// this check is needed so encrypted wallets won't get their private keys removed accidently
-		for (final ECKey key : wallet.getImportedKeys())
-			if (key.isPubKeyOnly())
-				throw new Error("found read-only key, but wallet is likely an encrypted wallet from the future");
 	}
 
 	private Wallet restoreWalletFromBackup()
@@ -362,7 +370,7 @@ public class WalletApplication extends Application
 		}
 	}
 
-	private void protobufSerializeWallet(@Nonnull final Wallet wallet) throws IOException
+	private void protobufSerializeWallet(final Wallet wallet) throws IOException
 	{
 		final long start = System.currentTimeMillis();
 
@@ -375,7 +383,7 @@ public class WalletApplication extends Application
 		log.debug("wallet saved to: '" + walletFile + "', took " + (System.currentTimeMillis() - start) + "ms");
 	}
 
-	private void backupWallet()
+	public void backupWallet()
 	{
 		final Protos.Wallet.Builder builder = new WalletProtobufSerializer().walletToProto(wallet).toBuilder();
 
@@ -408,29 +416,6 @@ public class WalletApplication extends Application
 				// swallow
 			}
 		}
-
-		try
-		{
-			final String filename = String.format(Locale.US, "%s.%02d", Constants.Files.WALLET_KEY_BACKUP_PROTOBUF,
-					(System.currentTimeMillis() / DateUtils.DAY_IN_MILLIS) % 100l);
-			os = openFileOutput(filename, Context.MODE_PRIVATE);
-			walletProto.writeTo(os);
-		}
-		catch (final IOException x)
-		{
-			log.error("problem writing key backup", x);
-		}
-		finally
-		{
-			try
-			{
-				os.close();
-			}
-			catch (final IOException x)
-			{
-				// swallow
-			}
-		}
 	}
 
 	private void migrateBackup()
@@ -441,11 +426,20 @@ public class WalletApplication extends Application
 
 			// make sure there is at least one recent backup
 			backupWallet();
+		}
+	}
 
-			// remove old backups
-			for (final String filename : fileList())
-				if (filename.startsWith(Constants.Files.WALLET_KEY_BACKUP_BASE58))
-					new File(getFilesDir(), filename).delete();
+	private void cleanupFiles()
+	{
+		for (final String filename : fileList())
+		{
+			if (filename.startsWith(Constants.Files.WALLET_KEY_BACKUP_BASE58)
+					|| filename.startsWith(Constants.Files.WALLET_KEY_BACKUP_PROTOBUF + '.') || filename.endsWith(".tmp"))
+			{
+				final File file = new File(getFilesDir(), filename);
+				log.info("removing obsolete file: '{}'", file);
+				file.delete();
+			}
 		}
 	}
 
@@ -464,20 +458,25 @@ public class WalletApplication extends Application
 
 	public void resetBlockchain()
 	{
-		// actually stops the service
+		// implicitly stops blockchain service
 		startService(blockchainServiceResetBlockchainIntent);
 	}
 
 	public void replaceWallet(final Wallet newWallet)
 	{
-		resetBlockchain(); // implicitly stops blockchain service
+		resetBlockchain();
 		wallet.shutdownAutosaveAndWait();
 
 		wallet = newWallet;
+		config.maybeIncrementBestChainHeightEver(newWallet.getLastBlockSeenHeight());
 		afterLoadWallet();
+
+		final Intent broadcast = new Intent(ACTION_WALLET_REFERENCE_CHANGED);
+		broadcast.setPackage(getPackageName());
+		LocalBroadcastManager.getInstance(this).sendBroadcast(broadcast);
 	}
 
-	public void processDirectTransaction(@Nonnull final Transaction tx) throws VerificationException
+	public void processDirectTransaction(final Transaction tx) throws VerificationException
 	{
 		if (wallet.isTransactionRelevant(tx))
 		{
@@ -486,7 +485,7 @@ public class WalletApplication extends Application
 		}
 	}
 
-	public void broadcastTransaction(@Nonnull final Transaction tx)
+	public void broadcastTransaction(final Transaction tx)
 	{
 		final Intent intent = new Intent(BlockchainService.ACTION_BROADCAST_TRANSACTION, null, this, BlockchainServiceImpl.class);
 		intent.putExtra(BlockchainService.ACTION_BROADCAST_TRANSACTION_HASH, tx.getHash().getBytes());
@@ -542,7 +541,7 @@ public class WalletApplication extends Application
 			return 6;
 	}
 
-	public static void scheduleStartBlockchainService(@Nonnull final Context context)
+	public static void scheduleStartBlockchainService(final Context context)
 	{
 		final Configuration config = new Configuration(PreferenceManager.getDefaultSharedPreferences(context));
 		final long lastUsedAgo = config.getLastUsedAgo();

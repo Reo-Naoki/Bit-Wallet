@@ -1,5 +1,5 @@
 /*
- * Copyright 2011-2014 the original author or authors.
+ * Copyright 2011-2015 the original author or authors.
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -33,8 +33,6 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 
-import javax.annotation.CheckForNull;
-import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 
 import org.bitcoinj.core.AbstractPeerEventListener;
@@ -106,7 +104,7 @@ public class BlockchainServiceImpl extends android.app.Service implements Blockc
 	private BlockStore blockStore;
 	private File blockChainFile;
 	private BlockChain blockChain;
-	@CheckForNull
+	@Nullable
 	private PeerGroup peerGroup;
 
 	private final Handler handler = new Handler();
@@ -123,7 +121,6 @@ public class BlockchainServiceImpl extends android.app.Service implements Blockc
 	private Coin notificationAccumulatedAmount = Coin.ZERO;
 	private final List<Address> notificationAddresses = new LinkedList<Address>();
 	private AtomicInteger transactionsReceived = new AtomicInteger();
-	private int bestChainHeightEver;
 	private long serviceCreatedAt;
 	private boolean resetBlockchainOnShutdown = false;
 
@@ -151,7 +148,7 @@ public class BlockchainServiceImpl extends android.app.Service implements Blockc
 
 			final int bestChainHeight = blockChain.getBestChainHeight();
 
-			final Address from = WalletUtils.getFirstFromAddress(tx);
+			final Address address = WalletUtils.getWalletAddressOfReceived(tx, wallet);
 			final Coin amount = tx.getValue(wallet);
 			final ConfidenceType confidenceType = tx.getConfidence().getConfidenceType();
 
@@ -161,11 +158,11 @@ public class BlockchainServiceImpl extends android.app.Service implements Blockc
 				public void run()
 				{
 					final boolean isReceived = amount.signum() > 0;
-					final boolean replaying = bestChainHeight < bestChainHeightEver;
+					final boolean replaying = bestChainHeight < config.getBestChainHeightEver();
 					final boolean isReplayedTx = confidenceType == ConfidenceType.BUILDING && replaying;
 
 					if (isReceived && !isReplayedTx)
-						notifyCoinsReceived(from, amount);
+						notifyCoinsReceived(address, amount);
 				}
 			});
 		}
@@ -177,15 +174,15 @@ public class BlockchainServiceImpl extends android.app.Service implements Blockc
 		}
 	};
 
-	private void notifyCoinsReceived(@Nullable final Address from, @Nonnull final Coin amount)
+	private void notifyCoinsReceived(@Nullable final Address address, final Coin amount)
 	{
 		if (notificationCount == 1)
 			nm.cancel(NOTIFICATION_ID_COINS_RECEIVED);
 
 		notificationCount++;
 		notificationAccumulatedAmount = notificationAccumulatedAmount.add(amount);
-		if (from != null && !notificationAddresses.contains(from))
-			notificationAddresses.add(from);
+		if (address != null && !notificationAddresses.contains(address))
+			notificationAddresses.add(address);
 
 		final MonetaryFormat btcFormat = config.getFormat();
 
@@ -196,12 +193,12 @@ public class BlockchainServiceImpl extends android.app.Service implements Blockc
 		final String msg = getString(R.string.notification_coins_received_msg, btcFormat.format(notificationAccumulatedAmount)) + msgSuffix;
 
 		final StringBuilder text = new StringBuilder();
-		for (final Address address : notificationAddresses)
+		for (final Address notificationAddress : notificationAddresses)
 		{
 			if (text.length() > 0)
 				text.append(", ");
 
-			final String addressStr = address.toString();
+			final String addressStr = notificationAddress.toString();
 			final String label = AddressBookProvider.resolveLabel(getApplicationContext(), addressStr);
 			text.append(label != null ? label : addressStr);
 		}
@@ -302,7 +299,7 @@ public class BlockchainServiceImpl extends android.app.Service implements Blockc
 		@Override
 		public void onBlocksDownloaded(final Peer peer, final Block block, final int blocksLeft)
 		{
-			bestChainHeightEver = Math.max(bestChainHeightEver, blockChain.getChainHead().getHeight());
+			config.maybeIncrementBestChainHeightEver(blockChain.getChainHead().getHeight());
 
 			delayHandler.removeCallbacksAndMessages(null);
 
@@ -394,6 +391,7 @@ public class BlockchainServiceImpl extends android.app.Service implements Blockc
 
 				final boolean connectTrustedPeerOnly = hasTrustedPeer && config.getTrustedPeerOnly();
 				peerGroup.setMaxConnections(connectTrustedPeerOnly ? 1 : maxConnectedPeers);
+				peerGroup.setConnectTimeoutMillis(Constants.PEER_TIMEOUT_MS);
 
 				peerGroup.addPeerDiscovery(new PeerDiscovery()
 				{
@@ -582,17 +580,9 @@ public class BlockchainServiceImpl extends android.app.Service implements Blockc
 		config = application.getConfiguration();
 		final Wallet wallet = application.getWallet();
 
-		bestChainHeightEver = config.getBestChainHeightEver();
-
 		peerConnectivityListener = new PeerConnectivityListener();
 
 		broadcastPeerState(0);
-
-		final IntentFilter intentFilter = new IntentFilter();
-		intentFilter.addAction(ConnectivityManager.CONNECTIVITY_ACTION);
-		intentFilter.addAction(Intent.ACTION_DEVICE_STORAGE_LOW);
-		intentFilter.addAction(Intent.ACTION_DEVICE_STORAGE_OK);
-		registerReceiver(connectivityReceiver, intentFilter);
 
 		blockChainFile = new File(getDir("blockstore", Context.MODE_PRIVATE), Constants.Files.BLOCKCHAIN_FILENAME);
 		final boolean blockChainFileExists = blockChainFile.exists();
@@ -600,10 +590,7 @@ public class BlockchainServiceImpl extends android.app.Service implements Blockc
 		if (!blockChainFileExists)
 		{
 			log.info("blockchain does not exist, resetting wallet");
-
-			wallet.clearTransactions(0);
-			wallet.setLastBlockSeenHeight(-1); // magic value
-			wallet.setLastBlockSeenHash(null);
+			wallet.reset();
 		}
 
 		try
@@ -617,8 +604,10 @@ public class BlockchainServiceImpl extends android.app.Service implements Blockc
 			{
 				try
 				{
+					final long start = System.currentTimeMillis();
 					final InputStream checkpointsInputStream = getAssets().open(Constants.Files.CHECKPOINTS_FILENAME);
 					CheckpointManager.checkpoint(Constants.NETWORK_PARAMETERS, checkpointsInputStream, blockStore, earliestKeyCreationTime);
+					log.info("checkpoints loaded from '{}', took {}ms", Constants.Files.CHECKPOINTS_FILENAME, System.currentTimeMillis() - start);
 				}
 				catch (final IOException x)
 				{
@@ -635,8 +624,6 @@ public class BlockchainServiceImpl extends android.app.Service implements Blockc
 			throw new Error(msg, x);
 		}
 
-		log.info("using " + blockStore.getClass().getName());
-
 		try
 		{
 			blockChain = new BlockChain(Constants.NETWORK_PARAMETERS, wallet, blockStore);
@@ -646,11 +633,15 @@ public class BlockchainServiceImpl extends android.app.Service implements Blockc
 			throw new Error("blockchain cannot be created", x);
 		}
 
+		final IntentFilter intentFilter = new IntentFilter();
+		intentFilter.addAction(ConnectivityManager.CONNECTIVITY_ACTION);
+		intentFilter.addAction(Intent.ACTION_DEVICE_STORAGE_LOW);
+		intentFilter.addAction(Intent.ACTION_DEVICE_STORAGE_OK);
+		registerReceiver(connectivityReceiver, intentFilter); // implicitly start PeerGroup
+
 		application.getWallet().addEventListener(walletEventListener, Threading.SAME_THREAD);
 
 		registerReceiver(tickReceiver, new IntentFilter(Intent.ACTION_TIME_TICK));
-
-		maybeRotateKeys();
 	}
 
 	@Override
@@ -713,6 +704,8 @@ public class BlockchainServiceImpl extends android.app.Service implements Blockc
 
 		application.getWallet().removeEventListener(walletEventListener);
 
+		unregisterReceiver(connectivityReceiver);
+
 		if (peerGroup != null)
 		{
 			peerGroup.removeEventListener(peerConnectivityListener);
@@ -724,10 +717,6 @@ public class BlockchainServiceImpl extends android.app.Service implements Blockc
 		}
 
 		peerConnectivityListener.stop();
-
-		unregisterReceiver(connectivityReceiver);
-
-		config.setBestChainHeightEver(bestChainHeightEver);
 
 		delayHandler.removeCallbacksAndMessages(null);
 
@@ -777,7 +766,7 @@ public class BlockchainServiceImpl extends android.app.Service implements Blockc
 		final StoredBlock chainHead = blockChain.getChainHead();
 		final Date bestChainDate = chainHead.getHeader().getTime();
 		final int bestChainHeight = chainHead.getHeight();
-		final boolean replaying = chainHead.getHeight() < bestChainHeightEver;
+		final boolean replaying = chainHead.getHeight() < config.getBestChainHeightEver();
 
 		return new BlockchainState(bestChainDate, bestChainHeight, replaying, impediments);
 	}
@@ -833,24 +822,5 @@ public class BlockchainServiceImpl extends android.app.Service implements Blockc
 		broadcast.setPackage(getPackageName());
 		getBlockchainState().putExtras(broadcast);
 		LocalBroadcastManager.getInstance(this).sendBroadcast(broadcast);
-	}
-
-	private void maybeRotateKeys()
-	{
-		final Wallet wallet = application.getWallet();
-		wallet.setKeyRotationEnabled(false);
-
-		final StoredBlock chainHead = blockChain.getChainHead();
-
-		new Thread()
-		{
-			@Override
-			public void run()
-			{
-				final boolean replaying = chainHead.getHeight() < bestChainHeightEver; // checking again
-
-				wallet.setKeyRotationEnabled(!replaying);
-			}
-		}.start();
 	}
 }

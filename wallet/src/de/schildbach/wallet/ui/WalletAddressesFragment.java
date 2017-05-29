@@ -1,5 +1,5 @@
 /*
- * Copyright 2011-2014 the original author or authors.
+ * Copyright 2011-2015 the original author or authors.
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -21,8 +21,6 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
 
-import javax.annotation.Nonnull;
-
 import org.bitcoinj.core.AbstractWalletEventListener;
 import org.bitcoinj.core.Address;
 import org.bitcoinj.core.ECKey;
@@ -30,9 +28,12 @@ import org.bitcoinj.core.Wallet;
 import org.bitcoinj.core.WalletEventListener;
 import org.bitcoinj.uri.BitcoinURI;
 import org.bitcoinj.utils.Threading;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import android.app.Activity;
-import android.app.ListFragment;
+import android.content.ClipData;
+import android.content.ClipboardManager;
 import android.content.ContentResolver;
 import android.content.Context;
 import android.content.Intent;
@@ -40,7 +41,6 @@ import android.database.ContentObserver;
 import android.net.Uri;
 import android.os.Bundle;
 import android.os.Handler;
-import android.text.ClipboardManager;
 import android.view.ActionMode;
 import android.view.Menu;
 import android.view.MenuInflater;
@@ -50,11 +50,11 @@ import android.widget.BaseAdapter;
 import android.widget.ListAdapter;
 import android.widget.ListView;
 import de.schildbach.wallet.AddressBookProvider;
-import de.schildbach.wallet.Configuration;
 import de.schildbach.wallet.Constants;
 import de.schildbach.wallet.WalletApplication;
 import de.schildbach.wallet.util.BitmapFragment;
 import de.schildbach.wallet.util.Qr;
+import de.schildbach.wallet.util.Toast;
 import de.schildbach.wallet.util.WalletUtils;
 import de.schildbach.wallet.util.WholeStringBuilder;
 import de.schildbach.wallet_test.R;
@@ -62,15 +62,17 @@ import de.schildbach.wallet_test.R;
 /**
  * @author Andreas Schildbach
  */
-public final class WalletAddressesFragment extends ListFragment
+public final class WalletAddressesFragment extends FancyListFragment
 {
 	private AddressBookActivity activity;
 	private WalletApplication application;
-	private Configuration config;
 	private Wallet wallet;
+	private ClipboardManager clipboardManager;
 	private ContentResolver contentResolver;
 
 	private WalletAddressesAdapter adapter;
+
+	private static final Logger log = LoggerFactory.getLogger(WalletAddressesFragment.class);
 
 	@Override
 	public void onAttach(final Activity activity)
@@ -79,8 +81,8 @@ public final class WalletAddressesFragment extends ListFragment
 
 		this.activity = (AddressBookActivity) activity;
 		this.application = (WalletApplication) activity.getApplication();
-		this.config = application.getConfiguration();
 		this.wallet = application.getWallet();
+		this.clipboardManager = (ClipboardManager) activity.getSystemService(Context.CLIPBOARD_SERVICE);
 		this.contentResolver = activity.getContentResolver();
 	}
 
@@ -210,23 +212,23 @@ public final class WalletAddressesFragment extends ListFragment
 				return getKey(position).toAddress(Constants.NETWORK_PARAMETERS);
 			}
 
-			private void handleEdit(@Nonnull final Address address)
+			private void handleEdit(final Address address)
 			{
-				EditAddressBookEntryFragment.edit(getFragmentManager(), address.toString());
+				EditAddressBookEntryFragment.edit(getFragmentManager(), address);
 			}
 
-			private void handleShowQr(@Nonnull final Address address)
+			private void handleShowQr(final Address address)
 			{
 				final String uri = BitcoinURI.convertToBitcoinURI(address, null, null, null);
-				final int size = (int) (256 * getResources().getDisplayMetrics().density);
+				final int size = getResources().getDimensionPixelSize(R.dimen.bitmap_dialog_qr_size);
 				BitmapFragment.show(getFragmentManager(), Qr.bitmap(uri, size));
 			}
 
-			private void handleCopyToClipboard(@Nonnull final Address address)
+			private void handleCopyToClipboard(final Address address)
 			{
-				final ClipboardManager clipboardManager = (ClipboardManager) activity.getSystemService(Context.CLIPBOARD_SERVICE);
-				clipboardManager.setText(address.toString());
-				activity.toast(R.string.wallet_address_fragment_clipboard_msg);
+				clipboardManager.setPrimaryClip(ClipData.newPlainText("Bitcoin address", address.toString()));
+				log.info("address copied to clipboard: {}", address.toString());
+				new Toast(activity).toast(R.string.wallet_address_fragment_clipboard_msg);
 			}
 		});
 	}
@@ -254,9 +256,10 @@ public final class WalletAddressesFragment extends ListFragment
 		@Override
 		public void onKeysAdded(final List<ECKey> keysAdded)
 		{
-			final List<ECKey> keys = wallet.getImportedKeys();
+			final List<ECKey> derivedKeys = wallet.getIssuedReceiveKeys();
+			final List<ECKey> randomKeys = wallet.getImportedKeys();
 
-			Collections.sort(keys, new Comparator<ECKey>()
+			Collections.sort(randomKeys, new Comparator<ECKey>()
 			{
 				@Override
 				public int compare(final ECKey lhs, final ECKey rhs)
@@ -279,7 +282,8 @@ public final class WalletAddressesFragment extends ListFragment
 				@Override
 				public void run()
 				{
-					adapter.replace(keys);
+					adapter.replaceDerivedKeys(derivedKeys);
+					adapter.replaceRandomKeys(randomKeys);
 				}
 			});
 		}

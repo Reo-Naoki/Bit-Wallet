@@ -1,5 +1,5 @@
 /*
- * Copyright 2011-2014 the original author or authors.
+ * Copyright 2011-2015 the original author or authors.
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -17,8 +17,6 @@
 
 package de.schildbach.wallet.ui;
 
-import javax.annotation.CheckForNull;
-import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 
 import org.bitcoinj.core.Coin;
@@ -91,7 +89,7 @@ public final class CurrencyAmountView extends FrameLayout
 		significantColor = resources.getColor(R.color.fg_significant);
 		lessSignificantColor = resources.getColor(R.color.fg_less_significant);
 		errorColor = resources.getColor(R.color.fg_error);
-		deleteButtonDrawable = resources.getDrawable(R.drawable.ic_input_delete);
+		deleteButtonDrawable = resources.getDrawable(R.drawable.ic_clear_grey600_24dp);
 	}
 
 	@Override
@@ -187,7 +185,7 @@ public final class CurrencyAmountView extends FrameLayout
 		this.validateAmount = validateAmount;
 	}
 
-	public void setContextButton(final int contextButtonResId, @Nonnull final OnClickListener contextButtonClickListener)
+	public void setContextButton(final int contextButtonResId, final OnClickListener contextButtonClickListener)
 	{
 		this.contextButtonDrawable = getContext().getResources().getDrawable(contextButtonResId);
 		this.contextButtonClickListener = contextButtonClickListener;
@@ -195,12 +193,12 @@ public final class CurrencyAmountView extends FrameLayout
 		updateAppearance();
 	}
 
-	public void setListener(@Nonnull final Listener listener)
+	public void setListener(final Listener listener)
 	{
 		this.listener = listener;
 	}
 
-	@CheckForNull
+	@Nullable
 	public Monetary getAmount()
 	{
 		if (!isValidAmount(false))
@@ -326,8 +324,8 @@ public final class CurrencyAmountView extends FrameLayout
 
 		textView.setTextColor(!validateAmount || isValidAmount(true) ? significantColor : errorColor);
 
-		final Spannable hintSpannable = new MonetarySpannable(hintFormat, hint != null ? hint : Coin.ZERO).applyMarkup(null, null,
-				MonetarySpannable.SMALLER_SPAN);
+		final Spannable hintSpannable = new MonetarySpannable(hintFormat, hint != null ? hint : Coin.ZERO).applyMarkup(null,
+				MonetarySpannable.STANDARD_INSIGNIFICANT_SPANS);
 		textView.setHint(hintSpannable);
 	}
 
@@ -380,7 +378,7 @@ public final class CurrencyAmountView extends FrameLayout
 				s.append(replaced);
 			}
 
-			MonetarySpannable.applyMarkup(s, null, null, MonetarySpannable.BOLD_SPAN, MonetarySpannable.SMALLER_SPAN);
+			MonetarySpannable.applyMarkup(s, null, MonetarySpannable.STANDARD_SIGNIFICANT_SPANS, MonetarySpannable.STANDARD_INSIGNIFICANT_SPANS);
 		}
 
 		@Override
