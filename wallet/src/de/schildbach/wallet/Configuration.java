@@ -26,8 +26,14 @@ import org.slf4j.LoggerFactory;
 import android.content.SharedPreferences;
 import android.content.SharedPreferences.Editor;
 import android.content.SharedPreferences.OnSharedPreferenceChangeListener;
+import android.content.res.Resources;
+import android.net.Uri;
 import android.text.format.DateUtils;
+
+import com.google.common.base.Strings;
+
 import de.schildbach.wallet.ExchangeRatesProvider.ExchangeRate;
+import de.schildbach.wallet_test.R;
 
 /**
  * @author Andreas Schildbach
@@ -37,15 +43,21 @@ public class Configuration
 	public final int lastVersionCode;
 
 	private final SharedPreferences prefs;
+	private final Resources res;
 
 	public static final String PREFS_KEY_BTC_PRECISION = "btc_precision";
+	public static final String PREFS_KEY_OWN_NAME = "own_name";
+	public static final String PREFS_KEY_SEND_COINS_AUTOCLOSE = "send_coins_autoclose";
 	public static final String PREFS_KEY_CONNECTIVITY_NOTIFICATION = "connectivity_notification";
 	public static final String PREFS_KEY_EXCHANGE_CURRENCY = "exchange_currency";
 	public static final String PREFS_KEY_TRUSTED_PEER = "trusted_peer";
 	public static final String PREFS_KEY_TRUSTED_PEER_ONLY = "trusted_peer_only";
+	public static final String PREFS_KEY_BLOCK_EXPLORER = "block_explorer";
 	public static final String PREFS_KEY_DATA_USAGE = "data_usage";
+	public static final String PREFS_KEY_REMIND_BALANCE = "remind_balance";
 	public static final String PREFS_KEY_DISCLAIMER = "disclaimer";
 	private static final String PREFS_KEY_LABS_QR_PAYMENT_REQUEST = "labs_qr_payment_request";
+	private static final String PREFS_KEY_LOOK_UP_WALLET_NAMES = "look_up_wallet_names";
 
 	private static final String PREFS_KEY_LAST_VERSION = "last_version";
 	private static final String PREFS_KEY_LAST_USED = "last_used";
@@ -63,9 +75,10 @@ public class Configuration
 
 	private static final Logger log = LoggerFactory.getLogger(Configuration.class);
 
-	public Configuration(final SharedPreferences prefs)
+	public Configuration(final SharedPreferences prefs, final Resources res)
 	{
 		this.prefs = prefs;
+		this.res = res;
 
 		this.lastVersionCode = prefs.getInt(PREFS_KEY_LAST_VERSION, 0);
 	}
@@ -88,6 +101,19 @@ public class Configuration
 			return PREFS_DEFAULT_BTC_SHIFT;
 	}
 
+	public Coin getBtcBase()
+	{
+		final int shift = getBtcShift();
+		if (shift == 0)
+			return Coin.COIN;
+		else if (shift == 3)
+			return Coin.MILLICOIN;
+		else if (shift == 6)
+			return Coin.MICROCOIN;
+		else
+			throw new IllegalStateException("cannot handle shift: " + shift);
+	}
+
 	public MonetaryFormat getFormat()
 	{
 		final int shift = getBtcShift();
@@ -107,6 +133,16 @@ public class Configuration
 			return new MonetaryFormat().shift(6).minDecimals(0).optionalDecimals(2);
 	}
 
+	public String getOwnName()
+	{
+		return Strings.emptyToNull(prefs.getString(PREFS_KEY_OWN_NAME, "").trim());
+	}
+
+	public boolean getSendCoinsAutoclose()
+	{
+		return prefs.getBoolean(PREFS_KEY_SEND_COINS_AUTOCLOSE, true);
+	}
+
 	public boolean getConnectivityNotificationEnabled()
 	{
 		return prefs.getBoolean(PREFS_KEY_CONNECTIVITY_NOTIFICATION, false);
@@ -114,12 +150,27 @@ public class Configuration
 
 	public String getTrustedPeerHost()
 	{
-		return prefs.getString(PREFS_KEY_TRUSTED_PEER, "").trim();
+		return Strings.emptyToNull(prefs.getString(PREFS_KEY_TRUSTED_PEER, "").trim());
 	}
 
 	public boolean getTrustedPeerOnly()
 	{
 		return prefs.getBoolean(PREFS_KEY_TRUSTED_PEER_ONLY, false);
+	}
+
+	public Uri getBlockExplorer()
+	{
+		return Uri.parse(prefs.getString(PREFS_KEY_BLOCK_EXPLORER, res.getStringArray(R.array.preferences_block_explorer_values)[0]));
+	}
+
+	public boolean remindBalance()
+	{
+		return prefs.getBoolean(PREFS_KEY_REMIND_BALANCE, true);
+	}
+
+	public void setRemindBalance(final boolean remindBalance)
+	{
+		prefs.edit().putBoolean(PREFS_KEY_REMIND_BALANCE, remindBalance).apply();
 	}
 
 	public boolean remindBackup()
@@ -134,12 +185,12 @@ public class Configuration
 
 	public void armBackupReminder()
 	{
-		prefs.edit().putBoolean(PREFS_KEY_REMIND_BACKUP, true).commit();
+		prefs.edit().putBoolean(PREFS_KEY_REMIND_BACKUP, true).apply();
 	}
 
 	public void disarmBackupReminder()
 	{
-		prefs.edit().putBoolean(PREFS_KEY_REMIND_BACKUP, false).putLong(PREFS_KEY_LAST_BACKUP, System.currentTimeMillis()).commit();
+		prefs.edit().putBoolean(PREFS_KEY_REMIND_BACKUP, false).putLong(PREFS_KEY_LAST_BACKUP, System.currentTimeMillis()).apply();
 	}
 
 	public boolean getDisclaimerEnabled()
@@ -154,12 +205,17 @@ public class Configuration
 
 	public void setExchangeCurrencyCode(final String exchangeCurrencyCode)
 	{
-		prefs.edit().putString(PREFS_KEY_EXCHANGE_CURRENCY, exchangeCurrencyCode).commit();
+		prefs.edit().putString(PREFS_KEY_EXCHANGE_CURRENCY, exchangeCurrencyCode).apply();
 	}
 
 	public boolean getQrPaymentRequestEnabled()
 	{
 		return prefs.getBoolean(PREFS_KEY_LABS_QR_PAYMENT_REQUEST, false);
+	}
+
+	public boolean getLookUpWalletNames()
+	{
+		return prefs.getBoolean(PREFS_KEY_LOOK_UP_WALLET_NAMES, false);
 	}
 
 	public boolean versionCodeCrossed(final int currentVersionCode, final int triggeringVersionCode)
@@ -173,12 +229,17 @@ public class Configuration
 
 	public void updateLastVersionCode(final int currentVersionCode)
 	{
-		prefs.edit().putInt(PREFS_KEY_LAST_VERSION, currentVersionCode).commit();
+		prefs.edit().putInt(PREFS_KEY_LAST_VERSION, currentVersionCode).apply();
 
 		if (currentVersionCode > lastVersionCode)
 			log.info("detected app upgrade: " + lastVersionCode + " -> " + currentVersionCode);
 		else if (currentVersionCode < lastVersionCode)
 			log.warn("detected app downgrade: " + lastVersionCode + " -> " + currentVersionCode);
+	}
+
+	public boolean hasBeenUsed()
+	{
+		return prefs.contains(PREFS_KEY_LAST_USED);
 	}
 
 	public long getLastUsedAgo()
@@ -192,7 +253,7 @@ public class Configuration
 	{
 		final long prefsLastUsed = prefs.getLong(PREFS_KEY_LAST_USED, 0);
 		final long now = System.currentTimeMillis();
-		prefs.edit().putLong(PREFS_KEY_LAST_USED, now).commit();
+		prefs.edit().putLong(PREFS_KEY_LAST_USED, now).apply();
 
 		log.info("just being used - last used {} minutes ago", (now - prefsLastUsed) / DateUtils.MINUTE_IN_MILLIS);
 	}
@@ -205,7 +266,7 @@ public class Configuration
 	public void maybeIncrementBestChainHeightEver(final int bestChainHeightEver)
 	{
 		if (bestChainHeightEver > getBestChainHeightEver())
-			prefs.edit().putInt(PREFS_KEY_BEST_CHAIN_HEIGHT_EVER, bestChainHeightEver).commit();
+			prefs.edit().putInt(PREFS_KEY_BEST_CHAIN_HEIGHT_EVER, bestChainHeightEver).apply();
 	}
 
 	public ExchangeRate getCachedExchangeRate()
@@ -230,7 +291,7 @@ public class Configuration
 		edit.putString(PREFS_KEY_CACHED_EXCHANGE_CURRENCY, cachedExchangeRate.getCurrencyCode());
 		edit.putLong(PREFS_KEY_CACHED_EXCHANGE_RATE_COIN, cachedExchangeRate.rate.coin.value);
 		edit.putLong(PREFS_KEY_CACHED_EXCHANGE_RATE_FIAT, cachedExchangeRate.rate.fiat.value);
-		edit.commit();
+		edit.apply();
 	}
 
 	public boolean getLastExchangeDirection()
@@ -240,7 +301,7 @@ public class Configuration
 
 	public void setLastExchangeDirection(final boolean exchangeDirection)
 	{
-		prefs.edit().putBoolean(PREFS_KEY_LAST_EXCHANGE_DIRECTION, exchangeDirection).commit();
+		prefs.edit().putBoolean(PREFS_KEY_LAST_EXCHANGE_DIRECTION, exchangeDirection).apply();
 	}
 
 	public boolean changeLogVersionCodeCrossed(final int currentVersionCode, final int triggeringVersionCode)
@@ -251,7 +312,7 @@ public class Configuration
 		final boolean wasUsedBefore = changeLogVersion > 0;
 		final boolean isNowAbove = currentVersionCode >= triggeringVersionCode;
 
-		prefs.edit().putInt(PREFS_KEY_CHANGE_LOG_VERSION, currentVersionCode).commit();
+		prefs.edit().putInt(PREFS_KEY_CHANGE_LOG_VERSION, currentVersionCode).apply();
 
 		return /* wasUsedBefore && */wasBelow && isNowAbove;
 	}

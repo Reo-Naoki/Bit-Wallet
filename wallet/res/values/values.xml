@@ -14,11 +14,19 @@
 		<item>0/6</item>
 	</string-array>
 	<string-array name="preferences_precision_labels">
-		<item>BTC, 8 digits</item>
-		<item>BTC, 6 digits</item>
-		<item>BTC, 4 digits</item>
-		<item>mBTC, 2 digits</item>
-		<item>µBTC, no digits</item>
+		<item>@string/preferences_precision_labels_8</item>
+		<item>@string/preferences_precision_labels_6</item>
+		<item>@string/preferences_precision_labels_4</item>
+		<item>@string/preferences_precision_labels_2_3</item>
+		<item>@string/preferences_precision_labels_0_6</item>
+	</string-array>
+	<string-array name="preferences_block_explorer_values">
+		<item>https://testnet.blockexplorer.com/</item>
+		<item>https://www.biteasy.com/testnet/</item>
+	</string-array>
+	<string-array name="preferences_block_explorer_labels">
+		<item>blockexplorer.com</item>
+		<item>BitEasy</item>
 	</string-array>
 
 </resources>

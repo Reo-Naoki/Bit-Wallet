@@ -28,13 +28,13 @@ import org.bitcoinj.core.AddressFormatException;
 import org.bitcoinj.core.Coin;
 import org.bitcoinj.core.ScriptException;
 import org.bitcoinj.core.Transaction;
-import org.bitcoinj.core.Wallet.SendRequest;
 import org.bitcoinj.core.WrongNetworkException;
 import org.bitcoinj.protocols.payments.PaymentProtocol;
 import org.bitcoinj.protocols.payments.PaymentProtocolException;
 import org.bitcoinj.script.Script;
 import org.bitcoinj.script.ScriptBuilder;
 import org.bitcoinj.uri.BitcoinURI;
+import org.bitcoinj.wallet.SendRequest;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -77,7 +77,7 @@ public final class PaymentIntent implements Parcelable
 			}
 			catch (final ScriptException x)
 			{
-				throw new PaymentProtocolException.InvalidOutputs("unparseable script in output: " + Arrays.toString(output.scriptData));
+				throw new PaymentProtocolException.InvalidOutputs("unparseable script in output: " + Constants.HEX.encode(output.scriptData));
 			}
 		}
 
@@ -209,10 +209,17 @@ public final class PaymentIntent implements Parcelable
 		return new PaymentIntent(address, addressLabel);
 	}
 
-	public static PaymentIntent fromAddress(final String address, @Nullable final String addressLabel) throws WrongNetworkException,
-			AddressFormatException
+	public static PaymentIntent fromAddress(final String address, @Nullable final String addressLabel)
+			throws WrongNetworkException, AddressFormatException
 	{
-		return new PaymentIntent(new Address(Constants.NETWORK_PARAMETERS, address), addressLabel);
+		return new PaymentIntent(Address.fromBase58(Constants.NETWORK_PARAMETERS, address), addressLabel);
+	}
+
+	public static PaymentIntent from(final String address, @Nullable final String addressLabel, @Nullable final Coin amount)
+			throws WrongNetworkException, AddressFormatException
+	{
+		return new PaymentIntent(null, null, null, buildSimplePayTo(amount, Address.fromBase58(Constants.NETWORK_PARAMETERS, address)), addressLabel,
+				null, null, null, null);
 	}
 
 	public static PaymentIntent fromBitcoinUri(final BitcoinURI bitcoinUri)
@@ -453,8 +460,8 @@ public final class PaymentIntent implements Parcelable
 		builder.append(paymentUrl);
 		if (payeeData != null)
 		{
-			builder.append(',');
-			builder.append(Arrays.toString(payeeData));
+			builder.append(",payeeData=");
+			builder.append(Constants.HEX.encode(payeeData));
 		}
 		if (paymentRequestUrl != null)
 		{
@@ -464,7 +471,7 @@ public final class PaymentIntent implements Parcelable
 		if (paymentRequestHash != null)
 		{
 			builder.append(",paymentRequestHash=");
-			builder.append(BaseEncoding.base16().lowerCase().encode(paymentRequestHash));
+			builder.append(Constants.HEX.encode(paymentRequestHash));
 		}
 		builder.append(']');
 

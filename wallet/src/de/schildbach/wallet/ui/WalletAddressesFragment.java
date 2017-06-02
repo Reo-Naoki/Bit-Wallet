@@ -21,13 +21,12 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
 
-import org.bitcoinj.core.AbstractWalletEventListener;
 import org.bitcoinj.core.Address;
 import org.bitcoinj.core.ECKey;
-import org.bitcoinj.core.Wallet;
-import org.bitcoinj.core.WalletEventListener;
 import org.bitcoinj.uri.BitcoinURI;
 import org.bitcoinj.utils.Threading;
+import org.bitcoinj.wallet.Wallet;
+import org.bitcoinj.wallet.listeners.KeyChainEventListener;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -50,6 +49,7 @@ import android.widget.BaseAdapter;
 import android.widget.ListAdapter;
 import android.widget.ListView;
 import de.schildbach.wallet.AddressBookProvider;
+import de.schildbach.wallet.Configuration;
 import de.schildbach.wallet.Constants;
 import de.schildbach.wallet.WalletApplication;
 import de.schildbach.wallet.util.BitmapFragment;
@@ -66,6 +66,7 @@ public final class WalletAddressesFragment extends FancyListFragment
 {
 	private AddressBookActivity activity;
 	private WalletApplication application;
+	private Configuration config;
 	private Wallet wallet;
 	private ClipboardManager clipboardManager;
 	private ContentResolver contentResolver;
@@ -81,6 +82,7 @@ public final class WalletAddressesFragment extends FancyListFragment
 
 		this.activity = (AddressBookActivity) activity;
 		this.application = (WalletApplication) activity.getApplication();
+		this.config = application.getConfiguration();
 		this.wallet = application.getWallet();
 		this.clipboardManager = (ClipboardManager) activity.getSystemService(Context.CLIPBOARD_SERVICE);
 		this.contentResolver = activity.getContentResolver();
@@ -113,7 +115,7 @@ public final class WalletAddressesFragment extends FancyListFragment
 
 		contentResolver.registerContentObserver(AddressBookProvider.contentUri(activity.getPackageName()), true, contentObserver);
 
-		wallet.addEventListener(walletListener, Threading.SAME_THREAD);
+		wallet.addKeyChainEventListener(Threading.SAME_THREAD, walletListener);
 		walletListener.onKeysAdded(null); // trigger initial load of keys
 
 		updateView();
@@ -122,7 +124,7 @@ public final class WalletAddressesFragment extends FancyListFragment
 	@Override
 	public void onPause()
 	{
-		wallet.removeEventListener(walletListener);
+		wallet.removeKeyChainEventListener(walletListener);
 
 		contentResolver.unregisterContentObserver(contentObserver);
 
@@ -156,7 +158,7 @@ public final class WalletAddressesFragment extends FancyListFragment
 			{
 				final ECKey key = getKey(position);
 
-				final String address = key.toAddress(Constants.NETWORK_PARAMETERS).toString();
+				final String address = key.toAddress(Constants.NETWORK_PARAMETERS).toBase58();
 				final String label = AddressBookProvider.resolveLabel(activity, address);
 				mode.setTitle(label != null ? label : WalletUtils.formatHash(address, Constants.ADDRESS_FORMAT_GROUP_SIZE, 0));
 
@@ -187,8 +189,8 @@ public final class WalletAddressesFragment extends FancyListFragment
 						return true;
 
 					case R.id.wallet_addresses_context_browse:
-						startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse(Constants.EXPLORE_BASE_URL + "address/"
-								+ getAddress(position).toString())));
+						startActivity(new Intent(Intent.ACTION_VIEW,
+								Uri.withAppendedPath(config.getBlockExplorer(), "address/" + getAddress(position).toBase58())));
 
 						mode.finish();
 						return true;
@@ -219,15 +221,15 @@ public final class WalletAddressesFragment extends FancyListFragment
 
 			private void handleShowQr(final Address address)
 			{
-				final String uri = BitcoinURI.convertToBitcoinURI(address, null, null, null);
+				final String uri = BitcoinURI.convertToBitcoinURI(address, null, config.getOwnName(), null);
 				final int size = getResources().getDimensionPixelSize(R.dimen.bitmap_dialog_qr_size);
 				BitmapFragment.show(getFragmentManager(), Qr.bitmap(uri, size));
 			}
 
 			private void handleCopyToClipboard(final Address address)
 			{
-				clipboardManager.setPrimaryClip(ClipData.newPlainText("Bitcoin address", address.toString()));
-				log.info("address copied to clipboard: {}", address.toString());
+				clipboardManager.setPrimaryClip(ClipData.newPlainText("Bitcoin address", address.toBase58()));
+				log.info("wallet address copied to clipboard: {}", address);
 				new Toast(activity).toast(R.string.wallet_address_fragment_clipboard_msg);
 			}
 		});
@@ -251,7 +253,7 @@ public final class WalletAddressesFragment extends FancyListFragment
 		}
 	};
 
-	private final WalletEventListener walletListener = new AbstractWalletEventListener()
+	private final KeyChainEventListener walletListener = new KeyChainEventListener()
 	{
 		@Override
 		public void onKeysAdded(final List<ECKey> keysAdded)

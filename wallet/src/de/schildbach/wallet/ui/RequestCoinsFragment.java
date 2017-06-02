@@ -23,9 +23,9 @@ import javax.annotation.Nullable;
 
 import org.bitcoinj.core.Address;
 import org.bitcoinj.core.Coin;
-import org.bitcoinj.core.Wallet;
 import org.bitcoinj.protocols.payments.PaymentProtocol;
 import org.bitcoinj.uri.BitcoinURI;
+import org.bitcoinj.wallet.Wallet;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -50,7 +50,6 @@ import android.nfc.NdefMessage;
 import android.nfc.NdefRecord;
 import android.nfc.NfcAdapter;
 import android.nfc.NfcEvent;
-import android.os.Build;
 import android.os.Bundle;
 import android.support.v7.widget.CardView;
 import android.text.SpannableStringBuilder;
@@ -114,8 +113,6 @@ public final class RequestCoinsFragment extends Fragment implements NfcAdapter.C
 
 	private static final int ID_RATE_LOADER = 0;
 
-	private static boolean ENABLE_BLUETOOTH_LISTENING = Build.VERSION.SDK_INT >= Constants.SDK_JELLY_BEAN_MR2;
-
 	private static final Logger log = LoggerFactory.getLogger(RequestCoinsFragment.class);
 
 	private final LoaderCallbacks<Cursor> rateLoaderCallbacks = new LoaderManager.LoaderCallbacks<Cursor>()
@@ -165,6 +162,8 @@ public final class RequestCoinsFragment extends Fragment implements NfcAdapter.C
 	{
 		super.onCreate(savedInstanceState);
 
+		setHasOptionsMenu(true);
+
 		if (nfcAdapter != null && nfcAdapter.isEnabled())
 			nfcAdapter.setNdefPushMessageCallback(this, activity);
 
@@ -175,6 +174,7 @@ public final class RequestCoinsFragment extends Fragment implements NfcAdapter.C
 		else
 		{
 			address = wallet.freshReceiveAddress();
+			log.info("request coins started: {}", address);
 		}
 	}
 
@@ -208,14 +208,14 @@ public final class RequestCoinsFragment extends Fragment implements NfcAdapter.C
 		amountCalculatorLink = new CurrencyCalculatorLink(btcAmountView, localAmountView);
 
 		acceptBluetoothPaymentView = (CheckBox) view.findViewById(R.id.request_coins_accept_bluetooth_payment);
-		acceptBluetoothPaymentView.setVisibility(ENABLE_BLUETOOTH_LISTENING && bluetoothAdapter != null ? View.VISIBLE : View.GONE);
-		acceptBluetoothPaymentView.setChecked(ENABLE_BLUETOOTH_LISTENING && bluetoothAdapter != null && bluetoothAdapter.isEnabled());
+		acceptBluetoothPaymentView.setVisibility(Bluetooth.canListen(bluetoothAdapter) ? View.VISIBLE : View.GONE);
+		acceptBluetoothPaymentView.setChecked(Bluetooth.canListen(bluetoothAdapter) && bluetoothAdapter.isEnabled());
 		acceptBluetoothPaymentView.setOnCheckedChangeListener(new OnCheckedChangeListener()
 		{
 			@Override
 			public void onCheckedChanged(final CompoundButton buttonView, final boolean isChecked)
 			{
-				if (ENABLE_BLUETOOTH_LISTENING && bluetoothAdapter != null && isChecked)
+				if (Bluetooth.canListen(bluetoothAdapter) && isChecked)
 				{
 					if (bluetoothAdapter.isEnabled())
 					{
@@ -246,9 +246,6 @@ public final class RequestCoinsFragment extends Fragment implements NfcAdapter.C
 	{
 		super.onViewCreated(view, savedInstanceState);
 
-		// don't call in onCreate() because ActionBarSherlock invokes onCreateOptionsMenu() too early
-		setHasOptionsMenu(true);
-
 		amountCalculatorLink.setExchangeDirection(config.getLastExchangeDirection());
 		amountCalculatorLink.requestFocus();
 	}
@@ -274,7 +271,7 @@ public final class RequestCoinsFragment extends Fragment implements NfcAdapter.C
 
 		loaderManager.initLoader(ID_RATE_LOADER, null, rateLoaderCallbacks);
 
-		if (ENABLE_BLUETOOTH_LISTENING && bluetoothAdapter != null && bluetoothAdapter.isEnabled() && acceptBluetoothPaymentView.isChecked())
+		if (Bluetooth.canListen(bluetoothAdapter) && bluetoothAdapter.isEnabled() && acceptBluetoothPaymentView.isChecked())
 			startBluetoothListening();
 
 		updateView();
@@ -389,10 +386,12 @@ public final class RequestCoinsFragment extends Fragment implements NfcAdapter.C
 
 	private void handleShare()
 	{
+		final String request = determineBitcoinRequestStr(false);
 		final Intent intent = new Intent(Intent.ACTION_SEND);
 		intent.setType("text/plain");
-		intent.putExtra(Intent.EXTRA_TEXT, determineBitcoinRequestStr(false));
+		intent.putExtra(Intent.EXTRA_TEXT, request);
 		startActivity(Intent.createChooser(intent, getString(R.string.request_coins_share_dialog_title)));
+		log.info("payment request shared via intent: {}", request);
 	}
 
 	private void handleLocalApp()
@@ -453,11 +452,12 @@ public final class RequestCoinsFragment extends Fragment implements NfcAdapter.C
 	private String determineBitcoinRequestStr(final boolean includeBluetoothMac)
 	{
 		final Coin amount = amountCalculatorLink.getAmount();
+		final String ownName = config.getOwnName();
 
-		final StringBuilder uri = new StringBuilder(BitcoinURI.convertToBitcoinURI(address, amount, null, null));
+		final StringBuilder uri = new StringBuilder(BitcoinURI.convertToBitcoinURI(address, amount, ownName, null));
 		if (includeBluetoothMac && bluetoothMac != null)
 		{
-			uri.append(amount == null ? '?' : '&');
+			uri.append(amount == null && ownName == null ? '?' : '&');
 			uri.append(Bluetooth.MAC_URI_PARAM).append('=').append(bluetoothMac);
 		}
 		return uri.toString();
@@ -468,7 +468,8 @@ public final class RequestCoinsFragment extends Fragment implements NfcAdapter.C
 		final Coin amount = amountCalculatorLink.getAmount();
 		final String paymentUrl = includeBluetoothMac && bluetoothMac != null ? "bt:" + bluetoothMac : null;
 
-		return PaymentProtocol.createPaymentRequest(Constants.NETWORK_PARAMETERS, amount, address, null, paymentUrl, null).build().toByteArray();
+		return PaymentProtocol.createPaymentRequest(Constants.NETWORK_PARAMETERS, amount, address, config.getOwnName(), paymentUrl, null).build()
+				.toByteArray();
 	}
 
 	@Override

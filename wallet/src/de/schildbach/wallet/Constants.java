@@ -19,16 +19,18 @@ package de.schildbach.wallet;
 
 import java.io.File;
 
+import org.bitcoinj.core.Context;
 import org.bitcoinj.core.NetworkParameters;
 import org.bitcoinj.params.MainNetParams;
 import org.bitcoinj.params.TestNet3Params;
 import org.bitcoinj.utils.MonetaryFormat;
 
-import com.google.common.io.BaseEncoding;
-
 import android.os.Build;
 import android.os.Environment;
 import android.text.format.DateUtils;
+
+import com.google.common.io.BaseEncoding;
+
 import de.schildbach.wallet_test.R;
 
 /**
@@ -40,6 +42,9 @@ public final class Constants
 
 	/** Network this wallet is on (e.g. testnet or mainnet). */
 	public static final NetworkParameters NETWORK_PARAMETERS = TEST ? TestNet3Params.get() : MainNetParams.get();
+
+	/** Bitcoinj global context. */
+	public static final Context CONTEXT = new Context(NETWORK_PARAMETERS);
 
 	public final static class Files
 	{
@@ -53,6 +58,9 @@ public final class Constants
 
 		/** Filename of the automatic wallet backup. */
 		public static final String WALLET_KEY_BACKUP_PROTOBUF = "key-backup-protobuf" + FILENAME_NETWORK_SUFFIX;
+
+		/** Path to external storage */
+		public static final File EXTERNAL_STORAGE_DIR = Environment.getExternalStorageDirectory();
 
 		/** Manual backups go here. */
 		public static final File EXTERNAL_WALLET_BACKUP_DIR = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS);
@@ -73,20 +81,17 @@ public final class Constants
 	/** Maximum size of backups. Files larger will be rejected. */
 	public static final long BACKUP_MAX_CHARS = 10000000;
 
-	private static final String EXPLORE_BASE_URL_PROD = "https://www.biteasy.com/";
-	private static final String EXPLORE_BASE_URL_TEST = "https://www.biteasy.com/testnet/";
-	/** Base URL for browsing transactions, blocks or addresses. */
-	public static final String EXPLORE_BASE_URL = NETWORK_PARAMETERS.getId().equals(NetworkParameters.ID_MAINNET) ? EXPLORE_BASE_URL_PROD
-			: EXPLORE_BASE_URL_TEST;
-
-	private static final String BITEASY_API_URL_PROD = "https://api.biteasy.com/blockchain/v1/";
-	private static final String BITEASY_API_URL_TEST = "https://api.biteasy.com/testnet/v1/";
+	private static final String BITEASY_API_URL_PROD = "https://api.biteasy.com/v2/btc/mainnet/";
+	private static final String BITEASY_API_URL_TEST = "https://api.biteasy.com/v2/btc/testnet/";
 	/** Base URL for blockchain API. */
 	public static final String BITEASY_API_URL = NETWORK_PARAMETERS.getId().equals(NetworkParameters.ID_MAINNET) ? BITEASY_API_URL_PROD
 			: BITEASY_API_URL_TEST;
 
+	/** Currency code for the wallet name resolver. */
+	public static final String WALLET_NAME_CURRENCY_CODE = NETWORK_PARAMETERS.getId().equals(NetworkParameters.ID_MAINNET) ? "btc" : "tbtc";
+
 	/** URL to fetch version alerts from. */
-	public static final String VERSION_URL = "http://wallet.schildbach.de/version";
+	public static final String VERSION_URL = "https://wallet.schildbach.de/version";
 
 	/** MIME type used for transmitting single transactions. */
 	public static final String MIMETYPE_TRANSACTION = "application/x-btctx";
@@ -104,7 +109,8 @@ public final class Constants
 	public static final String DEFAULT_EXCHANGE_CURRENCY = "USD";
 
 	/** Donation address for tip/donate action. */
-	public static final String DONATION_ADDRESS = "18CK5k1gajRKKSC7yVSTXT9LUzbheh1XY4";
+	public static final String DONATION_ADDRESS = NETWORK_PARAMETERS.getId().equals(NetworkParameters.ID_MAINNET)
+			? "1Hf8g3XZnDKdCy6FDQt1DrcWz3GeiYLDRS" : null;
 
 	/** Recipient e-mail address for reports. */
 	public static final String REPORT_EMAIL = "bitcoin.wallet.developers@gmail.com";
@@ -129,25 +135,29 @@ public final class Constants
 
 	public static final BaseEncoding HEX = BaseEncoding.base16().lowerCase();
 
-	public static final String SOURCE_URL = "https://github.com/schildbach/bitcoin-wallet";
-	public static final String BINARY_URL = "https://github.com/schildbach/bitcoin-wallet/releases";
+	public static final String SOURCE_URL = "https://github.com/bitcoin-wallet/bitcoin-wallet";
+	public static final String BINARY_URL = "https://github.com/bitcoin-wallet/bitcoin-wallet/releases";
 	public static final String MARKET_APP_URL = "market://details?id=%s";
 	public static final String WEBMARKET_APP_URL = "https://play.google.com/store/apps/details?id=%s";
 
 	public static final int HTTP_TIMEOUT_MS = 15 * (int) DateUtils.SECOND_IN_MILLIS;
+	public static final int PEER_DISCOVERY_TIMEOUT_MS = 10 * (int) DateUtils.SECOND_IN_MILLIS;
 	public static final int PEER_TIMEOUT_MS = 15 * (int) DateUtils.SECOND_IN_MILLIS;
 
 	public static final long LAST_USAGE_THRESHOLD_JUST_MS = DateUtils.HOUR_IN_MILLIS;
 	public static final long LAST_USAGE_THRESHOLD_RECENTLY_MS = 2 * DateUtils.DAY_IN_MILLIS;
+	public static final long LAST_USAGE_THRESHOLD_INACTIVE_MS = 4 * DateUtils.WEEK_IN_MILLIS;
 
-	public static final int SDK_JELLY_BEAN = 16;
-	public static final int SDK_JELLY_BEAN_MR2 = 18;
-	public static final int SDK_LOLLIPOP = 21;
+	public static final long DELAYED_TRANSACTION_THRESHOLD_MS = 2 * DateUtils.HOUR_IN_MILLIS;
 
 	public static final int SDK_DEPRECATED_BELOW = Build.VERSION_CODES.ICE_CREAM_SANDWICH;
 
-	public static final boolean BUG_OPENSSL_HEARTBLEED = Build.VERSION.SDK_INT == Constants.SDK_JELLY_BEAN
+	public static final boolean BUG_OPENSSL_HEARTBLEED = Build.VERSION.SDK_INT == Build.VERSION_CODES.JELLY_BEAN
 			&& Build.VERSION.RELEASE.startsWith("4.1.1");
 
 	public static final int MEMORY_CLASS_LOWEND = 48;
+
+	public static final int NOTIFICATION_ID_CONNECTED = 0;
+	public static final int NOTIFICATION_ID_COINS_RECEIVED = 1;
+	public static final int NOTIFICATION_ID_INACTIVITY = 2;
 }

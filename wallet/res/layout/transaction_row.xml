@@ -32,6 +32,7 @@
 				android:layout_width="@dimen/symbol_size_normal"
 				android:layout_height="wrap_content"
 				android:layout_marginRight="8dp"
+				android:ellipsize="none"
 				android:gravity="center_horizontal|top"
 				android:singleLine="true"
 				android:textStyle="bold" />
@@ -43,6 +44,7 @@
 		</LinearLayout>
 
 		<LinearLayout
+			android:id="@+id/transaction_row_extend_address"
 			android:layout_width="match_parent"
 			android:layout_height="wrap_content"
 			android:baselineAligned="true"
@@ -59,6 +61,7 @@
 				android:layout_width="@dimen/symbol_size_normal"
 				android:layout_height="wrap_content"
 				android:layout_marginRight="8dp"
+				android:ellipsize="none"
 				android:gravity="center_horizontal|top"
 				android:singleLine="true"
 				android:textStyle="bold" />

@@ -27,6 +27,10 @@ import org.bitcoinj.core.WrongNetworkException;
 import android.os.Parcel;
 import android.os.Parcelable;
 
+import com.google.common.base.Objects;
+
+import de.schildbach.wallet.Constants;
+
 /**
  * @author Andreas Schildbach
  */
@@ -35,11 +39,33 @@ public class AddressAndLabel implements Parcelable
 	public final Address address;
 	public final String label;
 
+	public AddressAndLabel(final Address address, @Nullable final String label)
+	{
+		this.address = address;
+		this.label = label;
+	}
+
 	public AddressAndLabel(final NetworkParameters addressParams, final String address, @Nullable final String label) throws WrongNetworkException,
 			AddressFormatException
 	{
-		this.address = new Address(addressParams, address);
-		this.label = label;
+		this(Address.fromBase58(addressParams, address), label);
+	}
+
+	@Override
+	public boolean equals(final Object o)
+	{
+		if (this == o)
+			return true;
+		if (o == null || getClass() != o.getClass())
+			return false;
+		final AddressAndLabel other = (AddressAndLabel) o;
+		return Objects.equal(this.address, other.address) && Objects.equal(this.label, other.label);
+	}
+
+	@Override
+	public int hashCode()
+	{
+		return Objects.hashCode(address, label);
 	}
 
 	@Override
@@ -51,9 +77,7 @@ public class AddressAndLabel implements Parcelable
 	@Override
 	public void writeToParcel(final Parcel dest, final int flags)
 	{
-		dest.writeSerializable(address.getParameters());
-		dest.writeByteArray(address.getHash160());
-
+		dest.writeString(address.toBase58());
 		dest.writeString(label);
 	}
 
@@ -74,11 +98,7 @@ public class AddressAndLabel implements Parcelable
 
 	private AddressAndLabel(final Parcel in)
 	{
-		final NetworkParameters addressParameters = (NetworkParameters) in.readSerializable();
-		final byte[] addressHash = new byte[Address.LENGTH];
-		in.readByteArray(addressHash);
-		address = new Address(addressParameters, addressHash);
-
+		address = Address.fromBase58(Constants.NETWORK_PARAMETERS, in.readString());
 		label = in.readString();
 	}
 }

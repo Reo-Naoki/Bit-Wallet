@@ -19,7 +19,9 @@
 		<item name="android:homeAsUpIndicator">@drawable/action_bar_up_indicator</item>
 	</style>
 
-	<style name="My.Theme.Fullscreen" parent="@android:style/Theme.Holo.NoActionBar.Fullscreen" />
+	<style name="My.Theme.Fullscreen" parent="@android:style/Theme.Holo.NoActionBar.Fullscreen">
+		<item name="android:windowBackground">@android:color/black</item>
+	</style>
 
 	<style name="My.Theme.Dialog" parent="@android:style/Theme.Holo.Light.Dialog" />
 
@@ -91,6 +93,11 @@
 		<item name="android:paddingLeft">8dp</item>
 		<item name="android:paddingRight">8dp</item>
 		<item name="android:drawablePadding">8dp</item>
+	</style>
+
+	<style name="My.Widget.Button.Borderless.Unpadded" parent="@android:style/Widget.Holo.Button.Borderless">
+		<item name="android:padding">0px</item>
+		<item name="android:drawablePadding">0px</item>
 	</style>
 
 	<style name="My.Widget.Button.Borderless.Small" parent="@android:style/Widget.Holo.Button.Borderless.Small">

@@ -10,7 +10,7 @@
 • Adressbok för de Bitcoinadresser man använder ofta.
 • När du är nedkopplad kan du fortfarande betala via Bluetooth.
 • Meddelande om mottagna bitcoin.
-• Inläsning av papperswallet (tex. sådan som används för permanent lagring).
+• Inläsning av pappersplånbok (tex. sådan som används för permanent lagring).
 • App widget som visar ditt saldo.
 
 
@@ -20,15 +20,15 @@ Bitcoin Wallet är <b>öppen mjukvara</b> och <b>fri mjukvara</b>. Licens: GPLv3
 https://www.gnu.org/licenses/gpl-3.0.en.html
 
 Vår källkod finns tillgänglig på GitHub:
-https://github.com/schildbach/bitcoin-wallet
+https://github.com/bitcoin-wallet/bitcoin-wallet
 
 All översättning hanteras via Transifex:
-https://www.transifex.com/projects/p/bitcoin-wallet/
+https://www.transifex.com/bitcoin-wallet/bitcoin-wallet/
 
 
 <b>REKOMMENDATIONER</b>
 
-• Många mobila wallets baserar sin kod på Bitcoin Wallet. Så som: blockchain.info, Hive och KnC.
+• Många mobila plånböcker baserar sin kod på Bitcoin Wallet. Exempelvis: blockchain.info och BTCX.
 • Rekommenderad mobil wallet av https://bitcoin.org
 • Rekommenderad av BitPay.
 

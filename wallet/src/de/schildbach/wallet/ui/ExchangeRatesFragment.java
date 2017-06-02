@@ -20,8 +20,8 @@ package de.schildbach.wallet.ui;
 import javax.annotation.Nullable;
 
 import org.bitcoinj.core.Coin;
-import org.bitcoinj.core.Wallet;
-import org.bitcoinj.core.Wallet.BalanceType;
+import org.bitcoinj.wallet.Wallet;
+import org.bitcoinj.wallet.Wallet.BalanceType;
 
 import android.app.Activity;
 import android.app.LoaderManager;
@@ -33,7 +33,6 @@ import android.content.SharedPreferences;
 import android.content.SharedPreferences.OnSharedPreferenceChangeListener;
 import android.database.Cursor;
 import android.net.Uri;
-import android.os.Build;
 import android.os.Bundle;
 import android.view.ActionMode;
 import android.view.Menu;
@@ -100,7 +99,7 @@ public final class ExchangeRatesFragment extends FancyListFragment implements On
 		super.onCreate(savedInstanceState);
 
 		setRetainInstance(true);
-		setHasOptionsMenu(Build.VERSION.SDK_INT >= Build.VERSION_CODES.HONEYCOMB);
+		setHasOptionsMenu(true);
 
 		adapter = new ExchangeRatesAdapter(activity);
 		setListAdapter(adapter);
@@ -252,13 +251,7 @@ public final class ExchangeRatesFragment extends FancyListFragment implements On
 		balance = application.getWallet().getBalance(BalanceType.ESTIMATED);
 
 		if (adapter != null)
-		{
-			final int btcShift = config.getBtcShift();
-
-			final Coin base = btcShift == 0 ? Coin.COIN : Coin.MILLICOIN;
-
-			adapter.setRateBase(base);
-		}
+			adapter.setRateBase(config.getBtcBase());
 	}
 
 	private final LoaderCallbacks<Cursor> rateLoaderCallbacks = new LoaderManager.LoaderCallbacks<Cursor>()
@@ -383,7 +376,7 @@ public final class ExchangeRatesFragment extends FancyListFragment implements On
 			currencyCodeView.setText(exchangeRate.getCurrencyCode());
 
 			final CurrencyTextView rateView = (CurrencyTextView) view.findViewById(R.id.exchange_rate_row_rate);
-			rateView.setFormat(Constants.LOCAL_FORMAT);
+			rateView.setFormat(!rateBase.isLessThan(Coin.COIN) ? Constants.LOCAL_FORMAT.minDecimals(2) : Constants.LOCAL_FORMAT.minDecimals(4));
 			rateView.setAmount(exchangeRate.rate.coinToFiat(rateBase));
 
 			final CurrencyTextView walletView = (CurrencyTextView) view.findViewById(R.id.exchange_rate_row_balance);

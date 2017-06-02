@@ -71,8 +71,6 @@
   <string name="send_coins_fragment_direct_payment_nack">Malipo yako moja kwa moja na mpokeaji ilikataliwa.</string>
   <string name="send_coins_fragment_direct_payment_failed_title">Malipo yako moja kwa moja na mpokeaji alishindwa.</string>
   <string name="send_coins_fragment_direct_payment_failed_msg">Malipo yako moja kwa moja na mpokeaji bado ni kuwa broadcasted na P2P.</string>
-  <string name="send_coins_fragment_private_key_password">PIN</string>
-  <string name="send_coins_fragment_private_key_bad_password">PIN mbaya</string>
   <string name="send_coins_fragment_button_send">Lipa!</string>
   <string name="send_coins_fragment_button_back">Rudisha</string>
   <string name="send_coins_fragment_insufficient_money_title">Haitoshi usawa.</string>
@@ -85,7 +83,6 @@
   <string name="send_coins_sent_msg">Kulipwa!</string>
   <string name="send_coins_failed_msg">Alisindwa!</string>
   <string name="send_coins_error_msg">Tatizo katika malipwo!</string>
-  <string name="send_coins_options_priority">Kusainiwa kwanza, lipa zaidi.</string>
   <string name="send_coins_options_empty">Kuwa sota.</string>
   <string name="sweep_wallet_activity_title">Kulipa kutoka pochi ya karatasi.</string>
   <string name="sweep_wallet_fragment_intro">Wewe ni kuhusu kulipa kutoka pochi ya karatasi. Hii kufanya za pochi sota. Kwa sababu ya kiusalama, tafadhali usitumie za pochi ya karatasi tena.</string>
@@ -105,8 +102,6 @@
   <string name="sweep_wallet_options_reload">Kubamba usawa tena</string>
   <string name="maintenance_dialog_title">Matengenezo ilipendekeza</string>
   <string name="maintenance_dialog_message">Wewe walilipwa %1$s kwa anwani uhaba. Je, ungependa kuchukua pesa hii ya kupata anwani? Mtandao ada ndogo ya %2$s atalipwa.</string>
-  <string name="maintenance_dialog_private_key_password">PIN</string>
-  <string name="maintenance_dialog_private_key_bad_password">PIN mbaya</string>
   <string name="maintenance_dialog_state_decrypting">Akieleza siri yako…</string>
   <string name="maintenance_dialog_state_done">Sawa!</string>
   <string name="maintenance_dialog_button_move">Enda</string>
@@ -184,8 +179,6 @@
   <string name="encrypt_keys_dialog_message">Malipo kwa pochi yako watalindwa na PIN hii.</string>
   <string name="encrypt_keys_dialog_warning">Onyo! Je, si kutumia namba ya kawaida kama birthdates katika PIN yako.</string>
   <string name="encrypt_keys_dialog_password_old">PIN mzee</string>
-  <string name="encrypt_keys_dialog_password_new">PIN</string>
-  <string name="encrypt_keys_dialog_bad_password">PIN mbaya</string>
   <string name="encrypt_keys_dialog_password_strength_weak">dhaifu</string>
   <string name="encrypt_keys_dialog_password_strength_fair">haki</string>
   <string name="encrypt_keys_dialog_password_strength_good">halali</string>
@@ -228,7 +221,7 @@
   <string name="extended_public_key_fragment_share">Shiriki xpub…</string>
   <string name="report_issue_dialog_title_issue">Ripoti tatizo</string>
   <string name="report_issue_dialog_title_crash">Kupatikana ajali uliopita</string>
-  <string name="report_issue_dialog_message_issue">Tafadhali eleza tatizo lako kama just kama unaweza. Kama ni unasababishwa na pochi wako, fikiria ikiwa ni pamoja na habari.</string>
+  <string name="report_issue_dialog_message_issue">Tafadhali eleza tatizo lako kama just kama unaweza.</string>
   <string name="report_issue_dialog_message_crash">Je, ungependa kutuma ripoti ya kukwama? Hii inaweza kusaidia kurekebisha tatizo katika siku zijazo.</string>
   <string name="report_issue_dialog_description">Kuelezea tatizo lako, tafadhali</string>
   <string name="report_issue_dialog_report">Ripoti</string>
@@ -274,4 +267,6 @@
   <string name="action_show_qr">Soma QR code</string>
   <string name="action_browse">Vinjari</string>
   <string name="time_today">leo</string>
+  <string name="private_key_password">PIN</string>
+  <string name="private_key_bad_password">PIN mbaya</string>
 </resources>
