@@ -23,7 +23,6 @@
   <string name="exchange_rates_fragment_balance">egyenleg</string>
   <string name="exchange_rates_fragment_source">Ár tőle: %s</string>
   <string name="exchange_rates_options_search">Árfolyam keresése</string>
-  <string name="exchange_rates_context_set_as_default_title">Alapértelmezett külföldi pénznem beállítása</string>
   <string name="wallet_transactions_fragment_empty_text_received">Eddig nem érkezett Bitcoin.</string>
   <string name="wallet_transactions_fragment_empty_text_sent">Eddig nem lett küldve Bitcoin.</string>
   <string name="wallet_transactions_fragment_empty_text_howto">Hogyan szerezz Bitcoin-t?\n\nVásárolj hagyományos pénzért,\nadj el termékeket vagy szolgáltatásokat, vagy\nkeress munkával.</string>
@@ -168,6 +167,7 @@
   <string name="block_row_now">csak most</string>
   <string name="peer_list_fragment_empty">Nincs kapcsolat</string>
   <string name="peer_list_row_ping_time">⇆ %d&#x2009;ms</string>
+  <string name="restore_wallet_permission_dialog_title">Olvasási engedély hiányzik</string>
   <string name="import_keys_dialog_title">Tárca visszaállítása</string>
   <string name="import_keys_dialog_message">Válassz egy tárca biztonsági mentés fájlt a külső tárolóból (%s):</string>
   <string name="restore_wallet_dialog_replace_warning">Arra készülsz, hogy lecseréld a jelenlegi tárcád. A jelenlegi tárcában lévő minden érme el fog veszni, hacsak nincs egy különálló biztonsági mentésed róla.</string>
@@ -182,6 +182,7 @@
   <string name="restore_wallet_dialog_success">Tárca visszaállítva.</string>
   <string name="restore_wallet_dialog_success_replay">A tárcád sikeresen visszaállítva. Az egyenleg visszaállítása következik. Ez eltarthat egy ideig.</string>
   <string name="import_keys_dialog_failure">A tárcát nem lehetett visszaállítani:\n\n%s\n\nRossz jelszó?</string>
+  <string name="backup_wallet_permission_dialog_title">Írási engedély hiányzik</string>
   <string name="export_keys_dialog_title">Tárca biztonsági mentése</string>
   <string name="backup_wallet_dialog_message">A biztonsági mentésed titkosítva lesz a választott jelszóval és külső tárolóra lesz írva.</string>
   <string name="backup_wallet_dialog_warning_encrypted">A tárcádat költekezési PIN védi. Bizonyosodj meg róla, hogy emlékszel a PIN-re is a biztonsági mentés jelszava mellett!</string>
@@ -213,6 +214,7 @@
   <string name="encrypt_keys_dialog_state_done">Kész.</string>
   <string name="scan_camera_problem_dialog_title">Sajnáljuk</string>
   <string name="scan_camera_problem_dialog_message">A kamera nem válaszol. Próbáld meg újraindítani a készüléket.</string>
+  <string name="scan_camera_permission_dialog_title">Kamera engedély</string>
   <string name="input_parser_io_error">Nem lehet olvasni az adatot:\n%s</string>
   <string name="input_parser_cannot_classify">Nem lehet felismerni a bemenetet:\n%s</string>
   <string name="input_parser_invalid_bitcoin_uri">Érvénytelen Bitcoin URI:\n%s</string>
@@ -249,7 +251,6 @@
   <string name="preferences_remind_balance_title">Egyenleg emlékeztető</string>
   <string name="preferences_remind_balance_summary">Néhány hét nem használat után az alkalmazás értesít, ha még vannak érméid a tárcában.</string>
   <string name="preferences_report_issue_title">Hiba jelentése</string>
-  <string name="preferences_report_issue_summary">A hiba részleteinek összegyűjtése és elküldése a fejlesztők részére.</string>
   <string name="preferences_initiate_reset_title">Blokklánc visszaállítása</string>
   <string name="preferences_initiate_reset_summary">Blokklánc, tranzakciók és tárcaegyenleg visszaállítása. A visszajátszás eltarthat egy ideig.</string>
   <string name="preferences_initiate_reset_dialog_message">Szeretnéd visszaállítani és visszajátszani a blokkláncot?\n\nEz átmenetileg elrejti a tárca egyenleged és eltávolítja a tranzakciókat. Mindkettő visszaáll a blokklánc szinkronizálás előrehaladtával.</string>
@@ -277,8 +278,7 @@
   <string name="about_license_title">Licensz</string>
   <string name="about_source_title">Forráskód</string>
   <string name="about_credits_bitcoinj_title">Az applikáció bitcoinj %s-t használ</string>
-  <string name="about_credits_zxing_title">Ez az app \'zxing\'-et használ</string>
-  <string name="about_credits_icon_title">Az app \'bitboy\' ikonját használja</string>
+  <string name="about_credits_zxing_title">ZXing, egy QR-kód feldolgozó könyvtár</string>
   <string name="about_community_googleplus_title">Google+ közösség</string>
   <string name="about_community_googleplus_summary">Fórumok az applikációról</string>
   <string name="about_market_app_title">Google Play oldal</string>
@@ -290,6 +290,7 @@
   <string name="notification_inactivity_message_donate">Ha nem érdekelnek az érméid, el is adományozhatod őket a Bitcoin Wallet projektnek.</string>
   <string name="notification_inactivity_action_dismiss">Emlékeztess később</string>
   <string name="notification_inactivity_action_dismiss_forever">Ne emlékeztess</string>
+  <string name="appwidget_wallet_balance_title">Bitcoin egyenleg</string>
   <!--generic buttons-->
   <string name="button_ok">OK</string>
   <string name="button_dismiss">Elvet</string>
