@@ -22,11 +22,15 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import de.schildbach.wallet.Constants;
+import de.schildbach.wallet.R;
 import de.schildbach.wallet.WalletApplication;
 
 import android.app.IntentService;
 import android.content.Context;
 import android.content.Intent;
+import android.os.Build;
+import android.support.v4.app.NotificationCompat;
+import android.support.v4.content.ContextCompat;
 
 /**
  * This service upgrades the wallet to an HD wallet. Use {@link #startUpgrade(Context)} to start the process.
@@ -38,7 +42,7 @@ import android.content.Intent;
  */
 public final class UpgradeWalletService extends IntentService {
     public static void startUpgrade(final Context context) {
-        context.startService(new Intent(context, UpgradeWalletService.class));
+        ContextCompat.startForegroundService(context, new Intent(context, UpgradeWalletService.class));
     }
 
     private WalletApplication application;
@@ -54,9 +58,16 @@ public final class UpgradeWalletService extends IntentService {
     @Override
     public void onCreate() {
         super.onCreate();
-
         application = (WalletApplication) getApplication();
 
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            final NotificationCompat.Builder notification = new NotificationCompat.Builder(this,
+                    Constants.NOTIFICATION_CHANNEL_ID_ONGOING);
+            notification.setSmallIcon(R.drawable.stat_notify_received_24dp);
+            notification.setWhen(System.currentTimeMillis());
+            notification.setOngoing(true);
+            startForeground(Constants.NOTIFICATION_ID_MAINTENANCE, notification.build());
+        }
     }
 
     @Override
@@ -72,7 +83,7 @@ public final class UpgradeWalletService extends IntentService {
             wallet.upgradeToDeterministic(null);
 
             // let other service pre-generate look-ahead keys
-            application.startBlockchainService(false);
+            BlockchainService.start(this, false);
         }
 
         maybeUpgradeToSecureChain(wallet);
@@ -83,7 +94,7 @@ public final class UpgradeWalletService extends IntentService {
             wallet.doMaintenance(null, false);
 
             // let other service pre-generate look-ahead keys
-            application.startBlockchainService(false);
+            BlockchainService.start(this, false);
         } catch (final Exception x) {
             log.error("failed doing wallet maintenance", x);
         }

@@ -17,12 +17,12 @@
 
 package de.schildbach.wallet.ui;
 
+import de.schildbach.wallet.R;
 import de.schildbach.wallet.util.CheatSheet;
-import de.schildbach.wallet_test.R;
 
-import android.app.Activity;
-import android.app.Fragment;
+import android.content.Context;
 import android.os.Bundle;
+import android.support.v4.app.Fragment;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.View.OnClickListener;
@@ -37,10 +37,9 @@ public final class WalletActionsFragment extends Fragment {
     private WalletActivity activity;
 
     @Override
-    public void onAttach(final Activity activity) {
-        super.onAttach(activity);
-
-        this.activity = (WalletActivity) activity;
+    public void onAttach(final Context context) {
+        super.onAttach(context);
+        this.activity = (WalletActivity) context;
     }
 
     @Override
@@ -68,7 +67,7 @@ public final class WalletActionsFragment extends Fragment {
         sendQrButton.setOnClickListener(new OnClickListener() {
             @Override
             public void onClick(final View v) {
-                activity.handleScan();
+                activity.handleScan(v);
             }
         });
         CheatSheet.setup(sendQrButton);

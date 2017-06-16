@@ -22,10 +22,11 @@ import javax.annotation.Nullable;
 import org.bitcoinj.core.Coin;
 
 import de.schildbach.wallet.Constants;
+import de.schildbach.wallet.R;
 import de.schildbach.wallet.data.PaymentIntent;
-import de.schildbach.wallet.ui.AbstractBindServiceActivity;
+import de.schildbach.wallet.service.BlockchainService;
+import de.schildbach.wallet.ui.AbstractWalletActivity;
 import de.schildbach.wallet.ui.HelpDialogFragment;
-import de.schildbach.wallet_test.R;
 
 import android.content.Context;
 import android.content.Intent;
@@ -36,7 +37,7 @@ import android.view.MenuItem;
 /**
  * @author Andreas Schildbach
  */
-public final class SendCoinsActivity extends AbstractBindServiceActivity {
+public final class SendCoinsActivity extends AbstractWalletActivity {
     public static final String INTENT_EXTRA_PAYMENT_INTENT = "payment_intent";
     public static final String INTENT_EXTRA_FEE_CATEGORY = "fee_category";
 
@@ -67,7 +68,7 @@ public final class SendCoinsActivity extends AbstractBindServiceActivity {
 
         setContentView(R.layout.send_coins_content);
 
-        getWalletApplication().startBlockchainService(false);
+        BlockchainService.start(this, false);
     }
 
     @Override
@@ -80,12 +81,8 @@ public final class SendCoinsActivity extends AbstractBindServiceActivity {
     @Override
     public boolean onOptionsItemSelected(final MenuItem item) {
         switch (item.getItemId()) {
-        case android.R.id.home:
-            finish();
-            return true;
-
         case R.id.send_coins_options_help:
-            HelpDialogFragment.page(getFragmentManager(), R.string.help_send_coins);
+            HelpDialogFragment.page(getSupportFragmentManager(), R.string.help_send_coins);
             return true;
         }
 

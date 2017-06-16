@@ -17,30 +17,18 @@
 
 package de.schildbach.wallet.ui;
 
-import de.schildbach.wallet_test.R;
+import de.schildbach.wallet.R;
 
 import android.os.Bundle;
-import android.view.MenuItem;
 
 /**
  * @author Andreas Schildbach
  */
-public final class ExchangeRatesActivity extends AbstractBindServiceActivity {
+public final class ExchangeRatesActivity extends AbstractWalletActivity {
     @Override
     protected void onCreate(final Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
         setContentView(R.layout.exchange_rates_content);
-    }
-
-    @Override
-    public boolean onOptionsItemSelected(final MenuItem item) {
-        switch (item.getItemId()) {
-        case android.R.id.home:
-            finish();
-            return true;
-        }
-
-        return super.onOptionsItemSelected(item);
     }
 }

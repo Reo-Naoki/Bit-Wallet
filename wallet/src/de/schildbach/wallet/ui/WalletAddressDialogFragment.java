@@ -25,16 +25,18 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import de.schildbach.wallet.Constants;
+import de.schildbach.wallet.R;
 import de.schildbach.wallet.util.Qr;
 import de.schildbach.wallet.util.WalletUtils;
-import de.schildbach.wallet_test.R;
 
 import android.app.Activity;
 import android.app.Dialog;
-import android.app.DialogFragment;
-import android.app.FragmentManager;
-import android.content.Intent;
+import android.content.Context;
+import android.graphics.drawable.BitmapDrawable;
 import android.os.Bundle;
+import android.support.v4.app.DialogFragment;
+import android.support.v4.app.FragmentManager;
+import android.support.v4.app.ShareCompat;
 import android.view.View;
 import android.view.View.OnClickListener;
 import android.view.Window;
@@ -70,10 +72,9 @@ public class WalletAddressDialogFragment extends DialogFragment {
     private Activity activity;
 
     @Override
-    public void onAttach(final Activity activity) {
-        super.onAttach(activity);
-
-        this.activity = activity;
+    public void onAttach(final Context context) {
+        super.onAttach(context);
+        this.activity = (AbstractWalletActivity) context;
     }
 
     @Override
@@ -88,10 +89,11 @@ public class WalletAddressDialogFragment extends DialogFragment {
         dialog.setContentView(R.layout.wallet_address_dialog);
         dialog.setCanceledOnTouchOutside(true);
 
-        final ImageView imageView = (ImageView) dialog.findViewById(R.id.wallet_address_dialog_image);
-        final int size = getResources().getDimensionPixelSize(R.dimen.bitmap_dialog_qr_size);
         final String uri = BitcoinURI.convertToBitcoinURI(address, null, addressLabel, null);
-        imageView.setImageBitmap(Qr.bitmap(uri, size));
+        final BitmapDrawable bitmap = new BitmapDrawable(getResources(), Qr.bitmap(uri));
+        bitmap.setFilterBitmap(false);
+        final ImageView imageView = (ImageView) dialog.findViewById(R.id.wallet_address_dialog_image);
+        imageView.setImageDrawable(bitmap);
 
         final View labelButtonView = dialog.findViewById(R.id.wallet_address_dialog_label_button);
         final TextView labelView = (TextView) dialog.findViewById(R.id.wallet_address_dialog_label);
@@ -102,10 +104,11 @@ public class WalletAddressDialogFragment extends DialogFragment {
         labelButtonView.setOnClickListener(new OnClickListener() {
             @Override
             public void onClick(final View v) {
-                final Intent intent = new Intent(Intent.ACTION_SEND);
-                intent.setType("text/plain");
-                intent.putExtra(Intent.EXTRA_TEXT, addressStr);
-                startActivity(Intent.createChooser(intent, getString(R.string.bitmap_fragment_share)));
+                final ShareCompat.IntentBuilder builder = ShareCompat.IntentBuilder.from(activity);
+                builder.setType("text/plain");
+                builder.setText(addressStr);
+                builder.setChooserTitle(R.string.bitmap_fragment_share);
+                builder.startChooser();
                 log.info("wallet address shared via intent: {}", addressStr);
             }
         });
@@ -118,7 +121,7 @@ public class WalletAddressDialogFragment extends DialogFragment {
         dialogView.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(final View v) {
-                dismiss();
+                dismissAllowingStateLoss();
             }
         });
 

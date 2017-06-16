@@ -1,5 +1,5 @@
 /*
- * Copyright 2011-2015 the original author or authors.
+ * Copyright the original author or authors.
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -17,9 +17,7 @@
 
 package de.schildbach.wallet.ui;
 
-import java.util.ArrayList;
-
-import javax.annotation.Nonnull;
+import java.util.Set;
 
 import org.bitcoinj.core.Address;
 import org.bitcoinj.core.AddressFormatException;
@@ -32,28 +30,24 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import de.schildbach.wallet.Constants;
-import de.schildbach.wallet.WalletApplication;
+import de.schildbach.wallet.R;
 import de.schildbach.wallet.data.AddressBookProvider;
 import de.schildbach.wallet.data.PaymentIntent;
 import de.schildbach.wallet.ui.InputParser.StringInputParser;
+import de.schildbach.wallet.ui.scan.ScanActivity;
 import de.schildbach.wallet.ui.send.SendCoinsActivity;
-import de.schildbach.wallet.util.BitmapFragment;
 import de.schildbach.wallet.util.Qr;
 import de.schildbach.wallet.util.Toast;
 import de.schildbach.wallet.util.WalletUtils;
 import de.schildbach.wallet.util.WholeStringBuilder;
-import de.schildbach.wallet_test.R;
 
 import android.app.Activity;
-import android.app.LoaderManager;
+import android.arch.lifecycle.Observer;
+import android.arch.lifecycle.ViewModelProviders;
 import android.content.ClipData;
 import android.content.ClipDescription;
-import android.content.ClipboardManager;
-import android.content.ClipboardManager.OnPrimaryClipChangedListener;
 import android.content.Context;
-import android.content.CursorLoader;
 import android.content.Intent;
-import android.content.Loader;
 import android.content.pm.PackageManager;
 import android.database.Cursor;
 import android.net.Uri;
@@ -72,38 +66,56 @@ import android.widget.TextView;
 /**
  * @author Andreas Schildbach
  */
-public final class SendingAddressesFragment extends FancyListFragment
-        implements LoaderManager.LoaderCallbacks<Cursor>, OnPrimaryClipChangedListener {
+public final class SendingAddressesFragment extends FancyListFragment {
     private AbstractWalletActivity activity;
-    private Wallet wallet;
-    private ClipboardManager clipboardManager;
-    private LoaderManager loaderManager;
+    private final Handler handler = new Handler();
 
     private SimpleCursorAdapter adapter;
-    private String walletAddressesSelection;
 
-    private final Handler handler = new Handler();
+    private SendingAddressesViewModel viewModel;
 
     private static final int REQUEST_CODE_SCAN = 0;
 
     private static final Logger log = LoggerFactory.getLogger(SendingAddressesFragment.class);
 
     @Override
-    public void onAttach(final Activity activity) {
-        super.onAttach(activity);
-
-        this.activity = (AbstractWalletActivity) activity;
-        final WalletApplication application = (WalletApplication) activity.getApplication();
-        this.wallet = application.getWallet();
-        this.clipboardManager = (ClipboardManager) activity.getSystemService(Context.CLIPBOARD_SERVICE);
-        this.loaderManager = getLoaderManager();
+    public void onAttach(final Context context) {
+        super.onAttach(context);
+        this.activity = (AbstractWalletActivity) context;
     }
 
     @Override
     public void onCreate(final Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-
         setHasOptionsMenu(true);
+
+        viewModel = ViewModelProviders.of(this).get(SendingAddressesViewModel.class);
+        viewModel.wallet.observe(this, new Observer<Wallet>() {
+            @Override
+            public void onChanged(final Wallet wallet) {
+                activity.invalidateOptionsMenu();
+            }
+        });
+        viewModel.addressBook.observe(this, new Observer<Cursor>() {
+            @Override
+            public void onChanged(final Cursor addressBook) {
+                adapter.swapCursor(addressBook);
+                setEmptyText(WholeStringBuilder.bold(getString(R.string.address_book_empty_text)));
+            }
+        });
+        viewModel.addressesToExclude.observe(this, new Observer<Set<Address>>() {
+            @Override
+            public void onChanged(final Set<Address> addressesToExclude) {
+                viewModel.addressBook.setWalletAddressesSelection(viewModel.addressesToExclude.commaSeparated());
+
+            }
+        });
+        viewModel.clip.observe(this, new Observer<ClipData>() {
+            @Override
+            public void onChanged(final ClipData clipData) {
+                activity.invalidateOptionsMenu();
+            }
+        });
 
         adapter = new SimpleCursorAdapter(activity, R.layout.address_book_row, null,
                 new String[] { AddressBookProvider.KEY_LABEL, AddressBookProvider.KEY_ADDRESS },
@@ -113,37 +125,12 @@ public final class SendingAddressesFragment extends FancyListFragment
             public boolean setViewValue(final View view, final Cursor cursor, final int columnIndex) {
                 if (!AddressBookProvider.KEY_ADDRESS.equals(cursor.getColumnName(columnIndex)))
                     return false;
-
                 ((TextView) view).setText(WalletUtils.formatHash(cursor.getString(columnIndex),
                         Constants.ADDRESS_FORMAT_GROUP_SIZE, Constants.ADDRESS_FORMAT_LINE_SIZE));
-
                 return true;
             }
         });
         setListAdapter(adapter);
-
-        loaderManager.initLoader(0, null, this);
-    }
-
-    @Override
-    public void onResume() {
-        super.onResume();
-
-        clipboardManager.addPrimaryClipChangedListener(this);
-    }
-
-    @Override
-    public void onPause() {
-        clipboardManager.removePrimaryClipChangedListener(this);
-
-        super.onPause();
-    }
-
-    @Override
-    public void onDestroy() {
-        loaderManager.destroyLoader(0);
-
-        super.onDestroy();
     }
 
     @Override
@@ -160,6 +147,7 @@ public final class SendingAddressesFragment extends FancyListFragment
                         @Override
                         public void run() {
                             if (paymentIntent.hasAddress()) {
+                                final Wallet wallet = viewModel.wallet.getValue();
                                 final Address address = paymentIntent.getAddress();
                                 if (!wallet.isPubKeyHashMine(address.getHash160()))
                                     EditAddressBookEntryFragment.edit(getFragmentManager(), address);
@@ -200,8 +188,8 @@ public final class SendingAddressesFragment extends FancyListFragment
 
     @Override
     public void onPrepareOptionsMenu(final Menu menu) {
-        menu.findItem(R.id.sending_addresses_options_paste).setEnabled(getAddressFromPrimaryClip() != null);
-
+        menu.findItem(R.id.sending_addresses_options_paste)
+                .setEnabled(viewModel.wallet.getValue() != null && getAddressFromPrimaryClip() != null);
         super.onPrepareOptionsMenu(menu);
     }
 
@@ -213,7 +201,7 @@ public final class SendingAddressesFragment extends FancyListFragment
             return true;
 
         case R.id.sending_addresses_options_scan:
-            handleScan();
+            ScanActivity.startForResult(activity, REQUEST_CODE_SCAN);
             return true;
         }
 
@@ -221,6 +209,7 @@ public final class SendingAddressesFragment extends FancyListFragment
     }
 
     private void handlePasteClipboard() {
+        final Wallet wallet = viewModel.wallet.getValue();
         final Address address = getAddressFromPrimaryClip();
         if (address == null) {
             final DialogBuilder dialog = new DialogBuilder(activity);
@@ -237,10 +226,6 @@ public final class SendingAddressesFragment extends FancyListFragment
             dialog.singleDismissButton(null);
             dialog.show();
         }
-    }
-
-    private void handleScan() {
-        startActivityForResult(new Intent(activity, ScanActivity.class), REQUEST_CODE_SCAN);
     }
 
     @Override
@@ -327,51 +312,19 @@ public final class SendingAddressesFragment extends FancyListFragment
 
     private void handleShowQr(final String address, final String label) {
         final String uri = BitcoinURI.convertToBitcoinURI(Constants.NETWORK_PARAMETERS, address, null, label, null);
-        final int size = getResources().getDimensionPixelSize(R.dimen.bitmap_dialog_qr_size);
-        BitmapFragment.show(getFragmentManager(), Qr.bitmap(uri, size));
+        BitmapFragment.show(getFragmentManager(), Qr.bitmap(uri));
     }
 
     private void handleCopyToClipboard(final String address) {
-        clipboardManager.setPrimaryClip(ClipData.newPlainText("Bitcoin address", address));
+        viewModel.clip.setClipData(ClipData.newPlainText("Bitcoin address", address));
         log.info("sending address copied to clipboard: {}", address.toString());
         new Toast(activity).toast(R.string.wallet_address_fragment_clipboard_msg);
     }
 
-    @Override
-    public Loader<Cursor> onCreateLoader(final int id, final Bundle args) {
-        final Uri uri = AddressBookProvider.contentUri(activity.getPackageName());
-        return new CursorLoader(activity, uri, null, AddressBookProvider.SELECTION_NOTIN,
-                new String[] { walletAddressesSelection != null ? walletAddressesSelection : "" },
-                AddressBookProvider.KEY_LABEL + " COLLATE LOCALIZED ASC");
-    }
-
-    @Override
-    public void onLoadFinished(final Loader<Cursor> loader, final Cursor data) {
-        adapter.swapCursor(data);
-
-        setEmptyText(WholeStringBuilder.bold(getString(R.string.address_book_empty_text)));
-    }
-
-    @Override
-    public void onLoaderReset(final Loader<Cursor> loader) {
-        adapter.swapCursor(null);
-    }
-
-    public void setWalletAddresses(@Nonnull final ArrayList<Address> addresses) {
-        final StringBuilder builder = new StringBuilder();
-        for (final Address address : addresses)
-            builder.append(address.toBase58()).append(",");
-        if (addresses.size() > 0)
-            builder.setLength(builder.length() - 1);
-
-        walletAddressesSelection = builder.toString();
-    }
-
     private Address getAddressFromPrimaryClip() {
-        if (!clipboardManager.hasPrimaryClip())
+        final ClipData clip = viewModel.clip.getValue();
+        if (clip == null)
             return null;
-
-        final ClipData clip = clipboardManager.getPrimaryClip();
         final ClipDescription clipDescription = clip.getDescription();
 
         if (clipDescription.hasMimeType(ClipDescription.MIMETYPE_TEXT_PLAIN)) {
@@ -396,10 +349,5 @@ public final class SendingAddressesFragment extends FancyListFragment
         } else {
             return null;
         }
-    }
-
-    @Override
-    public void onPrimaryClipChanged() {
-        activity.invalidateOptionsMenu();
     }
 }

@@ -34,13 +34,10 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.google.common.base.Stopwatch;
-import com.squareup.okhttp.Call;
-import com.squareup.okhttp.HttpUrl;
-import com.squareup.okhttp.Request;
-import com.squareup.okhttp.Response;
 
 import de.schildbach.wallet.Configuration;
 import de.schildbach.wallet.Constants;
+import de.schildbach.wallet.Logging;
 import de.schildbach.wallet.WalletApplication;
 import de.schildbach.wallet.util.GenericUtils;
 
@@ -50,9 +47,12 @@ import android.content.Context;
 import android.database.Cursor;
 import android.database.MatrixCursor;
 import android.net.Uri;
-import android.preference.PreferenceManager;
 import android.provider.BaseColumns;
 import android.text.format.DateUtils;
+import okhttp3.Call;
+import okhttp3.HttpUrl;
+import okhttp3.Request;
+import okhttp3.Response;
 
 /**
  * @author Andreas Schildbach
@@ -87,10 +87,13 @@ public class ExchangeRatesProvider extends ContentProvider {
         if (!Constants.ENABLE_EXCHANGE_RATES)
             return false;
 
-        final Context context = getContext();
+        final Stopwatch watch = Stopwatch.createStarted();
 
-        this.config = new Configuration(PreferenceManager.getDefaultSharedPreferences(context), context.getResources());
-        this.userAgent = WalletApplication.httpUserAgent(WalletApplication.packageInfoFromContext(context).versionName);
+        final Context context = getContext();
+        Logging.init(context.getFilesDir());
+        final WalletApplication application = (WalletApplication) context.getApplicationContext();
+        this.config = application.getConfiguration();
+        this.userAgent = WalletApplication.httpUserAgent(application.packageInfo().versionName);
 
         final ExchangeRate cachedExchangeRate = config.getCachedExchangeRate();
         if (cachedExchangeRate != null) {
@@ -98,6 +101,8 @@ public class ExchangeRatesProvider extends ContentProvider {
             exchangeRates.put(cachedExchangeRate.getCurrencyCode(), cachedExchangeRate);
         }
 
+        watch.stop();
+        log.info("{}.onCreate() took {}", getClass().getSimpleName(), watch);
         return true;
     }
 

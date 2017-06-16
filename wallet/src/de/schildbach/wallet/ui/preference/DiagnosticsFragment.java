@@ -24,9 +24,10 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import de.schildbach.wallet.Constants;
+import de.schildbach.wallet.R;
 import de.schildbach.wallet.WalletApplication;
+import de.schildbach.wallet.service.BlockchainService;
 import de.schildbach.wallet.ui.DialogBuilder;
-import de.schildbach.wallet_test.R;
 
 import android.app.Activity;
 import android.content.DialogInterface;
@@ -87,7 +88,7 @@ public final class DiagnosticsFragment extends PreferenceFragment {
             public void onClick(final DialogInterface dialog, final int which) {
                 log.info("manually initiated blockchain reset");
 
-                application.resetBlockchain();
+                BlockchainService.resetBlockchain(activity);
                 activity.finish(); // TODO doesn't fully finish prefs on single pane layouts
             }
         });

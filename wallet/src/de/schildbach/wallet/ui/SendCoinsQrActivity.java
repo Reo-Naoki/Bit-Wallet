@@ -25,6 +25,7 @@ import de.schildbach.wallet.Constants;
 import de.schildbach.wallet.WalletApplication;
 import de.schildbach.wallet.data.PaymentIntent;
 import de.schildbach.wallet.ui.InputParser.StringInputParser;
+import de.schildbach.wallet.ui.scan.ScanActivity;
 import de.schildbach.wallet.ui.send.SendCoinsActivity;
 import de.schildbach.wallet.ui.send.SweepWalletActivity;
 
@@ -45,7 +46,7 @@ public final class SendCoinsQrActivity extends Activity {
         super.onCreate(savedInstanceState);
 
         if (savedInstanceState == null)
-            startActivityForResult(new Intent(this, ScanActivity.class), REQUEST_CODE_SCAN);
+            ScanActivity.startForResult(this, REQUEST_CODE_SCAN);
     }
 
     @Override

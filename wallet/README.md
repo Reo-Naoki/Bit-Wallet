@@ -17,10 +17,10 @@ Certain actions cause automatic rolling backups of your wallet to app-private st
     Mainnet: /data/data/de.schildbach.wallet/files/key-backup-protobuf
     Testnet: /data/data/de.schildbach.wallet_test/files/key-backup-protobuf-testnet
 
-Your wallet can be manually backed up to and restored from external storage:
+Your wallet can be manually backed up to and restored from a share of the storage access framework (likely Google Drive):
 
-    Mainnet: /sdcard/Download/bitcoin-wallet-backup-<yyyy-MM-dd>
-    Testnet: /sdcard/Download/bitcoin-wallet-backup-testnet-<yyyy-MM-dd>
+    Mainnet: bitcoin-wallet-backup-<yyyy-MM-dd>
+    Testnet: bitcoin-wallet-backup-testnet-<yyyy-MM-dd>
 
 If you want to recover coins from manual backups and for whatever reason you cannot use the app
 itself to restore from the backup, see the separate [README.recover.md](README.recover.md) guide.
@@ -65,9 +65,9 @@ and switch to it.
 
 Download and install the required Android dependencies:
 
-    tools/android update sdk --no-ui --force --all --filter tool,platform-tool,build-tools-26,android-15,android-25
+    tools/android update sdk --no-ui --force --all --filter tool,platform-tool,build-tools-27.0.3,android-15,android-27
 
-Download the [Android NDK](https://developer.android.com/ndk), then unpack it to your workspace directory. Point your `ANDROID_NDK_HOME` variable to the unpacked Android NDK directory.
+Download the [Android NDK](https://developer.android.com/ndk/downloads/), then unpack it to your workspace directory. Point your `ANDROID_NDK_HOME` variable to the unpacked Android NDK directory.
 
 Finally, you can build Bitcoin Wallet and sign it with your development key. Again in your workspace,
 use:

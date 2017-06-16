@@ -29,22 +29,22 @@ import org.slf4j.LoggerFactory;
 
 import com.google.protobuf.CodedInputStream;
 import com.google.protobuf.CodedOutputStream;
-import com.squareup.okhttp.CacheControl;
-import com.squareup.okhttp.Call;
-import com.squareup.okhttp.Request;
-import com.squareup.okhttp.Response;
 
 import de.schildbach.wallet.Constants;
+import de.schildbach.wallet.R;
 import de.schildbach.wallet.data.PaymentIntent;
 import de.schildbach.wallet.ui.InputParser;
 import de.schildbach.wallet.util.Bluetooth;
-import de.schildbach.wallet_test.R;
 
 import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothDevice;
 import android.bluetooth.BluetoothSocket;
 import android.os.Handler;
 import android.os.Looper;
+import okhttp3.CacheControl;
+import okhttp3.Call;
+import okhttp3.Request;
+import okhttp3.Response;
 
 /**
  * @author Andreas Schildbach
@@ -150,18 +150,13 @@ public abstract class RequestPaymentRequestTask {
                     final BluetoothDevice device = bluetoothAdapter
                             .getRemoteDevice(Bluetooth.decompressMac(Bluetooth.getBluetoothMac(url)));
 
-                    BluetoothSocket socket = null;
-                    OutputStream os = null;
-                    InputStream is = null;
-
-                    try {
-                        socket = device.createInsecureRfcommSocketToServiceRecord(Bluetooth.PAYMENT_REQUESTS_UUID);
+                    try (final BluetoothSocket socket = device
+                            .createInsecureRfcommSocketToServiceRecord(Bluetooth.PAYMENT_REQUESTS_UUID);
+                            final OutputStream os = socket.getOutputStream();
+                            final InputStream is = socket.getInputStream()) {
                         socket.connect();
 
                         log.info("connected to {}", url);
-
-                        is = socket.getInputStream();
-                        os = socket.getOutputStream();
 
                         final CodedInputStream cis = CodedInputStream.newInstance(is);
                         final CodedOutputStream cos = CodedOutputStream.newInstance(os);
@@ -196,30 +191,6 @@ public abstract class RequestPaymentRequestTask {
                         log.info("problem sending", x);
 
                         onFail(R.string.error_io, x.getMessage());
-                    } finally {
-                        if (os != null) {
-                            try {
-                                os.close();
-                            } catch (final IOException x) {
-                                // swallow
-                            }
-                        }
-
-                        if (is != null) {
-                            try {
-                                is.close();
-                            } catch (final IOException x) {
-                                // swallow
-                            }
-                        }
-
-                        if (socket != null) {
-                            try {
-                                socket.close();
-                            } catch (final IOException x) {
-                                // swallow
-                            }
-                        }
                     }
                 }
             });

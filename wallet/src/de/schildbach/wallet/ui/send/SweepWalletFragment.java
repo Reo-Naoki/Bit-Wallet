@@ -17,7 +17,7 @@
 
 package de.schildbach.wallet.ui.send;
 
-import static com.google.common.base.Preconditions.checkState;
+import static android.support.v4.util.Preconditions.checkState;
 
 import java.util.Comparator;
 import java.util.HashMap;
@@ -56,27 +56,26 @@ import com.google.common.collect.ComparisonChain;
 
 import de.schildbach.wallet.Configuration;
 import de.schildbach.wallet.Constants;
+import de.schildbach.wallet.R;
 import de.schildbach.wallet.WalletApplication;
-import de.schildbach.wallet.data.DynamicFeeLoader;
+import de.schildbach.wallet.data.DynamicFeeLiveData;
 import de.schildbach.wallet.data.PaymentIntent;
-import de.schildbach.wallet.ui.AbstractBindServiceActivity;
+import de.schildbach.wallet.ui.AbstractWalletActivity;
 import de.schildbach.wallet.ui.DialogBuilder;
 import de.schildbach.wallet.ui.InputParser.StringInputParser;
 import de.schildbach.wallet.ui.ProgressDialogFragment;
-import de.schildbach.wallet.ui.ScanActivity;
 import de.schildbach.wallet.ui.TransactionsAdapter;
+import de.schildbach.wallet.ui.scan.ScanActivity;
 import de.schildbach.wallet.util.MonetarySpannable;
-import de.schildbach.wallet.util.WalletUtils;
-import de.schildbach.wallet_test.R;
 
 import android.app.Activity;
-import android.app.Fragment;
-import android.app.FragmentManager;
-import android.app.LoaderManager;
-import android.app.LoaderManager.LoaderCallbacks;
+import android.app.Application;
+import android.arch.lifecycle.AndroidViewModel;
+import android.arch.lifecycle.Observer;
+import android.arch.lifecycle.ViewModelProviders;
+import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
-import android.content.Loader;
 import android.content.pm.PackageManager;
 import android.media.RingtoneManager;
 import android.net.Uri;
@@ -84,7 +83,8 @@ import android.os.Bundle;
 import android.os.Handler;
 import android.os.HandlerThread;
 import android.os.Process;
-import android.support.v7.widget.RecyclerView;
+import android.support.v4.app.Fragment;
+import android.support.v4.app.FragmentManager;
 import android.text.SpannableStringBuilder;
 import android.view.LayoutInflater;
 import android.view.Menu;
@@ -92,6 +92,7 @@ import android.view.MenuInflater;
 import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.animation.AnimationUtils;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.FrameLayout;
@@ -101,22 +102,14 @@ import android.widget.TextView;
  * @author Andreas Schildbach
  */
 public class SweepWalletFragment extends Fragment {
-    private AbstractBindServiceActivity activity;
+    private AbstractWalletActivity activity;
     private WalletApplication application;
     private Configuration config;
-    private LoaderManager loaderManager;
     private FragmentManager fragmentManager;
 
     private final Handler handler = new Handler();
     private HandlerThread backgroundThread;
     private Handler backgroundHandler;
-
-    private State state = State.DECODE_KEY;
-    private VersionedChecksummedBytes privateKeyToSweep = null;
-    @Nullable
-    private Map<FeeCategory, Coin> fees = null;
-    private Wallet walletToSweep = null;
-    private Transaction sentTransaction = null;
 
     private TextView messageView;
     private View passwordViewGroup;
@@ -124,16 +117,15 @@ public class SweepWalletFragment extends Fragment {
     private View badPasswordView;
     private TextView balanceView;
     private View hintView;
-    private FrameLayout sweepTransactionView;
-    private TransactionsAdapter sweepTransactionAdapter;
-    private RecyclerView.ViewHolder sweepTransactionViewHolder;
+    private ViewGroup sweepTransactionViewGroup;
+    private TransactionsAdapter.TransactionViewHolder sweepTransactionViewHolder;
     private Button viewGo;
     private Button viewCancel;
 
     private MenuItem reloadAction;
     private MenuItem scanAction;
 
-    private static final int ID_DYNAMIC_FEES_LOADER = 0;
+    private ViewModel viewModel;
 
     private static final int REQUEST_CODE_SCAN = 0;
 
@@ -145,55 +137,64 @@ public class SweepWalletFragment extends Fragment {
 
     private static final Logger log = LoggerFactory.getLogger(SweepWalletFragment.class);
 
-    private final LoaderCallbacks<Map<FeeCategory, Coin>> dynamicFeesLoaderCallbacks = new LoaderManager.LoaderCallbacks<Map<FeeCategory, Coin>>() {
-        @Override
-        public Loader<Map<FeeCategory, Coin>> onCreateLoader(final int id, final Bundle args) {
-            return new DynamicFeeLoader(activity);
+    public static class ViewModel extends AndroidViewModel {
+        private final WalletApplication application;
+        private DynamicFeeLiveData dynamicFees;
+
+        private State state = State.DECODE_KEY;
+        @Nullable
+        private VersionedChecksummedBytes privateKeyToSweep = null;
+        @Nullable
+        private Wallet walletToSweep = null;
+        @Nullable
+        private Transaction sentTransaction = null;
+
+        public ViewModel(final Application application) {
+            super(application);
+            this.application = (WalletApplication) application;
         }
 
-        @Override
-        public void onLoadFinished(final Loader<Map<FeeCategory, Coin>> loader, final Map<FeeCategory, Coin> data) {
-            fees = data;
-            updateView();
+        public DynamicFeeLiveData getDynamicFees() {
+            if (dynamicFees == null)
+                dynamicFees = new DynamicFeeLiveData(application);
+            return dynamicFees;
         }
-
-        @Override
-        public void onLoaderReset(final Loader<Map<FeeCategory, Coin>> loader) {
-        }
-    };
+    }
 
     @Override
-    public void onAttach(final Activity activity) {
-        super.onAttach(activity);
-
-        this.activity = (AbstractBindServiceActivity) activity;
-        this.application = (WalletApplication) activity.getApplication();
+    public void onAttach(final Context context) {
+        super.onAttach(context);
+        this.activity = (AbstractWalletActivity) context;
+        this.application = activity.getWalletApplication();
         this.config = application.getConfiguration();
-        this.loaderManager = getLoaderManager();
         this.fragmentManager = getFragmentManager();
     }
 
     @Override
     public void onCreate(final Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        setHasOptionsMenu(true);
 
         if (!Constants.ENABLE_SWEEP_WALLET)
             throw new IllegalStateException("ENABLE_SWEEP_WALLET is disabled");
 
-        setRetainInstance(true);
-        setHasOptionsMenu(true);
+        viewModel = ViewModelProviders.of(this).get(ViewModel.class);
+        viewModel.getDynamicFees().observe(this, new Observer<Map<FeeCategory, Coin>>() {
+            @Override
+            public void onChanged(final Map<FeeCategory, Coin> dynamicFees) {
+                updateView();
+            }
+        });
 
         backgroundThread = new HandlerThread("backgroundThread", Process.THREAD_PRIORITY_BACKGROUND);
         backgroundThread.start();
         backgroundHandler = new Handler(backgroundThread.getLooper());
 
-        if (savedInstanceState != null) {
-            restoreInstanceState(savedInstanceState);
-        } else {
+        if (savedInstanceState == null) {
             final Intent intent = activity.getIntent();
 
             if (intent.hasExtra(SweepWalletActivity.INTENT_EXTRA_KEY)) {
-                privateKeyToSweep = (VersionedChecksummedBytes) intent
+                viewModel.privateKeyToSweep = (VersionedChecksummedBytes) intent
                         .getSerializableExtra(SweepWalletActivity.INTENT_EXTRA_KEY);
 
                 // delay until fragment is resumed
@@ -217,20 +218,18 @@ public class SweepWalletFragment extends Fragment {
 
         hintView = view.findViewById(R.id.sweep_wallet_fragment_hint);
 
-        sweepTransactionView = (FrameLayout) view.findViewById(R.id.sweep_wallet_fragment_sent_transaction);
-        sweepTransactionAdapter = new TransactionsAdapter(activity, application.getWallet(), false,
-                application.maxConnectedPeers(), null);
-        sweepTransactionViewHolder = sweepTransactionAdapter.createTransactionViewHolder(sweepTransactionView);
-        sweepTransactionView.addView(sweepTransactionViewHolder.itemView,
-                new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
+        sweepTransactionViewGroup = (FrameLayout) view.findViewById(R.id.transaction_row);
+        sweepTransactionViewGroup
+                .setLayoutAnimation(AnimationUtils.loadLayoutAnimation(activity, R.anim.transaction_layout_anim));
+        sweepTransactionViewHolder = new TransactionsAdapter.TransactionViewHolder(view);
 
         viewGo = (Button) view.findViewById(R.id.send_coins_go);
         viewGo.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(final View v) {
-                if (state == State.DECODE_KEY)
+                if (viewModel.state == State.DECODE_KEY)
                     handleDecrypt();
-                if (state == State.CONFIRM_SWEEP)
+                if (viewModel.state == State.CONFIRM_SWEEP)
                     handleSweep();
             }
         });
@@ -247,55 +246,13 @@ public class SweepWalletFragment extends Fragment {
     }
 
     @Override
-    public void onResume() {
-        super.onResume();
-
-        loaderManager.initLoader(ID_DYNAMIC_FEES_LOADER, null, dynamicFeesLoaderCallbacks);
-
-        updateView();
-    }
-
-    @Override
-    public void onPause() {
-        loaderManager.destroyLoader(ID_DYNAMIC_FEES_LOADER);
-
-        super.onPause();
-    }
-
-    @Override
     public void onDestroy() {
         backgroundThread.getLooper().quit();
 
-        if (sentTransaction != null)
-            sentTransaction.getConfidence().removeEventListener(sentTransactionConfidenceListener);
+        if (viewModel.sentTransaction != null)
+            viewModel.sentTransaction.getConfidence().removeEventListener(sentTransactionConfidenceListener);
 
         super.onDestroy();
-    }
-
-    @Override
-    public void onSaveInstanceState(final Bundle outState) {
-        super.onSaveInstanceState(outState);
-
-        saveInstanceState(outState);
-    }
-
-    private void saveInstanceState(final Bundle outState) {
-        outState.putSerializable("state", state);
-        if (walletToSweep != null)
-            outState.putByteArray("wallet_to_sweep", WalletUtils.walletToByteArray(walletToSweep));
-        if (sentTransaction != null)
-            outState.putSerializable("sent_transaction_hash", sentTransaction.getHash());
-    }
-
-    private void restoreInstanceState(final Bundle savedInstanceState) {
-        state = (State) savedInstanceState.getSerializable("state");
-        if (savedInstanceState.containsKey("wallet_to_sweep"))
-            walletToSweep = WalletUtils.walletFromByteArray(savedInstanceState.getByteArray("wallet_to_sweep"));
-        if (savedInstanceState.containsKey("sent_transaction_hash")) {
-            sentTransaction = application.getWallet()
-                    .getTransaction((Sha256Hash) savedInstanceState.getSerializable("sent_transaction_hash"));
-            sentTransaction.getConfidence().addEventListener(sentTransactionConfidenceListener);
-        }
     }
 
     @Override
@@ -307,7 +264,7 @@ public class SweepWalletFragment extends Fragment {
                 new StringInputParser(input) {
                     @Override
                     protected void handlePrivateKey(final VersionedChecksummedBytes key) {
-                        privateKeyToSweep = key;
+                        viewModel.privateKeyToSweep = key;
                         setState(State.DECODE_KEY);
                         maybeDecodeKey();
                     }
@@ -353,7 +310,7 @@ public class SweepWalletFragment extends Fragment {
             return true;
 
         case R.id.sweep_wallet_options_scan:
-            handleScan();
+            ScanActivity.startForResult(activity, REQUEST_CODE_SCAN);
             return true;
         }
 
@@ -361,14 +318,10 @@ public class SweepWalletFragment extends Fragment {
     }
 
     private void handleReload() {
-        if (walletToSweep == null)
+        if (viewModel.walletToSweep == null)
             return;
 
         requestWalletBalance();
-    }
-
-    private void handleScan() {
-        startActivityForResult(new Intent(activity, ScanActivity.class), REQUEST_CODE_SCAN);
     }
 
     private final TransactionConfidence.Listener sentTransactionConfidenceListener = new TransactionConfidence.Listener() {
@@ -381,11 +334,11 @@ public class SweepWalletFragment extends Fragment {
                     if (!isResumed())
                         return;
 
-                    final TransactionConfidence confidence = sentTransaction.getConfidence();
+                    final TransactionConfidence confidence = viewModel.sentTransaction.getConfidence();
                     final TransactionConfidence.ConfidenceType confidenceType = confidence.getConfidenceType();
                     final int numBroadcastPeers = confidence.numBroadcastPeers();
 
-                    if (state == State.SENDING) {
+                    if (viewModel.state == State.SENDING) {
                         if (confidenceType == TransactionConfidence.ConfidenceType.DEAD)
                             setState(State.FAILED);
                         else if (numBroadcastPeers > 1
@@ -419,13 +372,13 @@ public class SweepWalletFragment extends Fragment {
     };
 
     private void maybeDecodeKey() {
-        checkState(state == State.DECODE_KEY);
-        checkState(privateKeyToSweep != null);
+        checkState(viewModel.state == State.DECODE_KEY);
+        checkState(viewModel.privateKeyToSweep != null);
 
-        if (privateKeyToSweep instanceof DumpedPrivateKey) {
-            final ECKey key = ((DumpedPrivateKey) privateKeyToSweep).getKey();
+        if (viewModel.privateKeyToSweep instanceof DumpedPrivateKey) {
+            final ECKey key = ((DumpedPrivateKey) viewModel.privateKeyToSweep).getKey();
             askConfirmSweep(key);
-        } else if (privateKeyToSweep instanceof BIP38PrivateKey) {
+        } else if (viewModel.privateKeyToSweep instanceof BIP38PrivateKey) {
             badPasswordView.setVisibility(View.INVISIBLE);
 
             final String password = passwordView.getText().toString().trim();
@@ -454,10 +407,10 @@ public class SweepWalletFragment extends Fragment {
                         badPasswordView.setVisibility(View.VISIBLE);
                         passwordView.requestFocus();
                     }
-                }.decodePrivateKey((BIP38PrivateKey) privateKeyToSweep, password);
+                }.decodePrivateKey((BIP38PrivateKey) viewModel.privateKeyToSweep, password);
             }
         } else {
-            throw new IllegalStateException("cannot handle type: " + privateKeyToSweep.getClass().getName());
+            throw new IllegalStateException("cannot handle type: " + viewModel.privateKeyToSweep.getClass().getName());
         }
     }
 
@@ -465,7 +418,7 @@ public class SweepWalletFragment extends Fragment {
         // create non-HD wallet
         final KeyChainGroup group = new KeyChainGroup(Constants.NETWORK_PARAMETERS);
         group.importKeys(key);
-        walletToSweep = new Wallet(Constants.NETWORK_PARAMETERS, group);
+        viewModel.walletToSweep = new Wallet(Constants.NETWORK_PARAMETERS, group);
 
         setState(State.CONFIRM_SWEEP);
 
@@ -523,10 +476,11 @@ public class SweepWalletFragment extends Fragment {
                     fakeTx.addOutput(fakeOutput);
                 }
 
-                walletToSweep.clearTransactions(0);
+                viewModel.walletToSweep.clearTransactions(0);
                 for (final Transaction tx : fakeTxns.values())
-                    walletToSweep.addWalletTransaction(new WalletTransaction(WalletTransaction.Pool.UNSPENT, tx));
-                log.info("built wallet to sweep:\n{}", walletToSweep.toString(false, true, false, null));
+                    viewModel.walletToSweep
+                            .addWalletTransaction(new WalletTransaction(WalletTransaction.Pool.UNSPENT, tx));
+                log.info("built wallet to sweep:\n{}", viewModel.walletToSweep.toString(false, true, false, null));
 
                 updateView();
             }
@@ -560,24 +514,25 @@ public class SweepWalletFragment extends Fragment {
             }
         };
 
-        final Address address = walletToSweep.getImportedKeys().iterator().next()
+        final Address address = viewModel.walletToSweep.getImportedKeys().iterator().next()
                 .toAddress(Constants.NETWORK_PARAMETERS);
         new RequestWalletBalanceTask(backgroundHandler, callback).requestWalletBalance(activity.getAssets(), address);
     }
 
     private void setState(final State state) {
-        this.state = state;
+        viewModel.state = state;
 
         updateView();
     }
 
     private void updateView() {
+        final Map<FeeCategory, Coin> fees = viewModel.getDynamicFees().getValue();
         final MonetaryFormat btcFormat = config.getFormat();
 
-        if (walletToSweep != null) {
+        if (viewModel.walletToSweep != null) {
             balanceView.setVisibility(View.VISIBLE);
             final MonetarySpannable balanceSpannable = new MonetarySpannable(btcFormat,
-                    walletToSweep.getBalance(BalanceType.ESTIMATED));
+                    viewModel.walletToSweep.getBalance(BalanceType.ESTIMATED));
             balanceSpannable.applyMarkup(null, null);
             final SpannableStringBuilder balance = new SpannableStringBuilder(balanceSpannable);
             balance.insert(0, ": ");
@@ -587,64 +542,65 @@ public class SweepWalletFragment extends Fragment {
             balanceView.setVisibility(View.GONE);
         }
 
-        if (state == State.DECODE_KEY && privateKeyToSweep == null) {
+        if (viewModel.state == State.DECODE_KEY && viewModel.privateKeyToSweep == null) {
             messageView.setVisibility(View.VISIBLE);
             messageView.setText(R.string.sweep_wallet_fragment_wallet_unknown);
-        } else if (state == State.DECODE_KEY && privateKeyToSweep != null) {
+        } else if (viewModel.state == State.DECODE_KEY && viewModel.privateKeyToSweep != null) {
             messageView.setVisibility(View.VISIBLE);
             messageView.setText(R.string.sweep_wallet_fragment_encrypted);
-        } else if (privateKeyToSweep != null) {
+        } else if (viewModel.privateKeyToSweep != null) {
             messageView.setVisibility(View.GONE);
         }
 
-        passwordViewGroup
-                .setVisibility(state == State.DECODE_KEY && privateKeyToSweep != null ? View.VISIBLE : View.GONE);
+        passwordViewGroup.setVisibility(
+                viewModel.state == State.DECODE_KEY && viewModel.privateKeyToSweep != null ? View.VISIBLE : View.GONE);
 
-        hintView.setVisibility(state == State.DECODE_KEY && privateKeyToSweep == null ? View.VISIBLE : View.GONE);
+        hintView.setVisibility(
+                viewModel.state == State.DECODE_KEY && viewModel.privateKeyToSweep == null ? View.VISIBLE : View.GONE);
 
-        if (sentTransaction != null) {
-            sweepTransactionView.setVisibility(View.VISIBLE);
-            sweepTransactionAdapter.setFormat(btcFormat);
-            sweepTransactionAdapter.replace(sentTransaction);
-            sweepTransactionAdapter.bindViewHolder(sweepTransactionViewHolder, 0);
+        if (viewModel.sentTransaction != null) {
+            sweepTransactionViewGroup.setVisibility(View.VISIBLE);
+            sweepTransactionViewHolder
+                    .bind(new TransactionsAdapter.ListItem.TransactionItem(activity, viewModel.sentTransaction,
+                            application.getWallet(), null, btcFormat, application.maxConnectedPeers(), false));
         } else {
-            sweepTransactionView.setVisibility(View.GONE);
+            sweepTransactionViewGroup.setVisibility(View.GONE);
         }
 
-        if (state == State.DECODE_KEY) {
+        if (viewModel.state == State.DECODE_KEY) {
             viewCancel.setText(R.string.button_cancel);
             viewGo.setText(R.string.sweep_wallet_fragment_button_decrypt);
-            viewGo.setEnabled(privateKeyToSweep != null);
-        } else if (state == State.CONFIRM_SWEEP) {
+            viewGo.setEnabled(viewModel.privateKeyToSweep != null);
+        } else if (viewModel.state == State.CONFIRM_SWEEP) {
             viewCancel.setText(R.string.button_cancel);
             viewGo.setText(R.string.sweep_wallet_fragment_button_sweep);
-            viewGo.setEnabled(walletToSweep != null && walletToSweep.getBalance(BalanceType.ESTIMATED).signum() > 0
-                    && fees != null);
-        } else if (state == State.PREPARATION) {
+            viewGo.setEnabled(viewModel.walletToSweep != null
+                    && viewModel.walletToSweep.getBalance(BalanceType.ESTIMATED).signum() > 0 && fees != null);
+        } else if (viewModel.state == State.PREPARATION) {
             viewCancel.setText(R.string.button_cancel);
             viewGo.setText(R.string.send_coins_preparation_msg);
             viewGo.setEnabled(false);
-        } else if (state == State.SENDING) {
+        } else if (viewModel.state == State.SENDING) {
             viewCancel.setText(R.string.send_coins_fragment_button_back);
             viewGo.setText(R.string.send_coins_sending_msg);
             viewGo.setEnabled(false);
-        } else if (state == State.SENT) {
+        } else if (viewModel.state == State.SENT) {
             viewCancel.setText(R.string.send_coins_fragment_button_back);
             viewGo.setText(R.string.send_coins_sent_msg);
             viewGo.setEnabled(false);
-        } else if (state == State.FAILED) {
+        } else if (viewModel.state == State.FAILED) {
             viewCancel.setText(R.string.send_coins_fragment_button_back);
             viewGo.setText(R.string.send_coins_failed_msg);
             viewGo.setEnabled(false);
         }
 
-        viewCancel.setEnabled(state != State.PREPARATION);
+        viewCancel.setEnabled(viewModel.state != State.PREPARATION);
 
         // enable actions
         if (reloadAction != null)
-            reloadAction.setEnabled(state == State.CONFIRM_SWEEP && walletToSweep != null);
+            reloadAction.setEnabled(viewModel.state == State.CONFIRM_SWEEP && viewModel.walletToSweep != null);
         if (scanAction != null)
-            scanAction.setEnabled(state == State.DECODE_KEY || state == State.CONFIRM_SWEEP);
+            scanAction.setEnabled(viewModel.state == State.DECODE_KEY || viewModel.state == State.CONFIRM_SWEEP);
     }
 
     private void handleDecrypt() {
@@ -654,19 +610,20 @@ public class SweepWalletFragment extends Fragment {
     private void handleSweep() {
         setState(State.PREPARATION);
 
+        final Map<FeeCategory, Coin> fees = viewModel.getDynamicFees().getValue();
         final SendRequest sendRequest = SendRequest.emptyWallet(application.getWallet().freshReceiveAddress());
         sendRequest.feePerKb = fees.get(FeeCategory.NORMAL);
 
-        new SendCoinsOfflineTask(walletToSweep, backgroundHandler) {
+        new SendCoinsOfflineTask(viewModel.walletToSweep, backgroundHandler) {
             @Override
             protected void onSuccess(final Transaction transaction) {
-                sentTransaction = transaction;
+                viewModel.sentTransaction = transaction;
 
                 setState(State.SENDING);
 
-                sentTransaction.getConfidence().addEventListener(sentTransactionConfidenceListener);
+                viewModel.sentTransaction.getConfidence().addEventListener(sentTransactionConfidenceListener);
 
-                application.processDirectTransaction(sentTransaction);
+                application.processDirectTransaction(viewModel.sentTransaction);
             }
 
             @Override

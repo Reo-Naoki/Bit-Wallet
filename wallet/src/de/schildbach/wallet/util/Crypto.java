@@ -22,6 +22,7 @@ import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.Reader;
+import java.nio.charset.StandardCharsets;
 import java.security.SecureRandom;
 import java.util.Arrays;
 
@@ -36,7 +37,6 @@ import org.spongycastle.crypto.modes.CBCBlockCipher;
 import org.spongycastle.crypto.paddings.PaddedBufferedBlockCipher;
 import org.spongycastle.crypto.params.ParametersWithIV;
 
-import com.google.common.base.Charsets;
 import com.google.common.io.BaseEncoding;
 
 /**
@@ -84,7 +84,7 @@ public class Crypto {
     /**
      * OpenSSL salted prefix bytes - also used as magic number for encrypted key file.
      */
-    private static final byte[] OPENSSL_SALTED_BYTES = OPENSSL_SALTED_TEXT.getBytes(Charsets.UTF_8);
+    private static final byte[] OPENSSL_SALTED_BYTES = OPENSSL_SALTED_TEXT.getBytes(StandardCharsets.UTF_8);
 
     /**
      * Magic text that appears at the beginning of every OpenSSL encrypted file. Used in identifying encrypted
@@ -126,7 +126,7 @@ public class Crypto {
      * @throws IOException
      */
     public static String encrypt(final String plainText, final char[] password) throws IOException {
-        final byte[] plainTextAsBytes = plainText.getBytes(Charsets.UTF_8);
+        final byte[] plainTextAsBytes = plainText.getBytes(StandardCharsets.UTF_8);
 
         return encrypt(plainTextAsBytes, password);
     }
@@ -177,9 +177,7 @@ public class Crypto {
 
             // The result bytes are the SALT_LENGTH bytes followed by the encrypted bytes.
             return concat(salt, Arrays.copyOf(encryptedBytes, processLen + doFinalLen));
-        } catch (final InvalidCipherTextException x) {
-            throw new IOException("Could not encrypt bytes", x);
-        } catch (final DataLengthException x) {
+        } catch (final InvalidCipherTextException | DataLengthException x) {
             throw new IOException("Could not encrypt bytes", x);
         }
     }
@@ -197,7 +195,7 @@ public class Crypto {
     public static String decrypt(final String textToDecode, final char[] password) throws IOException {
         final byte[] decryptedBytes = decryptBytes(textToDecode, password);
 
-        return new String(decryptedBytes, Charsets.UTF_8).trim();
+        return new String(decryptedBytes, StandardCharsets.UTF_8).trim();
     }
 
     /**
@@ -261,9 +259,7 @@ public class Crypto {
             final int doFinalLen = cipher.doFinal(decryptedBytes, processLen);
 
             return Arrays.copyOf(decryptedBytes, processLen + doFinalLen);
-        } catch (final InvalidCipherTextException x) {
-            throw new IOException("Could not decrypt bytes", x);
-        } catch (final DataLengthException x) {
+        } catch (final InvalidCipherTextException | DataLengthException x) {
             throw new IOException("Could not decrypt bytes", x);
         }
     }
@@ -284,9 +280,7 @@ public class Crypto {
 
         @Override
         public boolean accept(final File file) {
-            Reader in = null;
-            try {
-                in = new InputStreamReader(new FileInputStream(file), Charsets.UTF_8);
+            try (final Reader in = new InputStreamReader(new FileInputStream(file), StandardCharsets.UTF_8)) {
                 if (in.read(buf) == -1)
                     return false;
                 final String str = new String(buf);
@@ -295,13 +289,6 @@ public class Crypto {
                 return true;
             } catch (final IOException x) {
                 return false;
-            } finally {
-                if (in != null) {
-                    try {
-                        in.close();
-                    } catch (final IOException x2) {
-                    }
-                }
             }
         }
     };

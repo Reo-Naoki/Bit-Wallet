@@ -29,21 +29,19 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.google.common.io.BaseEncoding;
-import com.squareup.okhttp.HttpUrl;
-import com.squareup.okhttp.OkHttpClient;
-import com.squareup.okhttp.logging.HttpLoggingInterceptor;
-
-import de.schildbach.wallet_test.R;
 
 import android.os.Build;
 import android.os.Environment;
 import android.text.format.DateUtils;
+import okhttp3.HttpUrl;
+import okhttp3.OkHttpClient;
+import okhttp3.logging.HttpLoggingInterceptor;
 
 /**
  * @author Andreas Schildbach
  */
 public final class Constants {
-    public static final boolean TEST = R.class.getPackage().getName().contains("_test");
+    public static final boolean TEST = true;
 
     /** Network this wallet is on (e.g. testnet or mainnet). */
     public static final NetworkParameters NETWORK_PARAMETERS = TEST ? TestNet3Params.get() : MainNetParams.get();
@@ -131,7 +129,7 @@ public final class Constants {
 
     /** Donation address for tip/donate action. */
     public static final String DONATION_ADDRESS = NETWORK_PARAMETERS.getId().equals(NetworkParameters.ID_MAINNET)
-            ? "14Jb4oBH3aSCZ8UuN1bTs2gLGhZYfSxZKH" : null;
+            ? "18fZZuwoPCpQWHiS9tM2rQenmoFSUqJYvt" : null;
 
     /** Recipient e-mail address for reports. */
     public static final String REPORT_EMAIL = "bitcoin.wallet.developers@gmail.com";
@@ -170,16 +168,16 @@ public final class Constants {
 
     public static final long DELAYED_TRANSACTION_THRESHOLD_MS = 2 * DateUtils.HOUR_IN_MILLIS;
 
-    public static final int SDK_DEPRECATED_BELOW = Build.VERSION_CODES.JELLY_BEAN;
+    public static final int SDK_DEPRECATED_BELOW = Build.VERSION_CODES.KITKAT;
 
-    public static final boolean BUG_OPENSSL_HEARTBLEED = Build.VERSION.SDK_INT == Build.VERSION_CODES.JELLY_BEAN
-            && Build.VERSION.RELEASE.startsWith("4.1.1");
-
-    public static final int MEMORY_CLASS_LOWEND = 64;
-
-    public static final int NOTIFICATION_ID_CONNECTED = 0;
-    public static final int NOTIFICATION_ID_COINS_RECEIVED = 1;
-    public static final int NOTIFICATION_ID_INACTIVITY = 2;
+    public static final int NOTIFICATION_ID_CONNECTED = 1;
+    public static final int NOTIFICATION_ID_COINS_RECEIVED = 2;
+    public static final int NOTIFICATION_ID_MAINTENANCE = 3;
+    public static final int NOTIFICATION_ID_INACTIVITY = 4;
+    public static final String NOTIFICATION_GROUP_KEY_RECEIVED = "group-received";
+    public static final String NOTIFICATION_CHANNEL_ID_RECEIVED = "received";
+    public static final String NOTIFICATION_CHANNEL_ID_ONGOING = "ongoing";
+    public static final String NOTIFICATION_CHANNEL_ID_IMPORTANT = "important";
 
     /** Desired number of scrypt iterations for deriving the spending PIN */
     public static final int SCRYPT_ITERATIONS_TARGET = 65536;
@@ -192,14 +190,8 @@ public final class Constants {
             .equals(NetworkParameters.ID_MAINNET) ? 50002 : 51002;
 
     /** Shared HTTP client, can reuse connections */
-    public static final OkHttpClient HTTP_CLIENT = new OkHttpClient();
+    public static final OkHttpClient HTTP_CLIENT;
     static {
-        HTTP_CLIENT.setFollowRedirects(false);
-        HTTP_CLIENT.setFollowSslRedirects(true);
-        HTTP_CLIENT.setConnectTimeout(15, TimeUnit.SECONDS);
-        HTTP_CLIENT.setWriteTimeout(15, TimeUnit.SECONDS);
-        HTTP_CLIENT.setReadTimeout(15, TimeUnit.SECONDS);
-
         final HttpLoggingInterceptor loggingInterceptor = new HttpLoggingInterceptor(
                 new HttpLoggingInterceptor.Logger() {
                     @Override
@@ -208,7 +200,15 @@ public final class Constants {
                     }
                 });
         loggingInterceptor.setLevel(HttpLoggingInterceptor.Level.BASIC);
-        HTTP_CLIENT.interceptors().add(loggingInterceptor);
+
+        final OkHttpClient.Builder httpClientBuilder = new OkHttpClient.Builder();
+        httpClientBuilder.followRedirects(false);
+        httpClientBuilder.followSslRedirects(true);
+        httpClientBuilder.connectTimeout(15, TimeUnit.SECONDS);
+        httpClientBuilder.writeTimeout(15, TimeUnit.SECONDS);
+        httpClientBuilder.readTimeout(15, TimeUnit.SECONDS);
+        httpClientBuilder.addInterceptor(loggingInterceptor);
+        HTTP_CLIENT = httpClientBuilder.build();
     }
 
     private static final Logger log = LoggerFactory.getLogger(Constants.class);

@@ -17,12 +17,14 @@
 
 package de.schildbach.wallet.ui;
 
+import javax.annotation.Nullable;
+
 import org.bitcoinj.core.Monetary;
 import org.bitcoinj.utils.MonetaryFormat;
 
 import de.schildbach.wallet.Constants;
+import de.schildbach.wallet.R;
 import de.schildbach.wallet.util.MonetarySpannable;
-import de.schildbach.wallet_test.R;
 
 import android.content.Context;
 import android.graphics.Paint;
@@ -57,8 +59,8 @@ public final class CurrencyTextView extends TextView {
         updateView();
     }
 
-    public void setFormat(final MonetaryFormat format) {
-        this.format = format.codeSeparator(Constants.CHAR_HAIR_SPACE);
+    public void setFormat(@Nullable final MonetaryFormat format) {
+        this.format = format != null ? format.codeSeparator(Constants.CHAR_HAIR_SPACE) : null;
         updateView();
     }
 

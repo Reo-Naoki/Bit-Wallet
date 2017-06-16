@@ -35,17 +35,15 @@ import org.spongycastle.crypto.params.KeyParameter;
 import com.google.common.util.concurrent.ListenableFuture;
 
 import de.schildbach.wallet.Constants;
+import de.schildbach.wallet.R;
 import de.schildbach.wallet.WalletApplication;
 import de.schildbach.wallet.ui.AbstractWalletActivity;
 import de.schildbach.wallet.ui.DialogBuilder;
-import de.schildbach.wallet_test.R;
+import de.schildbach.wallet.util.WalletUtils;
 
-import android.app.Activity;
 import android.app.AlertDialog;
 import android.app.Dialog;
-import android.app.DialogFragment;
-import android.app.Fragment;
-import android.app.FragmentManager;
+import android.content.Context;
 import android.content.DialogInterface;
 import android.content.DialogInterface.OnShowListener;
 import android.graphics.Typeface;
@@ -53,6 +51,9 @@ import android.os.Bundle;
 import android.os.Handler;
 import android.os.HandlerThread;
 import android.os.Process;
+import android.support.v4.app.DialogFragment;
+import android.support.v4.app.Fragment;
+import android.support.v4.app.FragmentManager;
 import android.text.Editable;
 import android.text.TextWatcher;
 import android.view.LayoutInflater;
@@ -101,11 +102,10 @@ public class MaintenanceDialogFragment extends DialogFragment {
     private static final Logger log = LoggerFactory.getLogger(MaintenanceDialogFragment.class);
 
     @Override
-    public void onAttach(final Activity activity) {
-        super.onAttach(activity);
-
-        this.activity = (AbstractWalletActivity) activity;
-        this.application = (WalletApplication) activity.getApplication();
+    public void onAttach(final Context context) {
+        super.onAttach(context);
+        this.activity = (AbstractWalletActivity) context;
+        this.application = activity.getWalletApplication();
         this.wallet = application.getWallet();
     }
 
@@ -142,8 +142,8 @@ public class MaintenanceDialogFragment extends DialogFragment {
         final DialogBuilder builder = new DialogBuilder(activity);
         builder.setTitle(R.string.maintenance_dialog_title);
         builder.setView(view);
-        builder.setPositiveButton(R.string.maintenance_dialog_button_move, null); // dummy, just to make it
-                                                                                  // show
+        // dummies, just to make buttons show
+        builder.setPositiveButton(R.string.maintenance_dialog_button_move, null);
         builder.setNegativeButton(R.string.button_dismiss, null);
         builder.setCancelable(false);
 
@@ -168,7 +168,7 @@ public class MaintenanceDialogFragment extends DialogFragment {
                     @Override
                     public void onClick(final View v) {
                         log.info("user decided to dismiss");
-                        dismiss();
+                        dismissAllowingStateLoss();
                     }
                 });
 
@@ -216,7 +216,7 @@ public class MaintenanceDialogFragment extends DialogFragment {
                 @Override
                 protected void onSuccess(final KeyParameter encryptionKey, final boolean wasChanged) {
                     if (wasChanged)
-                        application.backupWallet();
+                        WalletUtils.autoBackupWallet(activity, wallet);
                     doMaintenance(encryptionKey);
                 }
             }.deriveKey(wallet, passwordView.getText().toString().trim());

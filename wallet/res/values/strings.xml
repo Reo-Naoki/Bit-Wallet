@@ -44,6 +44,8 @@
     <string name="wallet_options_technical_notes_title">Technical notes</string>
     <string name="wallet_options_donate">Tip / donate</string>
     <string name="wallet_donate_address_label">Donation for Bitcoin Wallet</string>
+    <string name="alert_dialogs_fragment_insecure_bluetooth_title">Security alert</string>
+    <string name="alert_dialogs_fragment_insecure_bluetooth_message">Your device\'s Bluetooth component is vulnerable. Your Bitcoins on this device are at risk, regardless of the app you\'re using to store them!\n\nWe suggest to switch off Bluetooth immediately and check with your device manufacturer for an Android OS update that implements security patch level \'%s\' or later.</string>
     <string name="wallet_low_storage_dialog_title">Internal device storage space low!</string>
     <string name="wallet_low_storage_dialog_msg">Bitcoin Wallet uses internal storage for remembering transactions and blocks. If it runs out of space, it will stop working and your Bitcoins will be at risk!\n\nDo you want to open the Application Manager to uninstall unneeded apps?</string>
     <string name="wallet_low_storage_dialog_button_apps">Manage apps</string>
@@ -56,9 +58,11 @@
     <string name="wallet_version_dialog_button_binary">Download</string>
     <string name="wallet_old_sdk_dialog_title">Android version is out of date</string>
     <string name="wallet_old_sdk_dialog_message">Chances are that one of the next releases of Bitcoin Wallet will not support your device any more. In some cases, it can get difficult to spend coins on this device.\n\nUnless you know what you are doing, it is recommended to move out your coins soon.</string>
+    <string name="alert_dialogs_fragment_settings_failed_title">Problem with opening of settings</string>
     <string name="send_coins_activity_title">Send Bitcoins</string>
     <string name="send_coins_fragment_request_payment_request_progress">Fetching signature from %s…</string>
-    <string name="send_coins_fragment_request_payment_request_failed_title">Fetching signature failed</string>
+    <string name="send_coins_fragment_request_payment_request_failed_title">Fetching payment request failed</string>
+    <string name="send_coins_fragment_request_payment_request_failed_message">The payee (%1$s) is using an incompatible payment protocol (reason: %2$s).</string>
     <string name="send_coins_fragment_request_payment_request_wrong_signature">Wrong signature!</string>
     <string name="send_coins_fragment_payee_verified_by">verified by: %s</string>
     <string name="send_coins_fragment_payee_verified_by_unknown">unknown</string>
@@ -73,7 +77,7 @@
     <string name="send_coins_fragment_hint_fee">A network fee of %s will be paid.</string>
     <string name="send_coins_fragment_hint_fee_priority">A priority fee of %s will be paid. If you care about low fees, use \'priority\' only if you need confirmation as soon as possible.</string>
     <string name="send_coins_fragment_hint_dusty_send">The amount is too small to send.</string>
-    <string name="send_coins_fragment_hint_insufficient_money">Not enough available coins. You\'re missing %s.</string>
+    <string name="send_coins_fragment_hint_insufficient_money">Not enough available coins. You\'re missing %s. This may also be due to the network fee.</string>
     <string name="send_coins_fragment_hint_empty_wallet_failed">The amount of tiny payments in your wallet doesn\'t add up to a sendable value.</string>
     <string name="send_coins_fragment_hint_replaying">Currently payments are not possible because a replay is in progress.</string>
     <string name="send_coins_fragment_direct_payment_enable">Send payment directly to the payee.</string>
@@ -83,6 +87,8 @@
     <string name="send_coins_fragment_direct_payment_failed_msg">Your payment will still be broadcasted via the P2P network.</string>
     <string name="send_coins_fragment_button_send">Send</string>
     <string name="send_coins_fragment_button_back">Back</string>
+    <string name="send_coins_fragment_significant_fee_title">Significant network fee</string>
+    <string name="send_coins_fragment_significant_fee_message">The network fee for this payment (%1$s) is high in relation to the amount (%2$s). Do you want to send anyway?</string>
     <string name="send_coins_fragment_insufficient_money_title">Not enough available coins</string>
     <string name="send_coins_fragment_insufficient_money_msg1">You\'re missing %s.</string>
     <string name="send_coins_fragment_insufficient_money_msg2">Do you want to pay with all you have?</string>
@@ -198,19 +204,12 @@
     <string name="restore_wallet_dialog_success_replay">Your wallet was successfully restored. Its balance will be determined next. This will take some time.</string>
     <string name="restore_wallet_dialog_success_encrypted">Warning: Your wallet is protected by a spending PIN. Make sure you still remember it before you receive to this wallet.</string>
     <string name="import_keys_dialog_failure">Wallet could not be restored:\n\n%s\n\nBad password?</string>
-    <string name="backup_wallet_permission_dialog_title">Write permission missing</string>
-    <string name="backup_wallet_permission_dialog_message">In order to backup your wallet to external storage, you need to grant write permission.</string>
     <string name="export_keys_dialog_title">Back up wallet</string>
     <string name="backup_wallet_dialog_message">Your backup will be encrypted with the chosen password and written to external storage.</string>
     <string name="backup_wallet_dialog_warning_encrypted">Your wallet is protected by a spending PIN. Make sure you remember the PIN in addition to the backup password!</string>
     <string name="export_keys_dialog_button_export">Back up</string>
-    <string name="export_keys_dialog_success"><![CDATA[<p>Your wallet has been backed up to <tt>%s</tt></p><p>If your device has a removable SD card, your backup <i>should</i> be on that card. Remove it and keep it at a safe place. If the card is <i>not</i> removable, you need to archive your backup to some other place than your device.</p><p><b>If the only place your backup exists is on your device, you run the risk of losing both at the same time!</b></p><p>In any case, make sure you remember your backup password. Do you want to archive your wallet now?</p>]]></string>
+    <string name="export_keys_dialog_success"><![CDATA[<p>Your wallet has been backed up to <tt>%s</tt></p><p><b>If the only place your backup exists is on your device, you run the risk of losing both at the same time!</b></p><p>In any case, make sure you remember your backup password.</p>]]></string>
     <string name="export_keys_dialog_failure">Your wallet could not be backed up:\n%s</string>
-    <string name="export_keys_dialog_button_archive">Archive</string>
-    <string name="export_keys_dialog_mail_subject">Bitcoin Wallet backup</string>
-    <string name="export_keys_dialog_mail_text">The attached encrypted file contains Bitcoin private keys and should be kept safe at all times. Don\'t forget the encryption password!</string>
-    <string name="export_keys_dialog_mail_intent_chooser">Archive wallet using…</string>
-    <string name="export_keys_dialog_mail_intent_failed">Archiving wallet failed.</string>
     <string name="import_export_keys_dialog_password">password</string>
     <string name="backup_wallet_dialog_password_again">again</string>
     <string name="backup_wallet_dialog_password_mismatch">mismatch!</string>
@@ -268,6 +267,8 @@
     <string name="preferences_data_usage_summary">Show options to restrict data usage on mobile networks.</string>
     <string name="preferences_remind_balance_title">Balance reminder</string>
     <string name="preferences_remind_balance_summary">After a couple of weeks of not being used, the app will notify if there are still coins in the wallet.</string>
+    <string name="preferences_show_disclaimer_title">Show disclaimer</string>
+    <string name="preferences_show_disclaimer_summary">Have you really read the safety notes? Did you already back up your wallet to a safe place?</string>
     <string name="preferences_report_issue_title">Report issue</string>
     <string name="preferences_initiate_reset_title">Reset block chain</string>
     <string name="preferences_initiate_reset_summary">Reset block chain, transactions and wallet balance. Replay will take a while, so only do this if you know why.</string>
@@ -290,7 +291,6 @@
     <string name="report_issue_dialog_collect_application_log">Append application log</string>
     <string name="report_issue_dialog_collect_wallet_dump">Append wallet dump</string>
     <string name="report_issue_dialog_mail_intent_chooser">Send report using…</string>
-    <string name="report_issue_dialog_mail_intent_failed">Sending report failed.</string>
     <string name="about_title">About</string>
     <string name="about_version_title">Version</string>
     <string name="about_copyright_title">Copyright</string>
@@ -313,6 +313,9 @@
     <string name="notification_inactivity_message_donate">If you don\'t care about your coins, you could also donate them to the Bitcoin Wallet project.</string>
     <string name="notification_inactivity_action_dismiss">Remind me later</string>
     <string name="notification_inactivity_action_dismiss_forever">Don\'t remind me</string>
+    <string name="notification_channel_received_name">Received payments</string>
+    <string name="notification_channel_ongoing_name">Background activity</string>
+    <string name="notification_channel_important_name">Important alerts</string>
     <string name="appwidget_wallet_balance_title">Bitcoin balance</string>
 
     <!-- generic buttons -->

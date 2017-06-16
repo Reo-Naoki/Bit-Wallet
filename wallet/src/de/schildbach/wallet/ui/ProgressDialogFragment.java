@@ -19,10 +19,11 @@ package de.schildbach.wallet.ui;
 
 import android.app.Activity;
 import android.app.Dialog;
-import android.app.DialogFragment;
-import android.app.FragmentManager;
 import android.app.ProgressDialog;
+import android.content.Context;
 import android.os.Bundle;
+import android.support.v4.app.DialogFragment;
+import android.support.v4.app.FragmentManager;
 
 /**
  * @author Andreas Schildbach
@@ -39,7 +40,7 @@ public class ProgressDialogFragment extends DialogFragment {
 
     public static void dismissProgress(final FragmentManager fm) {
         final DialogFragment fragment = (DialogFragment) fm.findFragmentByTag(FRAGMENT_TAG);
-        fragment.dismiss();
+        fragment.dismissAllowingStateLoss();
     }
 
     private static ProgressDialogFragment instance(final String message) {
@@ -55,10 +56,9 @@ public class ProgressDialogFragment extends DialogFragment {
     private Activity activity;
 
     @Override
-    public void onAttach(final Activity activity) {
-        super.onAttach(activity);
-
-        this.activity = activity;
+    public void onAttach(final Context context) {
+        super.onAttach(context);
+        this.activity = (Activity) context;
     }
 
     @Override

@@ -17,17 +17,16 @@
 
 package de.schildbach.wallet.ui;
 
-import de.schildbach.wallet_test.R;
+import de.schildbach.wallet.R;
 
 import android.os.Bundle;
 import android.view.Menu;
 import android.view.MenuItem;
-import android.view.WindowManager;
 
 /**
  * @author Andreas Schildbach
  */
-public final class RequestCoinsActivity extends AbstractBindServiceActivity {
+public final class RequestCoinsActivity extends AbstractWalletActivity {
     @Override
     protected void onCreate(final Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -37,7 +36,7 @@ public final class RequestCoinsActivity extends AbstractBindServiceActivity {
 
     @Override
     public void onAttachedToWindow() {
-        getWindow().addFlags(WindowManager.LayoutParams.FLAG_SHOW_WHEN_LOCKED);
+        setShowWhenLocked(true);
     }
 
     @Override
@@ -50,12 +49,8 @@ public final class RequestCoinsActivity extends AbstractBindServiceActivity {
     @Override
     public boolean onOptionsItemSelected(final MenuItem item) {
         switch (item.getItemId()) {
-        case android.R.id.home:
-            finish();
-            return true;
-
         case R.id.request_coins_options_help:
-            HelpDialogFragment.page(getFragmentManager(), R.string.help_request_coins);
+            HelpDialogFragment.page(getSupportFragmentManager(), R.string.help_request_coins);
             return true;
         }
 

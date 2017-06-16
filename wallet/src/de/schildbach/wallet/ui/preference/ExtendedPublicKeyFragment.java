@@ -20,19 +20,18 @@ package de.schildbach.wallet.ui.preference;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import de.schildbach.wallet.R;
 import de.schildbach.wallet.ui.DialogBuilder;
 import de.schildbach.wallet.util.Qr;
-import de.schildbach.wallet_test.R;
 
 import android.app.Activity;
 import android.app.Dialog;
 import android.app.DialogFragment;
 import android.app.FragmentManager;
 import android.content.DialogInterface;
-import android.content.DialogInterface.OnClickListener;
-import android.content.Intent;
-import android.graphics.Bitmap;
+import android.graphics.drawable.BitmapDrawable;
 import android.os.Bundle;
+import android.support.v4.app.ShareCompat;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.widget.ImageView;
@@ -76,22 +75,28 @@ public class ExtendedPublicKeyFragment extends DialogFragment {
 
         final View view = LayoutInflater.from(activity).inflate(R.layout.extended_public_key_dialog, null);
 
+        final BitmapDrawable bitmap = new BitmapDrawable(getResources(), Qr.bitmap(xpub));
+        bitmap.setFilterBitmap(false);
         final ImageView imageView = (ImageView) view.findViewById(R.id.extended_public_key_dialog_image);
-        final int size = getResources().getDimensionPixelSize(R.dimen.bitmap_dialog_qr_size);
-        final Bitmap bitmap = Qr.bitmap(xpub, size);
-        imageView.setImageBitmap(bitmap);
+        imageView.setImageDrawable(bitmap);
 
         final DialogBuilder dialog = new DialogBuilder(activity);
         dialog.setView(view);
-        dialog.setNegativeButton(R.string.button_dismiss, null);
-        dialog.setPositiveButton(R.string.button_share, new OnClickListener() {
+        dialog.setNegativeButton(R.string.button_dismiss, new DialogInterface.OnClickListener() {
             @Override
             public void onClick(final DialogInterface dialog, final int which) {
-                final Intent intent = new Intent(Intent.ACTION_SEND);
-                intent.setType("text/plain");
-                intent.putExtra(Intent.EXTRA_TEXT, xpub);
-                intent.putExtra(Intent.EXTRA_SUBJECT, getString(R.string.extended_public_key_fragment_title));
-                startActivity(Intent.createChooser(intent, getString(R.string.extended_public_key_fragment_share)));
+                dismissAllowingStateLoss();
+            }
+        });
+        dialog.setPositiveButton(R.string.button_share, new DialogInterface.OnClickListener() {
+            @Override
+            public void onClick(final DialogInterface dialog, final int which) {
+                final ShareCompat.IntentBuilder builder = ShareCompat.IntentBuilder.from(activity);
+                builder.setType("text/plain");
+                builder.setText(xpub);
+                builder.setSubject(getString(R.string.extended_public_key_fragment_title));
+                builder.setChooserTitle(R.string.extended_public_key_fragment_share);
+                builder.startChooser();
                 log.info("xpub shared via intent: {}", xpub);
             }
         });

@@ -29,6 +29,7 @@
   <string name="wallet_transactions_fragment_empty_text_howto">Nasıl Bitcoin elde edilir?\n\nGeleneksel para ile satın alabilir,\nhizmet veya mal satabilir ya da\nçalışarak kazanabilirsiniz.</string>
   <string name="wallet_transactions_row_warning_backup">Tebrikler, ilk ödemenizi almış bulunuyorsunuz! Kayba karşı korunmak için &lt;u&gt;cüzdanınızı yedeklediniz mi&lt;/u&gt;?</string>
   <string name="wallet_transactions_row_warning_storage_encryption">İpucu: cüzdanınızın güvenliğini arttırmak için &lt;u&gt;cihazınızı şifreleyebilirsiniz&lt;/u&gt;. Bu aynı zamanda diğer uygulamaları da koruyacaktır.</string>
+  <string name="wallet_transactions_row_warning_chain_forking">Bitcoin ağı bakımdadır. Bakım bitene kadar bitcoin gönderip almanızı tavsiye etmiyoruz. &lt;u&gt;Daha fazla bilgi.&lt;/u&gt;</string>
   <string name="wallet_transactions_fragment_coinbase">oluşturulan</string>
   <string name="wallet_transactions_fragment_internal">Dahili</string>
   <string name="wallet_transactions_options_filter">Filtre</string>
@@ -164,6 +165,7 @@
   <string name="transaction_row_message_received_direct">Bu ödeme doğrudan alındı. Asla harcanamayacak olması riski vardır.</string>
   <string name="transaction_row_message_received_unconfirmed_delayed">Bu ödemenin teyidi muhtemelen Bitcoin şebekesindeki aşırı yükten dolayı gecikmiştir.</string>
   <string name="transaction_row_message_received_unconfirmed_unlocked">Bu ödeme muhtemelen birkaç dakika içinde harcanabilir hâle gelecektir.</string>
+  <string name="transaction_row_message_received_unconfirmed_chain_forking">Bitcoin ağındaki bakım nedeniyle, Bu işlem tamamen doğrulanmış olana kadar güvenli değildir.</string>
   <string name="transaction_row_message_received_in_conflict">Bu ödemede yüksek gönderici tarafından geri alınma riski vardır! Vaktiniz varsa teyit bekleyin.</string>
   <string name="transaction_row_message_received_dead">Bu ödeme gönderici tarafından iptal edilmiştir.</string>
   <string name="transaction_row_message_received_dust">Bu düşük meblağ muhtemelen hiçbir koşulda ekonomik olarak harcanamaz.</string>
@@ -181,6 +183,7 @@
   <string name="restore_wallet_permission_dialog_message">Harici depolama alanında cüzdan yedeklemeleri aramak için okuma müsaadesi vermeniz gerekir.</string>
   <string name="import_keys_dialog_title">Cüzdanı geri getir</string>
   <string name="import_keys_dialog_message">Harici depolamadan bir cüzdan yedekleme dosyası seçin (%s):</string>
+  <string name="restore_wallet_dialog_message_empty">Cüzdan yedeği bulunamadı. Harici diskinizde olabileceğini unutmayın (%s).</string>
   <string name="restore_wallet_dialog_replace_warning">Güncel cüzdanınızı başkasıyla değiştirmek üzeresiniz. Güncel cüzdanınızdaki Bitcoin\'ler bir yedeklemeniz yoksa kaybolacaktır.</string>
   <string name="import_keys_dialog_warning">Önemli: şüpheli kaynaklardan özel anahtar yüklemeyiniz! Bunu yaparsanız başkaları sizin paranızın kontrolünü ele geçirebilir.</string>
   <string name="import_keys_dialog_file_security_encrypted">parola şifrelendi</string>
@@ -192,20 +195,14 @@
   <string name="import_keys_dialog_button_import">Geri al</string>
   <string name="restore_wallet_dialog_success">Cüzdan geri getirildi.</string>
   <string name="restore_wallet_dialog_success_replay">Cüzdanınız başarılı bir şekilde geri getirilmiştir. Bundan sonra bakiyesi belirlenecektir. Bu belli bir süre alabilir.</string>
+  <string name="restore_wallet_dialog_success_encrypted">Uyarı: Cüzdanınız PIN ile korunmaktadır. Cüzdanınıza erişmeden önce PIN\'inizin gerekeceğini unutmayınız.</string>
   <string name="import_keys_dialog_failure">Cüzdan geri alınamadı:\n\n%s\n\nParola yanlış olmasın?</string>
-  <string name="backup_wallet_permission_dialog_title">Yazma müsaadesi eksik</string>
-  <string name="backup_wallet_permission_dialog_message">Harici depolama alanında cüzdanınızın yedeklemesini yapmak için yazma müsaadesi vermeniz gerekir.</string>
   <string name="export_keys_dialog_title">Cüzdanı yedekle</string>
   <string name="backup_wallet_dialog_message">Yedeklemeniz seçtiğiniz parola ile şifrelenecek ve harici depolama alanına yazılacaktır.</string>
   <string name="backup_wallet_dialog_warning_encrypted">Cüzdanınız bir harcama PIN\'i ile korunmaktadır. Yedekleme parolasına ilâve olarak PIN\'i hatırlayacağınızdan emin olunuz.</string>
   <string name="export_keys_dialog_button_export">Yedekle</string>
-  <string name="export_keys_dialog_success"><![CDATA[<p>Cüzdanınız <tt>%s</tt> konumunda yedeklendi.</p><p>Eğer cihazınızın çıkarılabilir SD kartı varsa, yedeklemenizin o kartta olması <i>gerekir</i>. Onu çıkarıp güvenli bir yerde saklayın. Eğer kart çıkarılabilir <i>değilse</i>, yedeklemenizi cihazınızın dışında başka bir yere arşivlemeniz gerekir.</p><p><b>Yedeklemenizin bulunduğu tek yer cihazınız ise hem cihazı hem de yedeklemeyi aynı zamanda kaybetme riskini almış olursunuz!</b></p><p>Her durumda yedekleme parolanızı hatırlayacağınızdan emin olunuz. Cüzdanınızı şimdi arşivlemek istiyor musunuz?</p>]]></string>
+  <string name="export_keys_dialog_success"><![CDATA[<p>Cüzdanınız <tt>%s</tt> konumunda yedeklendi.</p><p><b>Yedeklemenizin bulunduğu tek yer cihazınız ise hem cihazı hem de yedeklemeyi aynı zamanda kaybetme riskini almış olursunuz!</b></p><p>Her durumda yedekleme parolanızı hatırlayacağınızdan emin olunuz.</p>]]></string>
   <string name="export_keys_dialog_failure">Cüzdanınız yedeklenemedi:\n%s</string>
-  <string name="export_keys_dialog_button_archive">Arşivle</string>
-  <string name="export_keys_dialog_mail_subject">Bitcoin Cüzdanı yedeklemesi</string>
-  <string name="export_keys_dialog_mail_text">Eklenen şifreli dosya Bitcoin özel anahtarlarını içermektedir ve güvenli bir yerde saklanmalıdır. Şifreleme parolanızı unutmayınız!</string>
-  <string name="export_keys_dialog_mail_intent_chooser">Cüzdanı şunu kullanarak arşivle…</string>
-  <string name="export_keys_dialog_mail_intent_failed">Cüzdanın arşivlenmesi başarısız oldu.</string>
   <string name="import_export_keys_dialog_password">parola</string>
   <string name="backup_wallet_dialog_password_again">tekrar</string>
   <string name="backup_wallet_dialog_password_mismatch">uyumsuzluk!</string>
@@ -263,6 +260,8 @@
   <string name="preferences_data_usage_summary">Mobil şebekelerde veri kullanımını kısıtlama seçeneklerini göster.</string>
   <string name="preferences_remind_balance_title">Bakiye hatırlacısı</string>
   <string name="preferences_remind_balance_summary">İki hafta kullanılmaz ise, uygulama cüzdanda hâlâ Bitcoin bulunduğunu bildirecektir.</string>
+  <string name="preferences_show_disclaimer_title">Feragatı göster</string>
+  <string name="preferences_show_disclaimer_summary">Gerçekten güvenlik notlarını okudun mu? Zaten cüzdanını güvenli bir yere çektin mi?</string>
   <string name="preferences_report_issue_title">Sorun rapor et</string>
   <string name="preferences_initiate_reset_title">Blok zincirini sıfırla</string>
   <string name="preferences_initiate_reset_summary">Blok zincirini, muameleleri ve cüzdan bakiyesini sıfırla. Yeniden işler olması zaman alacaktır, dolayısıyla sadece neden yaptığınızı biliyorsanız bunu yapın.</string>
@@ -285,7 +284,6 @@
   <string name="report_issue_dialog_collect_application_log">Uygulama kütüğünü ilâve et</string>
   <string name="report_issue_dialog_collect_wallet_dump">Cüzdan dökümü ilâve et</string>
   <string name="report_issue_dialog_mail_intent_chooser">Raporu şununla gönder…</string>
-  <string name="report_issue_dialog_mail_intent_failed">Raporun yollanması başarısız oldu.</string>
   <string name="about_title">Hakkında</string>
   <string name="about_version_title">Sürüm</string>
   <string name="about_copyright_title">Telif hakkı</string>
@@ -308,6 +306,9 @@
   <string name="notification_inactivity_message_donate">Bitcoinleriniz ile ilgilenmiyorsanız, onları Bitcoin Cüzdanı projesine bağışlayabilirsiniz.</string>
   <string name="notification_inactivity_action_dismiss">Sonra hatırlat</string>
   <string name="notification_inactivity_action_dismiss_forever">Hatırlatma</string>
+  <string name="notification_channel_received_name">Alınmış ödemeler</string>
+  <string name="notification_channel_ongoing_name">Arkaplan aktiviteleri</string>
+  <string name="notification_channel_important_name">Önemli uyarılar</string>
   <string name="appwidget_wallet_balance_title">Bitcoin bakiyesi</string>
   <!--generic buttons-->
   <string name="button_ok">Tamam</string>

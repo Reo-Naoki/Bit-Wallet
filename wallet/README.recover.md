@@ -24,6 +24,8 @@ refrain from sending your coins to a temporary wallet created in that environmen
 lost e.g. on a power outage or computer failure. Your desired destination wallet should already be
 set up and you should have one of its receiving addresses or a QR code at hand.
 
+Alternatively, you can also use Ubuntu on Windows 10 64-bit, if you've fully upgraded to the Fall Creators Update (version 1709 or later). Open the Windows Start Menu, search for and start `Turn Windows features on or off`. Scroll down and tick the `Windows Subsystem for Linux` feature. Restart your computer when prompted. Next, install `Ubuntu` from the Windows Store. Once the download has completed, select `Launch`. It will prompt you to pick a username and complete the installation. From now on, you can start into a Linux shell by selecting `Ubuntu` from the Windows Start Menu.
+
 You should be at least a bit familiar with the Linux shell. Commands `in fixed-width font like this`
 are meant to be executed as a shell command. Before you execute each command by pressing return,
 make sure to understand what it does. You will need to adjust some file or directory names.
@@ -33,9 +35,9 @@ requiring your Ubuntu user password.
 
 ## PREPARATION
 
-On your PC, install the following Ubuntu packages:
+On your PC, within your Linux shell, install the following Ubuntu packages:
 
-    sudo apt install android-tools-adb openssl git maven
+    sudo apt install openjdk-8-jdk openjfx android-tools-adb openssl git maven
 
 On your Android device, go to Settings > Developer options and enable "USB debugging". On most
 recent devices you need to go to Settings > About first and tap on "Build number" multiple times
@@ -44,23 +46,9 @@ until you see the "You are now a developer" message.
 
 ## LOCATING THE BACKUP FILES
 
-If you followed the apps guidance your backup files will be located both on-device and off-device.
-Let's look at off-device first. When backing up, the app instructed you to archive your backup to
-mail or cloud storage. Depending on how you decided, your backup probably ended up as attachment
-on an email sent to yourself (look into your Inbox and Sent folders) or uploaded to a Google Drive
-or Dropbox kind of service. Just save the backup file to your PCs filesystem. Skip the rest of this
-paragraph directly to DECRYPTING.
+If you followed the app's guidance your backup files will be located on a share of the storage access framework, very likely your Google Drive. Watch out for filenames starting with `bitcoin-wallet-backup`.
 
-You cannot find your backup? If you're still using the device you made the backup with, there is
-a good chance the backup is on-device. Use:
-
-    adb shell ls -l /sdcard/Download/bitcoin-wallet-*
-
-It will list any backup files present. Pick one and use:
-
-    adb pull /sdcard/Download/bitcoin-wallet-backup-testnet-2014-11-01
-
-to copy the file to your PC.
+Historically, the backup can also be saved to your email account (as a file attachment of an email sent to yourself) or on your SD card in the `/Download` folder. Just save the backup file to your PCs filesystem.
 
 
 ## DECRYPTING
@@ -121,6 +109,15 @@ succeeds, it will print the transaction hash of the created transaction. You can
 a block explorer to watch, or just open the destination wallet and watch from there. If your coins
 are confirmed, you're done and you can skip the next paragraph to EPILOGUE.
 
+You can also get a list of the private keys. If your wallet has a spending PIN set you need to decrypt it first, otherwise the private keys won't appear. Note that when you decrypt the wallet *the private keys can be accessed (and your Bitcoins stolen) by anyone with access to the system*, including malware or other users. Unless you fully trust the security of the computer consider running it on an offline system with no network connectivity.
+
+    ./wallet-tool decrypt --wallet=/tmp/bitcoin-wallet-decrypted-backup --password=<PIN>
+
+Then to get the private keys use:
+
+    ./wallet-tool dump --wallet=/tmp/bitcoin-wallet-decrypted-backup --dump-privkeys
+
+Look for `priv WIF=<...>`, where `<...>` will be your private keys in wallet import format. Be careful where you put them, as anybody getting access to them will be able to steal your coins. Consider securely deleting the decrypted wallet once you get your private keys.
 
 ## RECOVERING FROM BASE58 KEY FORMAT
 
@@ -132,11 +129,8 @@ You'll see each line contains a key in WIF (wallet import format), technically B
 datetime string after each key is the birthdate of that key which you can ignore for the purpose
 of this one-time recovery.
 
-The easiest way to recover this backup is probably by restoring from within MultiBit Classic
-(https://multibit.org/release-info/classic/v0.5.19.html).
-
-Another option is importing each individual key into [Electrum](https://electrum.org)
-or [Bitcoin Core](https://bitcoin.org/en/bitcoin-core/).
+You can import each individual key into a PC wallet like [Electrum](https://electrum.org)
+or [Bitcoin Core](https://bitcoincore.org/).
 
 As soon as you see your whole balance again, empty your entire wallet to the desired destination
 wallet. Please do not continue to use the imported wallet. Remember you just operated on

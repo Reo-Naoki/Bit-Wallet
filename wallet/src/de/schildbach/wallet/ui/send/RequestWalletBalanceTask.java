@@ -23,6 +23,7 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.net.InetSocketAddress;
 import java.net.Socket;
+import java.nio.charset.StandardCharsets;
 import java.security.cert.Certificate;
 import java.security.cert.CertificateException;
 import java.security.cert.X509Certificate;
@@ -53,7 +54,6 @@ import org.bitcoinj.script.ScriptBuilder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.google.common.base.Charsets;
 import com.google.common.base.Splitter;
 import com.google.common.base.Strings;
 import com.google.common.hash.Hashing;
@@ -62,7 +62,7 @@ import com.squareup.moshi.JsonDataException;
 import com.squareup.moshi.Moshi;
 
 import de.schildbach.wallet.Constants;
-import de.schildbach.wallet_test.R;
+import de.schildbach.wallet.R;
 
 import android.content.res.AssetManager;
 import android.os.Handler;
@@ -168,6 +168,8 @@ public final class RequestWalletBalanceTask {
                     final JsonAdapter<JsonRpcResponse> responseAdapter = moshi.adapter(JsonRpcResponse.class);
                     final JsonRpcResponse response = responseAdapter.fromJson(source);
                     if (response.id == request.id) {
+                        if (response.result == null)
+                            throw new JsonDataException("empty response");
                         final Set<UTXO> utxos = new HashSet<>();
                         for (final JsonRpcResponse.Utxo responseUtxo : response.result) {
                             final Sha256Hash utxoHash = Sha256Hash.wrap(responseUtxo.tx_hash);
@@ -243,10 +245,8 @@ public final class RequestWalletBalanceTask {
     private static List<ElectrumServer> loadElectrumServers(final InputStream is) throws IOException {
         final Splitter splitter = Splitter.on(':').trimResults();
         final List<ElectrumServer> servers = new LinkedList<>();
-        BufferedReader reader = null;
         String line = null;
-        try {
-            reader = new BufferedReader(new InputStreamReader(is, Charsets.UTF_8));
+        try (final BufferedReader reader = new BufferedReader(new InputStreamReader(is, StandardCharsets.UTF_8))) {
             while (true) {
                 line = reader.readLine();
                 if (line == null)
@@ -265,8 +265,6 @@ public final class RequestWalletBalanceTask {
         } catch (final Exception x) {
             throw new RuntimeException("Error while parsing: '" + line + "'", x);
         } finally {
-            if (reader != null)
-                reader.close();
             is.close();
         }
         return servers;
