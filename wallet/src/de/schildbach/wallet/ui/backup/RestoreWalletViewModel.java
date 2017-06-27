@@ -12,16 +12,18 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 package de.schildbach.wallet.ui.backup;
 
 import de.schildbach.wallet.WalletApplication;
 import de.schildbach.wallet.data.WalletBalanceLiveData;
+import de.schildbach.wallet.ui.Event;
 
 import android.app.Application;
-import android.arch.lifecycle.AndroidViewModel;
+import androidx.lifecycle.AndroidViewModel;
+import androidx.lifecycle.MutableLiveData;
 
 /**
  * @author Andreas Schildbach
@@ -29,6 +31,8 @@ import android.arch.lifecycle.AndroidViewModel;
 public class RestoreWalletViewModel extends AndroidViewModel {
     private final WalletApplication application;
     public final WalletBalanceLiveData balance;
+    public final MutableLiveData<Event<Boolean>> showSuccessDialog = new MutableLiveData<>();
+    public final MutableLiveData<Event<String>> showFailureDialog = new MutableLiveData<>();
 
     public RestoreWalletViewModel(final Application application) {
         super(application);

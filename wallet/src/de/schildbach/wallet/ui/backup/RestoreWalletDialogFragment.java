@@ -12,7 +12,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 package de.schildbach.wallet.ui.backup;
@@ -35,6 +35,8 @@ import org.bitcoinj.wallet.Wallet;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.google.common.io.CharStreams;
+
 import de.schildbach.wallet.Configuration;
 import de.schildbach.wallet.Constants;
 import de.schildbach.wallet.R;
@@ -42,17 +44,15 @@ import de.schildbach.wallet.WalletApplication;
 import de.schildbach.wallet.service.BlockchainService;
 import de.schildbach.wallet.ui.AbstractWalletActivity;
 import de.schildbach.wallet.ui.DialogBuilder;
+import de.schildbach.wallet.ui.Event;
 import de.schildbach.wallet.ui.ShowPasswordCheckListener;
 import de.schildbach.wallet.util.Crypto;
-import de.schildbach.wallet.util.Io;
 import de.schildbach.wallet.util.WalletUtils;
 
 import android.Manifest;
 import android.app.Activity;
 import android.app.AlertDialog;
 import android.app.Dialog;
-import android.arch.lifecycle.Observer;
-import android.arch.lifecycle.ViewModelProviders;
 import android.content.Context;
 import android.content.DialogInterface;
 import android.content.DialogInterface.OnCancelListener;
@@ -60,9 +60,6 @@ import android.content.DialogInterface.OnClickListener;
 import android.content.DialogInterface.OnShowListener;
 import android.content.pm.PackageManager;
 import android.os.Bundle;
-import android.support.v4.app.DialogFragment;
-import android.support.v4.app.FragmentManager;
-import android.support.v4.content.ContextCompat;
 import android.text.format.DateUtils;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -71,6 +68,11 @@ import android.widget.CheckBox;
 import android.widget.EditText;
 import android.widget.Spinner;
 import android.widget.TextView;
+import androidx.core.content.ContextCompat;
+import androidx.fragment.app.DialogFragment;
+import androidx.fragment.app.FragmentManager;
+import androidx.lifecycle.Observer;
+import androidx.lifecycle.ViewModelProviders;
 
 /**
  * @author Andreas Schildbach
@@ -86,6 +88,7 @@ public class RestoreWalletDialogFragment extends DialogFragment {
     private AbstractWalletActivity activity;
     private WalletApplication application;
     private Configuration config;
+    private FragmentManager fragmentManager;
 
     private TextView messageView;
     private Spinner fileView;
@@ -105,24 +108,43 @@ public class RestoreWalletDialogFragment extends DialogFragment {
         this.activity = (AbstractWalletActivity) context;
         this.application = activity.getWalletApplication();
         this.config = application.getConfiguration();
+        this.fragmentManager = getFragmentManager();
     }
 
     @Override
     public void onCreate(final Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        log.info("opening dialog {}", getClass().getName());
+
         viewModel = ViewModelProviders.of(this).get(RestoreWalletViewModel.class);
+        viewModel.showSuccessDialog.observe(this, new Event.Observer<Boolean>() {
+            @Override
+            public void onEvent(final Boolean showEncryptedMessage) {
+                SuccessDialogFragment.showDialog(fragmentManager, showEncryptedMessage);
+            }
+        });
+        viewModel.showFailureDialog.observe(this, new Event.Observer<String>() {
+            @Override
+            public void onEvent(final String message) {
+                FailureDialogFragment.showDialog(fragmentManager, message);
+            }
+        });
 
         if (ContextCompat.checkSelfPermission(activity,
-                Manifest.permission.READ_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED)
+                Manifest.permission.READ_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED) {
+            log.info("missing {}, requesting", Manifest.permission.READ_EXTERNAL_STORAGE);
             requestPermissions(new String[] { Manifest.permission.READ_EXTERNAL_STORAGE }, REQUEST_CODE_RESTORE_WALLET);
+        }
     }
 
     @Override
     public void onRequestPermissionsResult(final int requestCode, final String[] permissions,
             final int[] grantResults) {
         if (requestCode == REQUEST_CODE_RESTORE_WALLET) {
-            if (!(grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED))
-                PermissionDeniedDialogFragment.showDialog(getFragmentManager());
+            if (!(grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED)) {
+                log.info("missing {}, showing error", Manifest.permission.READ_EXTERNAL_STORAGE);
+                PermissionDeniedDialogFragment.showDialog(fragmentManager);
+            }
         }
     }
 
@@ -147,8 +169,6 @@ public class RestoreWalletDialogFragment extends DialogFragment {
 
                 if (WalletUtils.BACKUP_FILE_FILTER.accept(file))
                     restoreWalletFromProtobuf(file);
-                else if (WalletUtils.KEYS_FILE_FILTER.accept(file))
-                    restorePrivateKeysFromBase58(file);
                 else if (Crypto.OPENSSL_FILE_FILTER.accept(file))
                     restoreWalletFromEncrypted(file, password);
             }
@@ -257,7 +277,6 @@ public class RestoreWalletDialogFragment extends DialogFragment {
         if (externalFiles != null) {
             for (final File file : externalFiles) {
                 final boolean looksLikeBackup = Crypto.OPENSSL_FILE_FILTER.accept(file);
-                log.info("  {}{}", file.getName(), looksLikeBackup ? " -- looks like backup file" : "");
                 if (looksLikeBackup)
                     files.add(file);
             }
@@ -267,7 +286,6 @@ public class RestoreWalletDialogFragment extends DialogFragment {
         log.info("adding backup files from app-private storage");
         for (final String filename : activity.fileList()) {
             if (filename.startsWith(Constants.Files.WALLET_KEY_BACKUP_PROTOBUF + '.')) {
-                log.info("  {}", filename);
                 files.add(new File(activity.getFilesDir(), filename));
             }
         }
@@ -300,16 +318,16 @@ public class RestoreWalletDialogFragment extends DialogFragment {
             final BufferedReader cipherIn = new BufferedReader(
                     new InputStreamReader(new FileInputStream(file), StandardCharsets.UTF_8));
             final StringBuilder cipherText = new StringBuilder();
-            Io.copy(cipherIn, cipherText, Constants.BACKUP_MAX_CHARS);
+            CharStreams.copy(cipherIn, cipherText);
             cipherIn.close();
 
             final byte[] plainText = Crypto.decryptBytes(cipherText.toString(), password.toCharArray());
             final InputStream is = new ByteArrayInputStream(plainText);
 
-            restoreWallet(WalletUtils.restoreWalletFromProtobufOrBase58(is, Constants.NETWORK_PARAMETERS));
+            restoreWallet(WalletUtils.restoreWalletFromProtobuf(is, Constants.NETWORK_PARAMETERS));
             log.info("successfully restored encrypted wallet: {}", file);
         } catch (final IOException x) {
-            FailureDialogFragment.showDialog(getFragmentManager(), x.getMessage());
+            viewModel.showFailureDialog.setValue(new Event<>(x.getMessage()));
             log.info("problem restoring wallet: " + file, x);
         }
     }
@@ -319,25 +337,15 @@ public class RestoreWalletDialogFragment extends DialogFragment {
             restoreWallet(WalletUtils.restoreWalletFromProtobuf(is, Constants.NETWORK_PARAMETERS));
             log.info("successfully restored unencrypted wallet: {}", file);
         } catch (final IOException x) {
-            FailureDialogFragment.showDialog(getFragmentManager(), x.getMessage());
+            viewModel.showFailureDialog.setValue(new Event<>(x.getMessage()));
             log.info("problem restoring unencrypted wallet: " + file, x);
-        }
-    }
-
-    private void restorePrivateKeysFromBase58(final File file) {
-        try (final FileInputStream is = new FileInputStream(file)) {
-            restoreWallet(WalletUtils.restorePrivateKeysFromBase58(is, Constants.NETWORK_PARAMETERS));
-            log.info("successfully restored unencrypted private keys: {}", file);
-        } catch (final IOException x) {
-            FailureDialogFragment.showDialog(getFragmentManager(), x.getMessage());
-            log.info("problem restoring private keys: " + file, x);
         }
     }
 
     private void restoreWallet(final Wallet restoredWallet) throws IOException {
         application.replaceWallet(restoredWallet);
         config.disarmBackupReminder();
-        SuccessDialogFragment.showDialog(getFragmentManager(), restoredWallet.isEncrypted());
+        viewModel.showSuccessDialog.setValue(new Event<>(restoredWallet.isEncrypted()));
     }
 
     public static class SuccessDialogFragment extends DialogFragment {

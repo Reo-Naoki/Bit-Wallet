@@ -12,26 +12,27 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 package de.schildbach.wallet.ui;
 
+import org.bitcoinj.core.PrefixedChecksummedBytes;
 import org.bitcoinj.core.Transaction;
 import org.bitcoinj.core.VerificationException;
-import org.bitcoinj.core.VersionedChecksummedBytes;
-import org.bitcoinj.wallet.Wallet;
+import org.bitcoinj.script.Script;
+
+import com.google.common.primitives.Floats;
 
 import de.schildbach.wallet.Configuration;
 import de.schildbach.wallet.Constants;
 import de.schildbach.wallet.R;
 import de.schildbach.wallet.WalletApplication;
 import de.schildbach.wallet.data.PaymentIntent;
-import de.schildbach.wallet.data.WalletLiveData;
 import de.schildbach.wallet.service.BlockchainService;
 import de.schildbach.wallet.ui.InputParser.BinaryInputParser;
 import de.schildbach.wallet.ui.InputParser.StringInputParser;
-import de.schildbach.wallet.ui.backup.BackupWalletDialogFragment;
+import de.schildbach.wallet.ui.backup.BackupWalletActivity;
 import de.schildbach.wallet.ui.backup.RestoreWalletDialogFragment;
 import de.schildbach.wallet.ui.monitor.NetworkMonitorActivity;
 import de.schildbach.wallet.ui.preference.PreferenceActivity;
@@ -49,11 +50,6 @@ import android.animation.AnimatorSet;
 import android.animation.ObjectAnimator;
 import android.animation.ValueAnimator;
 import android.app.Activity;
-import android.app.Application;
-import android.arch.lifecycle.AndroidViewModel;
-import android.arch.lifecycle.MutableLiveData;
-import android.arch.lifecycle.Observer;
-import android.arch.lifecycle.ViewModelProviders;
 import android.content.Intent;
 import android.content.res.Resources;
 import android.graphics.drawable.Drawable;
@@ -64,11 +60,15 @@ import android.os.Build;
 import android.os.Bundle;
 import android.os.Environment;
 import android.os.Handler;
-import android.support.v4.app.FragmentManager;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
 import android.view.animation.DecelerateInterpolator;
+import androidx.coordinatorlayout.widget.CoordinatorLayout;
+import androidx.core.view.ViewCompat;
+import androidx.fragment.app.FragmentManager;
+import androidx.lifecycle.Observer;
+import androidx.lifecycle.ViewModelProviders;
 
 /**
  * @author Andreas Schildbach
@@ -77,80 +77,10 @@ public final class WalletActivity extends AbstractWalletActivity {
     private WalletApplication application;
     private Handler handler = new Handler();
 
-    private ViewModel viewModel;
+    private WalletActivityViewModel viewModel;
     private AnimatorSet enterAnimation;
     private View contentView;
-
-    public static enum EnterAnimationState {
-        WAITING, ANIMATING, FINISHED
-    }
-
-    public static class ViewModel extends AndroidViewModel implements OnFirstPreDraw.Callback {
-        private final WalletApplication application;
-        private WalletLiveData wallet;
-        private MutableLiveData<EnterAnimationState> enterAnimation;
-        private boolean doAnimation, globalLayoutFinished, balanceLoadingFinished, addressLoadingFinished,
-                transactionsLoadingFinished;
-
-        public ViewModel(final Application application) {
-            super(application);
-            this.application = (WalletApplication) application;
-        }
-
-        public WalletLiveData getWallet() {
-            if (wallet == null)
-                wallet = new WalletLiveData(application);
-            return wallet;
-        }
-
-        public MutableLiveData<EnterAnimationState> getEnterAnimation() {
-            if (enterAnimation == null)
-                enterAnimation = new MutableLiveData<>();
-            return enterAnimation;
-        }
-
-        public void animateWhenLoadingFinished() {
-            doAnimation = true;
-            maybeToggleState();
-        }
-
-        @Override
-        public boolean onFirstPreDraw() {
-            globalLayoutFinished = true;
-            maybeToggleState();
-            return true;
-        }
-
-        public void balanceLoadingFinished() {
-            balanceLoadingFinished = true;
-            maybeToggleState();
-        }
-
-        public void addressLoadingFinished() {
-            addressLoadingFinished = true;
-            maybeToggleState();
-        }
-
-        public void transactionsLoadingFinished() {
-            transactionsLoadingFinished = true;
-            maybeToggleState();
-        }
-
-        public void animationFinished() {
-            enterAnimation.setValue(EnterAnimationState.FINISHED);
-        }
-
-        private void maybeToggleState() {
-            final MutableLiveData<EnterAnimationState> enterAnimation = getEnterAnimation();
-            if (enterAnimation.getValue() == null) {
-                if (doAnimation && globalLayoutFinished)
-                    enterAnimation.setValue(EnterAnimationState.WAITING);
-            } else if (enterAnimation.getValue() == EnterAnimationState.WAITING) {
-                if (balanceLoadingFinished && addressLoadingFinished && transactionsLoadingFinished)
-                    enterAnimation.setValue(EnterAnimationState.ANIMATING);
-            }
-        }
-    }
+    private View levitateView;
 
     private static final int REQUEST_CODE_SCAN = 0;
 
@@ -160,27 +90,95 @@ public final class WalletActivity extends AbstractWalletActivity {
         application = getWalletApplication();
         final Configuration config = application.getConfiguration();
 
-        viewModel = ViewModelProviders.of(this).get(ViewModel.class);
+        viewModel = ViewModelProviders.of(this).get(WalletActivityViewModel.class);
 
         setContentView(R.layout.wallet_content);
         contentView = findViewById(android.R.id.content);
+        levitateView = contentView.findViewWithTag("levitate");
+
+        // Make view tagged with 'levitate' scroll away and quickly return.
+        final View targetList = findViewById(R.id.wallet_transactions_list);
+        final View targetEmpty = findViewById(R.id.wallet_transactions_empty);
+        if (levitateView != null && targetList != null && targetEmpty != null) {
+            final CoordinatorLayout.LayoutParams layoutParams = new CoordinatorLayout.LayoutParams(
+                    levitateView.getLayoutParams().width, levitateView.getLayoutParams().height);
+            layoutParams.setBehavior(new QuickReturnBehavior());
+            levitateView.setLayoutParams(layoutParams);
+            levitateView.addOnLayoutChangeListener(new View.OnLayoutChangeListener() {
+                @Override
+                public void onLayoutChange(final View v, final int left, final int top, final int right,
+                        final int bottom, final int oldLeft, final int oldTop, final int oldRight,
+                        final int oldBottom) {
+                    final int height = bottom - top;
+                    targetList.setPadding(targetList.getPaddingLeft(), height, targetList.getPaddingRight(),
+                            targetList.getPaddingBottom());
+                    targetEmpty.setPadding(targetEmpty.getPaddingLeft(), height, targetEmpty.getPaddingRight(),
+                            targetEmpty.getPaddingBottom());
+                }
+            });
+        }
+
         OnFirstPreDraw.listen(contentView, viewModel);
         enterAnimation = buildEnterAnimation(contentView);
 
-        viewModel.getWallet().observe(this, new Observer<Wallet>() {
+        viewModel.walletEncrypted.observe(this, new Observer<Boolean>() {
             @Override
-            public void onChanged(final Wallet wallet) {
+            public void onChanged(final Boolean isEncrypted) {
                 invalidateOptionsMenu();
             }
         });
-        viewModel.getEnterAnimation().observe(this, new Observer<EnterAnimationState>() {
+        viewModel.walletLegacyFallback.observe(this, new Observer<Boolean>() {
             @Override
-            public void onChanged(final EnterAnimationState state) {
-                if (state == EnterAnimationState.WAITING) {
+            public void onChanged(final Boolean isLegacyFallback) {
+                invalidateOptionsMenu();
+            }
+        });
+        viewModel.showHelpDialog.observe(this, new Event.Observer<Integer>() {
+            @Override
+            public void onEvent(final Integer messageResId) {
+                HelpDialogFragment.page(getSupportFragmentManager(), messageResId);
+            }
+        });
+        viewModel.showBackupWalletDialog.observe(this, new Event.Observer<Void>() {
+            @Override
+            public void onEvent(final Void v) {
+                BackupWalletActivity.start(WalletActivity.this);
+            }
+        });
+        viewModel.showRestoreWalletDialog.observe(this, new Event.Observer<Void>() {
+            @Override
+            public void onEvent(final Void v) {
+                RestoreWalletDialogFragment.show(getSupportFragmentManager());
+            }
+        });
+        viewModel.showEncryptKeysDialog.observe(this, new Event.Observer<Void>() {
+            @Override
+            public void onEvent(final Void v) {
+                EncryptKeysDialogFragment.show(getSupportFragmentManager());
+            }
+        });
+        viewModel.showReportIssueDialog.observe(this, new Event.Observer<Void>() {
+            @Override
+            public void onEvent(final Void v) {
+                ReportIssueDialogFragment.show(getSupportFragmentManager(), R.string.report_issue_dialog_title_issue,
+                        R.string.report_issue_dialog_message_issue, Constants.REPORT_SUBJECT_ISSUE, null);
+            }
+        });
+        viewModel.showReportCrashDialog.observe(this, new Event.Observer<Void>() {
+            @Override
+            public void onEvent(final Void v) {
+                ReportIssueDialogFragment.show(getSupportFragmentManager(), R.string.report_issue_dialog_title_crash,
+                        R.string.report_issue_dialog_message_crash, Constants.REPORT_SUBJECT_CRASH, null);
+            }
+        });
+        viewModel.enterAnimation.observe(this, new Observer<WalletActivityViewModel.EnterAnimationState>() {
+            @Override
+            public void onChanged(final WalletActivityViewModel.EnterAnimationState state) {
+                if (state == WalletActivityViewModel.EnterAnimationState.WAITING) {
                     // API level 26: enterAnimation.setCurrentPlayTime(0);
                     for (final Animator animation : enterAnimation.getChildAnimations())
                         ((ValueAnimator) animation).setCurrentPlayTime(0);
-                } else if (state == EnterAnimationState.ANIMATING) {
+                } else if (state == WalletActivityViewModel.EnterAnimationState.ANIMATING) {
                     reportFullyDrawn();
                     enterAnimation.start();
                     enterAnimation.addListener(new AnimatorListenerAdapter() {
@@ -189,12 +187,12 @@ public final class WalletActivity extends AbstractWalletActivity {
                             viewModel.animationFinished();
                         }
                     });
-                } else if (state == EnterAnimationState.FINISHED) {
+                } else if (state == WalletActivityViewModel.EnterAnimationState.FINISHED) {
                     getWindow().getDecorView().setBackground(null);
                 }
             }
         });
-        if (savedInstanceState == null && Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP)
+        if (savedInstanceState == null)
             viewModel.animateWhenLoadingFinished();
         else
             viewModel.animationFinished();
@@ -203,8 +201,8 @@ public final class WalletActivity extends AbstractWalletActivity {
         if (exchangeRatesFragment != null)
             exchangeRatesFragment.setVisibility(Constants.ENABLE_EXCHANGE_RATES ? View.VISIBLE : View.GONE);
 
-        if (savedInstanceState == null)
-            checkSavedCrashTrace();
+        if (savedInstanceState == null && CrashReporter.hasSavedCrashTrace())
+            viewModel.showReportCrashDialog.setValue(Event.simple());
 
         config.touchLastUsed();
 
@@ -322,15 +320,12 @@ public final class WalletActivity extends AbstractWalletActivity {
             fragmentEnterAnimationBuilder.before(slide).before(fadeIn);
         }
 
-        final View levitate = contentView.findViewWithTag("levitate");
-        if (levitate != null) {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
-                final ObjectAnimator elevate = ObjectAnimator.ofFloat(levitate, "elevation", 0.0f,
-                        levitate.getElevation());
-                elevate.setDuration(duration);
-                fragmentEnterAnimationBuilder.before(elevate);
-            }
-            final Drawable levitateBackground = levitate.getBackground();
+        if (levitateView != null) {
+            final ObjectAnimator elevate = ObjectAnimator.ofFloat(levitateView, "elevation", 0.0f,
+                    levitateView.getElevation());
+            elevate.setDuration(duration);
+            fragmentEnterAnimationBuilder.before(elevate);
+            final Drawable levitateBackground = levitateView.getBackground();
             final Animator fadeIn = AnimatorInflater.loadAnimator(WalletActivity.this, R.animator.fade_in_drawable);
             fadeIn.setTarget(levitateBackground);
             fragmentEnterAnimationBuilder.before(fadeIn);
@@ -380,7 +375,7 @@ public final class WalletActivity extends AbstractWalletActivity {
                     }
 
                     @Override
-                    protected void handlePrivateKey(final VersionedChecksummedBytes key) {
+                    protected void handlePrivateKey(final PrefixedChecksummedBytes key) {
                         if (Constants.ENABLE_SWEEP_WALLET)
                             SweepWalletActivity.start(WalletActivity.this, key);
                         else
@@ -417,22 +412,26 @@ public final class WalletActivity extends AbstractWalletActivity {
         super.onPrepareOptionsMenu(menu);
 
         final Resources res = getResources();
-        final String externalStorageState = Environment.getExternalStorageState();
 
-        menu.findItem(R.id.wallet_options_exchange_rates)
-                .setVisible(Constants.ENABLE_EXCHANGE_RATES && res.getBoolean(R.bool.show_exchange_rates_option));
+        final boolean showExchangeRatesOption = Constants.ENABLE_EXCHANGE_RATES
+                && res.getBoolean(R.bool.show_exchange_rates_option);
+        menu.findItem(R.id.wallet_options_exchange_rates).setVisible(showExchangeRatesOption);
         menu.findItem(R.id.wallet_options_sweep_wallet).setVisible(Constants.ENABLE_SWEEP_WALLET);
-        menu.findItem(R.id.wallet_options_restore_wallet)
-                .setEnabled(Environment.MEDIA_MOUNTED.equals(externalStorageState)
-                        || Environment.MEDIA_MOUNTED_READ_ONLY.equals(externalStorageState));
-        menu.findItem(R.id.wallet_options_backup_wallet)
-                .setEnabled(Environment.MEDIA_MOUNTED.equals(externalStorageState));
-        final Wallet wallet = viewModel.getWallet().getValue();
-        if (wallet != null) {
+        final String externalStorageState = Environment.getExternalStorageState();
+        final boolean enableRestoreWalletOption = Environment.MEDIA_MOUNTED.equals(externalStorageState)
+                || Environment.MEDIA_MOUNTED_READ_ONLY.equals(externalStorageState);
+        menu.findItem(R.id.wallet_options_restore_wallet).setEnabled(enableRestoreWalletOption);
+        final Boolean isEncrypted = viewModel.walletEncrypted.getValue();
+        if (isEncrypted != null) {
             final MenuItem encryptKeysOption = menu.findItem(R.id.wallet_options_encrypt_keys);
-            encryptKeysOption.setTitle(wallet.isEncrypted() ? R.string.wallet_options_encrypt_keys_change
+            encryptKeysOption.setTitle(isEncrypted ? R.string.wallet_options_encrypt_keys_change
                     : R.string.wallet_options_encrypt_keys_set);
             encryptKeysOption.setVisible(true);
+        }
+        final Boolean isLegacyFallback = viewModel.walletLegacyFallback.getValue();
+        if (isLegacyFallback != null) {
+            final MenuItem requestLegacyOption = menu.findItem(R.id.wallet_options_request_legacy);
+            requestLegacyOption.setVisible(isLegacyFallback);
         }
 
         return true;
@@ -443,6 +442,10 @@ public final class WalletActivity extends AbstractWalletActivity {
         switch (item.getItemId()) {
         case R.id.wallet_options_request:
             handleRequestCoins();
+            return true;
+
+        case R.id.wallet_options_request_legacy:
+            RequestCoinsActivity.start(this, Script.ScriptType.P2PKH);
             return true;
 
         case R.id.wallet_options_send:
@@ -470,15 +473,15 @@ public final class WalletActivity extends AbstractWalletActivity {
             return true;
 
         case R.id.wallet_options_restore_wallet:
-            handleRestoreWallet();
+            viewModel.showRestoreWalletDialog.setValue(Event.simple());
             return true;
 
         case R.id.wallet_options_backup_wallet:
-            handleBackupWallet();
+            viewModel.showBackupWalletDialog.setValue(Event.simple());
             return true;
 
         case R.id.wallet_options_encrypt_keys:
-            handleEncryptKeys();
+            viewModel.showEncryptKeysDialog.setValue(Event.simple());
             return true;
 
         case R.id.wallet_options_preferences:
@@ -486,19 +489,19 @@ public final class WalletActivity extends AbstractWalletActivity {
             return true;
 
         case R.id.wallet_options_safety:
-            HelpDialogFragment.page(getSupportFragmentManager(), R.string.help_safety);
+            viewModel.showHelpDialog.setValue(new Event<>(R.string.help_safety));
             return true;
 
         case R.id.wallet_options_technical_notes:
-            HelpDialogFragment.page(getSupportFragmentManager(), R.string.help_technical_notes);
+            viewModel.showHelpDialog.setValue(new Event<>(R.string.help_technical_notes));
             return true;
 
         case R.id.wallet_options_report_issue:
-            handleReportIssue();
+            viewModel.showReportIssueDialog.setValue(Event.simple());
             return true;
 
         case R.id.wallet_options_help:
-            HelpDialogFragment.page(getSupportFragmentManager(), R.string.help_wallet);
+            viewModel.showHelpDialog.setValue(new Event<>(R.string.help_wallet));
             return true;
         }
 
@@ -506,7 +509,7 @@ public final class WalletActivity extends AbstractWalletActivity {
     }
 
     public void handleRequestCoins() {
-        startActivity(new Intent(this, RequestCoinsActivity.class));
+        RequestCoinsActivity.start(this);
     }
 
     public void handleSendCoins() {
@@ -520,26 +523,18 @@ public final class WalletActivity extends AbstractWalletActivity {
         ScanActivity.startForResult(this, clickView, WalletActivity.REQUEST_CODE_SCAN);
     }
 
-    public void handleBackupWallet() {
-        BackupWalletDialogFragment.show(getSupportFragmentManager());
-    }
+    private static final class QuickReturnBehavior extends CoordinatorLayout.Behavior<View> {
+        @Override
+        public boolean onStartNestedScroll(final CoordinatorLayout coordinatorLayout, final View child,
+                final View directTargetChild, final View target, final int nestedScrollAxes, final int type) {
+            return (nestedScrollAxes & ViewCompat.SCROLL_AXIS_VERTICAL) != 0;
+        }
 
-    public void handleRestoreWallet() {
-        RestoreWalletDialogFragment.show(getSupportFragmentManager());
-    }
-
-    public void handleEncryptKeys() {
-        EncryptKeysDialogFragment.show(getSupportFragmentManager());
-    }
-
-    private void handleReportIssue() {
-        ReportIssueDialogFragment.show(getSupportFragmentManager(), R.string.report_issue_dialog_title_issue,
-                R.string.report_issue_dialog_message_issue, Constants.REPORT_SUBJECT_ISSUE, null);
-    }
-
-    private void checkSavedCrashTrace() {
-        if (CrashReporter.hasSavedCrashTrace())
-            ReportIssueDialogFragment.show(getSupportFragmentManager(), R.string.report_issue_dialog_title_crash,
-                    R.string.report_issue_dialog_message_crash, Constants.REPORT_SUBJECT_CRASH, null);
+        @Override
+        public void onNestedScroll(final CoordinatorLayout coordinatorLayout, final View child, final View target,
+                final int dxConsumed, final int dyConsumed, final int dxUnconsumed, final int dyUnconsumed,
+                final int type) {
+            child.setTranslationY(Floats.constrainToRange(child.getTranslationY() - dyConsumed, -child.getHeight(), 0));
+        }
     }
 }

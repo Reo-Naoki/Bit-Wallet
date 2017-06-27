@@ -1,5 +1,5 @@
 <?xml version='1.0' encoding='UTF-8'?>
-<resources>
+<resources xmlns:android="http://schemas.android.com/apk/res/android">
   <string name="toast_wallet_reset">Pochi yako mara kwa upya. Sasa, itakuwa upya.</string>
   <string name="wallet_disclaimer_fragment_remind_safety">Wacha tu! Matumizi kwa wajibu wako mwenyewe. Upechop maelezo usalama.</string>
   <string name="wallet_disclaimer_fragment_remind_backup">Lazima kubamba backup!</string>
@@ -43,9 +43,8 @@
   <string name="wallet_timeskew_dialog_title">Cheki wazingira wakati yako!</string>
   <string name="wallet_timeskew_dialog_msg">Simu yako wakati ni makosa %d minuti. Pengine hawezi kutuma Bitcoin kwa sababu ya tatizo hili. Angalia mipangilio yako majira ya saa.</string>
   <string name="wallet_version_dialog_title">Toleo jipya ni hapa kwa shusha!</string>
-  <string name="wallet_version_dialog_msg">Hii toleo kunasa makosa makubwa. Kwa maelezo, kuona changelog juu ya Google Play.</string>
+  <string name="wallet_version_dialog_msg">Hii toleo kunasa makosa makubwa. Kwa maelezo, kuona changelog juu ya %s.</string>
   <string name="wallet_version_dialog_msg_deprecated">Kama huwezi kupata toleo jipya, Android yako ni mzee, sana!</string>
-  <string name="wallet_version_dialog_button_market">Google Play</string>
   <string name="wallet_version_dialog_button_binary">Shusha</string>
   <string name="wallet_old_sdk_dialog_title">Android yako ni mzee, sana!</string>
   <string name="wallet_old_sdk_dialog_message">Matoleo ya pili ya pochi hii si msaada Android yako yoyote zaidi. Katika baadhi ya matukio, matumizi ya pesa itakuwa vigumu. Kama wewe ni uhakika, tafadhali kuchukua pesa yako hivi karibuni.</string>
@@ -133,8 +132,8 @@
   <string name="edit_address_book_entry_dialog_label_label">Jina</string>
   <string name="edit_address_book_entry_dialog_button_edit">Okoa</string>
   <string name="transaction_row_fee">Ata mtandao</string>
+  <string name="transaction_row_confidence_message_sent_unbroadcasted">Malipo hii ni bado alifanya.</string>
   <string name="transaction_row_message_purpose_key_rotation">Shuguli hii inafanya pochi yako nguvu dhidi ya majambazi. &lt;u&gt;Habari zaidi.&lt;/u&gt;</string>
-  <string name="transaction_row_message_own_unbroadcasted">Malipo hii ni bado alifanya.</string>
   <string name="transaction_row_message_received_direct">Malipo hii iliwekwa moja kwa moja na mpokeaji. Kuna hatari kwamba kamwe inakuwa halali.</string>
   <string name="transaction_row_message_received_unconfirmed_unlocked">Malipo hii lazima kuwa halali katika muda mfupi.</string>
   <string name="transaction_row_message_received_dead">Malipo hii imeluwa kuachwa kwa mtumaji.</string>
@@ -208,10 +207,10 @@
   <string name="preferences_initiate_reset_summary">Upya Blockchain, shughuli, na usalama ya pochi. Bambika itachukua muda mfupi.</string>
   <string name="preferences_initiate_reset_dialog_message">Je, ungependa upya na bambika na Blockchain?\n\nHii muda kujificha pochi mizani yako na kuondoa shughuli. Wote itarejea kama Blockchain kubamba ikiendelea.</string>
   <string name="preferences_initiate_reset_dialog_positive">Upya</string>
-  <string name="preferences_extended_public_key_title">Soma xpub</string>
+  <string name="preferences_extended_public_key_title">Soma extended public key</string>
   <string name="preferences_extended_public_key_summary">Mwambie kupanuliwa umma muhimu ya pochi yako, hivyo inaweza kuwa nje katika programu na huduma nyingine. Kuwa makini: kufanya hivyo itakuwa wazi siri yako ya fedha kwa programu hiyo.</string>
   <string name="extended_public_key_fragment_title">Mwambie kupanuliwa umma muhimu ya pochi yako</string>
-  <string name="extended_public_key_fragment_share">Shiriki xpub…</string>
+  <string name="extended_public_key_fragment_share">Shiriki extended public key…</string>
   <string name="report_issue_dialog_title_issue">Ripoti tatizo</string>
   <string name="report_issue_dialog_title_crash">Kupatikana ajali uliopita</string>
   <string name="report_issue_dialog_message_issue">Tafadhali eleza tatizo lako kama just kama unaweza.</string>
@@ -231,9 +230,7 @@
   <string name="about_category_credits">Hii programu anatumia…</string>
   <string name="about_credits_bitcoinj_title">bitcoinj %s</string>
   <string name="about_credits_zxing_title">ZXing</string>
-  <string name="about_community_googleplus_title">Google+ jumuia</string>
-  <string name="about_community_googleplus_summary">Majadiliano kuhusu programu huu</string>
-  <string name="about_market_app_title">Tovuti ya Google Play</string>
+  <string name="about_market_app_title">Tovuti ya %s</string>
   <string name="about_market_app_summary">Mapitio na kiwango programu hii</string>
   <string name="notification_coins_received_msg">Kupokea %s</string>
   <string name="notification_peers_connected_msg">%d rika kushikamana</string>

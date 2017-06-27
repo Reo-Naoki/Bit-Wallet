@@ -12,19 +12,20 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 package de.schildbach.wallet.ui.scan;
 
-import de.schildbach.wallet.data.SingleLiveEvent;
+import de.schildbach.wallet.ui.Event;
 
-import android.arch.lifecycle.ViewModel;
+import androidx.lifecycle.MutableLiveData;
+import androidx.lifecycle.ViewModel;
 
 /**
  * @author Andreas Schildbach
  */
 public class ScanViewModel extends ViewModel {
-    public final SingleLiveEvent<Void> showPermissionWarnDialog = new SingleLiveEvent<>();
-    public final SingleLiveEvent<Void> showProblemWarnDialog = new SingleLiveEvent<>();
+    public final MutableLiveData<Event<Void>> showPermissionWarnDialog = new MutableLiveData<>();
+    public final MutableLiveData<Event<Void>> showProblemWarnDialog = new MutableLiveData<>();
 }

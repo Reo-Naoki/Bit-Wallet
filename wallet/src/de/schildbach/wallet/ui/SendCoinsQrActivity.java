@@ -12,14 +12,14 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 package de.schildbach.wallet.ui;
 
+import org.bitcoinj.core.PrefixedChecksummedBytes;
 import org.bitcoinj.core.Transaction;
 import org.bitcoinj.core.VerificationException;
-import org.bitcoinj.core.VersionedChecksummedBytes;
 
 import de.schildbach.wallet.Constants;
 import de.schildbach.wallet.WalletApplication;
@@ -63,7 +63,7 @@ public final class SendCoinsQrActivity extends Activity {
                 }
 
                 @Override
-                protected void handlePrivateKey(final VersionedChecksummedBytes key) {
+                protected void handlePrivateKey(final PrefixedChecksummedBytes key) {
                     if (Constants.ENABLE_SWEEP_WALLET) {
                         SweepWalletActivity.start(SendCoinsQrActivity.this, key);
                         SendCoinsQrActivity.this.finish();

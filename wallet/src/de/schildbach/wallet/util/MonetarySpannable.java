@@ -12,16 +12,14 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 package de.schildbach.wallet.util;
 
-import static android.support.v4.util.Preconditions.checkArgument;
+import static androidx.core.util.Preconditions.checkArgument;
 
 import java.util.regex.Matcher;
-
-import javax.annotation.Nullable;
 
 import org.bitcoinj.core.Monetary;
 import org.bitcoinj.utils.MonetaryFormat;
@@ -33,6 +31,7 @@ import android.text.Spannable;
 import android.text.SpannableString;
 import android.text.style.RelativeSizeSpan;
 import android.text.style.StyleSpan;
+import androidx.annotation.Nullable;
 
 /**
  * @author Andreas Schildbach

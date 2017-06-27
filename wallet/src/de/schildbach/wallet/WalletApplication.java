@@ -12,7 +12,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 package de.schildbach.wallet;
@@ -65,9 +65,9 @@ import android.os.Build;
 import android.os.Looper;
 import android.os.StrictMode;
 import android.preference.PreferenceManager;
-import android.support.annotation.MainThread;
-import android.support.annotation.WorkerThread;
-import android.support.v4.content.LocalBroadcastManager;
+import androidx.annotation.MainThread;
+import androidx.annotation.WorkerThread;
+import androidx.localbroadcastmanager.content.LocalBroadcastManager;
 
 /**
  * @author Andreas Schildbach
@@ -211,13 +211,14 @@ public class WalletApplication extends Application {
                             TimeUnit.MILLISECONDS, null);
                 } else {
                     final Stopwatch watch = Stopwatch.createStarted();
-                    wallet = new Wallet(Constants.NETWORK_PARAMETERS);
+                    wallet = Wallet.createDeterministic(Constants.NETWORK_PARAMETERS,
+                            Constants.DEFAULT_OUTPUT_SCRIPT_TYPE);
                     walletFiles = wallet.autosaveToFile(walletFile, Constants.Files.WALLET_AUTOSAVE_DELAY_MS,
                             TimeUnit.MILLISECONDS, null);
                     autosaveWalletNow(); // persist...
                     WalletUtils.autoBackupWallet(WalletApplication.this, wallet); // ...and backup asap
                     watch.stop();
-                    log.info("fresh wallet created, took {}", watch);
+                    log.info("fresh {} wallet created, took {}", Constants.DEFAULT_OUTPUT_SCRIPT_TYPE, watch);
 
                     config.armBackupReminder();
                 }
@@ -260,6 +261,8 @@ public class WalletApplication extends Application {
 
     public void replaceWallet(final Wallet newWallet) {
         newWallet.cleanup();
+        if (newWallet.isDeterministicUpgradeRequired(Constants.UPGRADE_OUTPUT_SCRIPT_TYPE) && !newWallet.isEncrypted())
+            newWallet.upgradeToDeterministic(Constants.UPGRADE_OUTPUT_SCRIPT_TYPE, null);
         BlockchainService.resetBlockchain(this);
 
         final Wallet oldWallet = getWallet();
@@ -355,12 +358,12 @@ public class WalletApplication extends Application {
     }
 
     public int maxConnectedPeers() {
-        return activityManager.isLowRamDevice() ? 4 : 6;
+        return activityManager.getMemoryClass() <= 128 ? 4 : 6;
     }
 
     public int scryptIterationsTarget() {
-        return activityManager.isLowRamDevice() ? Constants.SCRYPT_ITERATIONS_TARGET_LOWRAM
-                : Constants.SCRYPT_ITERATIONS_TARGET;
+        return activityManager.getMemoryClass() <= 128 || Build.SUPPORTED_64_BIT_ABIS.length == 0
+                ? Constants.SCRYPT_ITERATIONS_TARGET_LOWRAM : Constants.SCRYPT_ITERATIONS_TARGET;
     }
 
     public static String versionLine(final PackageInfo packageInfo) {

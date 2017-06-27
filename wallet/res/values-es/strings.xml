@@ -1,5 +1,5 @@
 <?xml version='1.0' encoding='UTF-8'?>
-<resources>
+<resources xmlns:android="http://schemas.android.com/apk/res/android">
   <string name="toast_wallet_reset">¡Su monedero se ha reiniciado!\nlt tomara un tiempo en recuperarse.</string>
   <string name="wallet_disclaimer_fragment_remind_safety">Úsalo bajo tu propio riesgo. Lee las &lt;u&gt;notas de seguridad&lt;/u&gt;.</string>
   <string name="wallet_disclaimer_fragment_remind_backup">¡Necesitas hacer una &lt;u&gt;copia de seguridad de tu monedero&lt;/u&gt;!</string>
@@ -26,7 +26,8 @@
   <string name="exchange_rates_options_search">Buscar tasa de cambio</string>
   <string name="wallet_transactions_fragment_empty_text_received">Aún no se han recibido bitcoins.</string>
   <string name="wallet_transactions_fragment_empty_text_sent">Aún no se han enviado bitcoins.</string>
-  <string name="wallet_transactions_fragment_empty_text_howto">¿Cómo obtener Bitcoins?\n\nCámbialos por dinero tradicional,\nvende bienes o servicios o\ngánalos trabajando</string>
+  <string name="wallet_transactions_fragment_empty_text_howto">¿Cómo obtener Bitcoins?\nCámbialos por dinero tradicional,\nvende bienes o servicios o\ngánalos trabajando</string>
+  <string name="wallet_transactions_fragment_empty_remind_backup">Por favor haga una copia de seguridad de su billetera\nantes de recibir Bitcoins!</string>
   <string name="wallet_transactions_row_warning_backup">Enhorabuena. ¡Has recibido tu primer pago! ¿Has hecho ya una &lt;u&gt;copia de seguridad de tu cartera&lt;/u&gt; como protección frente a pérdidas?</string>
   <string name="wallet_transactions_row_warning_storage_encryption">Consejo: para incrementar la seguridad de su wallet, usted puede escriptar su dispositivo. Esto permite la protección de sus datos con otras aplicaciones.</string>
   <string name="wallet_transactions_row_warning_chain_forking">la red de Bitcoin esta bajo mantenimiento. has sido avisado de no mandar o recibir Bitcoins hasta que finalice el mantenimiento. &lt;u&gt;Mas información.&lt;/u&gt;</string>
@@ -36,6 +37,7 @@
   <string name="wallet_transactions_options_filter_all">Todos los pagos</string>
   <string name="wallet_transactions_options_filter_received">Pagos recibidos</string>
   <string name="wallet_transactions_options_filter_sent">Pagos enviados</string>
+  <string name="wallet_options_request_legacy">Solicitud de dirección heredada</string>
   <string name="wallet_options_safety_menu">Seguridad</string>
   <string name="wallet_options_encrypt_keys_set">Establecer PIN para pagos</string>
   <string name="wallet_options_encrypt_keys_change">Cambiar PIN para pagos</string>
@@ -51,16 +53,16 @@
   <string name="wallet_timeskew_dialog_title">Configure la hora</string>
   <string name="wallet_timeskew_dialog_msg">El horario de su dispositivo está retrasado por %d minutos. Probablemente no podrá enviar o recibir Bitcoins debido a este problema.\n\nPara corregirlo configure la fecha, hora y zona horaria correctamente.</string>
   <string name="wallet_version_dialog_title">¡Hay una nueva versión disponible!</string>
-  <string name="wallet_version_dialog_msg">Esta versión corrige fallos importantes. Más detalles en el historial de cambios de Google Play.</string>
+  <string name="wallet_version_dialog_msg">Esta versión corrige fallos importantes. Más detalles en el historial de cambios de %s.</string>
   <string name="wallet_version_dialog_msg_deprecated">Si no ve una actualización, es probable que su versión de Android ya no sea compatible.</string>
-  <string name="wallet_version_dialog_button_market">Google Play</string>
   <string name="wallet_version_dialog_button_binary">Descargar</string>
   <string name="wallet_old_sdk_dialog_title">Versión de Android desactualizada</string>
   <string name="wallet_old_sdk_dialog_message">Es posible que una de las próximas versiones de Bitcoin Wallet no soporte tu dispositivo. En algunos casos, puede ser difícil hacer pagos con este dispositivo.\n\nA menos que sepas lo que estás haciendo, se recomienda que saques tus Bitcoins lo más pronto posible.</string>
   <string name="alert_dialogs_fragment_settings_failed_title">Problema abriendo los ajustes</string>
   <string name="send_coins_activity_title">Enviar Bitcoins</string>
   <string name="send_coins_fragment_request_payment_request_progress">Adquiriendo firma de %s…</string>
-  <string name="send_coins_fragment_request_payment_request_failed_title">Ha fallado la adquisición de firma</string>
+  <string name="send_coins_fragment_request_payment_request_failed_title">No se ha podido recuperar la solicitud de pago</string>
+  <string name="send_coins_fragment_request_payment_request_failed_message">El beneficiario (%1$s) está usando un protocolo de pago incompatible (Motivo: %2$s)</string>
   <string name="send_coins_fragment_request_payment_request_wrong_signature">¡Firma incorrecta!</string>
   <string name="send_coins_fragment_payee_verified_by">verificado por: %s</string>
   <string name="send_coins_fragment_payee_verified_by_unknown">desconocido</string>
@@ -122,6 +124,8 @@
   <string name="sweep_wallet_fragment_decrypt_progress">Desencriptando…\nPuede tardar hasta 2 minutos.</string>
   <string name="sweep_wallet_fragment_request_wallet_balance_progress">Cargando saldo…</string>
   <string name="sweep_wallet_fragment_request_wallet_balance_failed_title">Error al cargar el saldo de la cartera</string>
+  <string name="sweep_wallet_fragment_request_wallet_balance_failed_connection">Tienes una mala conexión a la red de Electrum.</string>
+  <string name="sweep_wallet_fragment_request_wallet_balance_empty">La billetera de papel está vacía.</string>
   <string name="sweep_wallet_fragment_insufficient_money_title">No hay suficientes bitcoins</string>
   <string name="sweep_wallet_fragment_insufficient_money_msg">La cantidad de bitcoins en tu cartera es demasiado pequeña para ser convertidos.</string>
   <string name="sweep_wallet_options_reload">recargar el saldo</string>
@@ -164,9 +168,9 @@
   <string name="edit_address_book_entry_dialog_label_label">Etiqueta</string>
   <string name="edit_address_book_entry_dialog_button_edit">Guardar</string>
   <string name="transaction_row_fee">Comisión de red</string>
+  <string name="transaction_row_confidence_message_sent_unbroadcasted">Este pago aún no se ha transmitido.</string>
   <string name="transaction_row_message_purpose_key_rotation">Esta transacción fortalece tu monedero frente a robos. &lt;u&gt;Más información.&lt;/u&gt;</string>
   <string name="transaction_row_message_purpose_raise_fee">Esta transacción incrementa la cuota de red para un pago previo.</string>
-  <string name="transaction_row_message_own_unbroadcasted">Este pago aún no se ha transmitido.</string>
   <string name="transaction_row_message_received_direct">Este pago se ha recibido directamente. Existe el riesgo de que no llegue a validarse.</string>
   <string name="transaction_row_message_received_unconfirmed_delayed">La confirmación de este pago está atrasada debido a una sobrecarga en la red de Bitcoin.</string>
   <string name="transaction_row_message_received_unconfirmed_unlocked">Este pago debería estar disponible en unos minutos.</string>
@@ -206,7 +210,7 @@
   <string name="backup_wallet_dialog_message">Su copia de seguridad será encriptada con la contraseña que elija y guardada en una unidad de almacenamiento externo.</string>
   <string name="backup_wallet_dialog_warning_encrypted">Su cartera está protegida con un PIN de pagos. ¡Asegúrese de recordar el PIN, además de hacer una copia de seguridad de su contraseña!</string>
   <string name="export_keys_dialog_button_export">Copia de seguridad</string>
-  <string name="export_keys_dialog_success"><![CDATA[<p>Su cartera ha sido copiada en <tt>%s</tt></p><p><b>Si el único sitio en el que existe una copia es en su dispositivo, ¡corre el riesgo de perder las dos al mismo tiempo!</b></p><p>En cualquier caso, asegúrese de recordar la contraseña de la copia.</p>]]></string>
+  <string name="export_keys_dialog_success"><![CDATA[<p>Su billetera ha sido respaldada en <tt>%s</tt></p><p><b>Si el único lugar donde existe su respaldo es en su dispositivo, ¡corre el riesgo de perder ambos a la vez!</b></p><p>En cualquier caso, asegúrese de recordar la contraseña de respaldo</p>]]></string>
   <string name="export_keys_dialog_failure">No se pudo realizar la copia de seguridad de su cartera:\n%s</string>
   <string name="import_export_keys_dialog_password">Contraseña</string>
   <string name="backup_wallet_dialog_password_again">otra vez</string>
@@ -272,11 +276,11 @@
   <string name="preferences_initiate_reset_summary">Cambiar cadena de bloque, las transacciones y el equilibrio billetera. Replay tomará un tiempo.</string>
   <string name="preferences_initiate_reset_dialog_message">¿Te gustaría reiniciar y repetir la cadena de bloque?\n\nEste ocultará temporalmente su saldo cartera y eliminar transacciones. Ambos se recuperará con la sincronización de la cadena de bloque avanzada.</string>
   <string name="preferences_initiate_reset_dialog_positive">Reiniciar</string>
-  <string name="preferences_extended_public_key_title">Mostrar xpub</string>
+  <string name="preferences_extended_public_key_title">Mostrar extended public key</string>
   <string name="preferences_extended_public_key_summary">Ve la llave publica extendida de tu billetera, para que pueda ser importada hacia otras apps y servicios ten cuidado: hacer esto dara a conocer tu privacidad monetaria a esa app.</string>
   <string name="bitmap_fragment_share">Comparte…</string>
   <string name="extended_public_key_fragment_title">Extender llave publica</string>
-  <string name="extended_public_key_fragment_share">Comparte xpub…</string>
+  <string name="extended_public_key_fragment_share">Comparte extended public key…</string>
   <string name="report_issue_dialog_title_issue">Informar de incidencia</string>
   <string name="report_issue_dialog_title_crash">Detectado error grave anterior</string>
   <string name="report_issue_dialog_title_transaction">Informar del problema con el pago seleccionado</string>
@@ -297,13 +301,15 @@
   <string name="about_category_credits">Esta aplicación utiliza…</string>
   <string name="about_credits_bitcoinj_title">bitcoinj %s</string>
   <string name="about_credits_zxing_title">ZXing</string>
-  <string name="about_credits_scrypt_title">Scrypt, implementado por Will Glozer y Colin Percival</string>
-  <string name="about_market_app_title">Página en Google Play</string>
+  <string name="about_credits_bouncycastle_title">Bouncy Castle, una biblioteca de criptografía</string>
+  <string name="about_credits_okhttp_title">OkHttp, una biblioteca de cliente HTTP</string>
+  <string name="about_credits_moshi_title">Moshi, una biblioteca JSON</string>
+  <string name="about_credits_guava_title">Guava, una colección de utilidades de ayuda</string>
+  <string name="about_credits_slf4j_title">SLF4J, un marco de registros</string>
+  <string name="about_market_app_title">Página en %s</string>
   <string name="about_market_app_summary">Critica o evalúa la aplicación</string>
   <string name="about_faq_title">Prefuntas Frecuentes</string>
   <string name="about_faq_summary">Preguntas frecuentes sobre la aplicación</string>
-  <string name="about_community_googleplus_title">Comunidad Google+</string>
-  <string name="about_community_googleplus_summary">Discusiones sobre la aplicación</string>
   <string name="notification_coins_received_msg">%s Recibidos</string>
   <string name="notification_peers_connected_msg">%d pares conectados</string>
   <string name="notification_inactivity_title">¡Aún tienes Bitcoins en este dispositivo!</string>

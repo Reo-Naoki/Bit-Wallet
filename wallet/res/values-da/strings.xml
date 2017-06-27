@@ -1,5 +1,5 @@
 <?xml version='1.0' encoding='UTF-8'?>
-<resources>
+<resources xmlns:android="http://schemas.android.com/apk/res/android">
   <string name="toast_wallet_reset">Din tegnebog blev nulstillet!\nDet tager nogen tid at genoprette.</string>
   <string name="wallet_disclaimer_fragment_remind_safety">Brug for egen risiko. Læs &lt;u&gt;sikkerhedsnoterne&lt;/u&gt;.</string>
   <string name="wallet_disclaimer_fragment_remind_backup">Du bør &lt;u&gt;tage sikkerhedskopi af din tegnebog&lt;/u&gt;!</string>
@@ -26,7 +26,8 @@
   <string name="exchange_rates_options_search">Søg iblandt vekselkurser</string>
   <string name="wallet_transactions_fragment_empty_text_received">Ingen Bitcoins modtaget endnu.</string>
   <string name="wallet_transactions_fragment_empty_text_sent">Ingen Bitcoins sendt endnu.</string>
-  <string name="wallet_transactions_fragment_empty_text_howto">Hvordan får man Bitcoins?\n\nKøb for traditionelle penge,\nsælg varer eller ydelser eller\ntjen dem ved at arbejde.</string>
+  <string name="wallet_transactions_fragment_empty_text_howto">Hvordan får man Bitcoins?\nKøb for traditionelle penge,\nsælg varer eller ydelser eller\ntjen dem ved at arbejde.</string>
+  <string name="wallet_transactions_fragment_empty_remind_backup">Sikkerhedskopiér din tegnebog\nfør du modtager Bitcoins!</string>
   <string name="wallet_transactions_row_warning_backup">Tillykke, du har modtaget din første betaling! Har du &lt;u&gt;taget en sikkerhedskopi af din tegnebog&lt;/u&gt;, for at beskytte dig mod tab?</string>
   <string name="wallet_transactions_row_warning_storage_encryption">Tip: For at øge din tegnebogs sikkerhed kan du &lt;u&gt;kryptere din enhed&lt;/u&gt;. Dette beskytter også data fra andre apps.</string>
   <string name="wallet_transactions_row_warning_chain_forking">Bitcoin-netværket er under vedligeholdelse. Du anbefales ikke at sende eller modtage midler, indtil vedligeholdelsen er færdig. &lt;u&gt;Mere information&lt;/u&gt;.</string>
@@ -36,6 +37,7 @@
   <string name="wallet_transactions_options_filter_all">Alle betalinger</string>
   <string name="wallet_transactions_options_filter_received">Modtagne betalinger</string>
   <string name="wallet_transactions_options_filter_sent">Sendte betalinger</string>
+  <string name="wallet_options_request_legacy">Anmod til ældre adresse</string>
   <string name="wallet_options_safety_menu">Sikkerhed</string>
   <string name="wallet_options_encrypt_keys_set">Sæt spenderings-PIN</string>
   <string name="wallet_options_encrypt_keys_change">Ændr spenderings-PIN</string>
@@ -51,16 +53,16 @@
   <string name="wallet_timeskew_dialog_title">Tjek dato- og tidsindstillinger</string>
   <string name="wallet_timeskew_dialog_msg">Din enheds tid går %d minutter skævt. Du kan sandsynligvis ikke sende eller modtage bitcoin på grund af dette.\n\nDu bør tjekke, og om nødvendigt rette, dine dato-, tids- og tidszoneindstillinger.</string>
   <string name="wallet_version_dialog_title">En ny version er tilgængelig!</string>
-  <string name="wallet_version_dialog_msg">Denne version retter vigtige fejl. For detaljer, se ændringsloggen på Google Play.</string>
+  <string name="wallet_version_dialog_msg">Denne version retter vigtige fejl. Se ændringsloggen på  %s for flere detaljer.</string>
   <string name="wallet_version_dialog_msg_deprecated">Hvis du ikke ser en opdatering, betyder dette formodentlig, at din version af Android ikke understøttes længere.</string>
-  <string name="wallet_version_dialog_button_market">Google Play</string>
   <string name="wallet_version_dialog_button_binary">Download</string>
   <string name="wallet_old_sdk_dialog_title">Android-version er uddateret</string>
   <string name="wallet_old_sdk_dialog_message">Der er risiko for, at en af de næste udgivelser af Bitcoin Wallet ikke vil understøtte din enhed længere. I nogle tilfælde kan det være svært at bruge mønter på denne enhed.\n\nMed mindre du ved hvad du gør, anbefales det snart at flytte dine mønter væk.</string>
   <string name="alert_dialogs_fragment_settings_failed_title">Problem under åbning af indstillinger</string>
   <string name="send_coins_activity_title">Send Bitcoins</string>
   <string name="send_coins_fragment_request_payment_request_progress">Henter signatur fra %s…</string>
-  <string name="send_coins_fragment_request_payment_request_failed_title">Hentning af signatur mislykkedes</string>
+  <string name="send_coins_fragment_request_payment_request_failed_title">Hentning af betalingsanmodning mislykkedes</string>
+  <string name="send_coins_fragment_request_payment_request_failed_message">Betalingsmodtageren (%1$s) bruger en inkompatibel betalingsprotokol (begrundelse: %2$s).</string>
   <string name="send_coins_fragment_request_payment_request_wrong_signature">Forkert signatur!</string>
   <string name="send_coins_fragment_payee_verified_by">verificeret af: %s</string>
   <string name="send_coins_fragment_payee_verified_by_unknown">ukendt</string>
@@ -85,6 +87,8 @@
   <string name="send_coins_fragment_direct_payment_failed_msg">Din betaling vil stadig blive sendt ud på P2P-netværket.</string>
   <string name="send_coins_fragment_button_send">Send</string>
   <string name="send_coins_fragment_button_back">Tilbage</string>
+  <string name="send_coins_fragment_significant_fee_title">Betydeligt netværksgebyr</string>
+  <string name="send_coins_fragment_significant_fee_message">Netværksgebyret for denne betaling (%1$s) er højt i forhold til beløbet (%2$s). Vil du sende alligevel?</string>
   <string name="send_coins_fragment_insufficient_money_title">Ikke nok tilgængelig bitcoin</string>
   <string name="send_coins_fragment_insufficient_money_msg1">Du mangler %s.</string>
   <string name="send_coins_fragment_insufficient_money_msg2">Vil du betale alt hvad du har?</string>
@@ -120,6 +124,8 @@
   <string name="sweep_wallet_fragment_decrypt_progress">Afkrypterer…\nTager op til 2 minutter.</string>
   <string name="sweep_wallet_fragment_request_wallet_balance_progress">Indlæser saldo…</string>
   <string name="sweep_wallet_fragment_request_wallet_balance_failed_title">Indlæsning af tegnebogens saldo mislykkedes</string>
+  <string name="sweep_wallet_fragment_request_wallet_balance_failed_connection">Din forbindelse til Electrum-netværket er dårlig.</string>
+  <string name="sweep_wallet_fragment_request_wallet_balance_empty">Papirtegnebogen er tom.</string>
   <string name="sweep_wallet_fragment_insufficient_money_title">Ikke nok bitcoin</string>
   <string name="sweep_wallet_fragment_insufficient_money_msg">Mængden af bitcoin i tegnebogen er for lille til rydning.</string>
   <string name="sweep_wallet_options_reload">Genindlæs saldo</string>
@@ -162,9 +168,9 @@
   <string name="edit_address_book_entry_dialog_label_label">Mærke</string>
   <string name="edit_address_book_entry_dialog_button_edit">Gem</string>
   <string name="transaction_row_fee">Netværksgebyr</string>
+  <string name="transaction_row_confidence_message_sent_unbroadcasted">Denne betaling er ikke sendt endnu.</string>
   <string name="transaction_row_message_purpose_key_rotation">Denne overførsel styrker din tegnebog mod tyveri. &lt;u&gt;Mere info.&lt;/u&gt;</string>
   <string name="transaction_row_message_purpose_raise_fee">Denne transaktion forhøjer netværksgebyret for en tidligere betaling.</string>
-  <string name="transaction_row_message_own_unbroadcasted">Denne betaling er ikke sendt endnu.</string>
   <string name="transaction_row_message_received_direct">Denne betaling er modtaget direkte. Der er en risiko for, at den aldrig bliver tilgængelig.</string>
   <string name="transaction_row_message_received_unconfirmed_delayed">Bekræftelsen af denne betaling er forsinket – sandsynligvis på grund af overbelastning af Bitcoin-netværket.</string>
   <string name="transaction_row_message_received_unconfirmed_unlocked">Denne betaling bør blive tilgængelig om få minutter.</string>
@@ -204,7 +210,7 @@
   <string name="backup_wallet_dialog_message">Din sikkerhedskopi vil blive krypteret med det valgte kodeord og skrevet til ekstern lagerenhed.</string>
   <string name="backup_wallet_dialog_warning_encrypted">Din tegnebog beskyttes af en spenderings-PIN. Vær sikker på, at du kan huske din PIN udover dit kodeord til sikkerhedskopien!</string>
   <string name="export_keys_dialog_button_export">Sikkerskopiér</string>
-  <string name="export_keys_dialog_success"><![CDATA[<p>Din tegnebog er blevet sikkerhedskopieret til <tt>%s</tt></p><p><b>Hvis din sikkerhedskopi kun findes på din enhed, løber du risikoen at miste begge dele på én gang!</b></p><p>Uanset hvad, så vær sikker på, at du kan huske dit kodeord til sikkerhedskopien.</p>]]></string>
+  <string name="export_keys_dialog_success"><![CDATA[<p>Din tegnebog er sikkerhedskopieret til <tt>%s</tt></p><p><b>Hvis det eneste sted, hvor din sikkerhedskopi er gemt, er din enhed, risikerer du at miste begge dele på én gang!</b></p><p>Uanset hvad, så vær sikker på, at du kan huske kodeordet til din sikkerhedskopi.</p>]]></string>
   <string name="export_keys_dialog_failure">Din tegnebog kunne ikke sikkerhedskopieres:\n%s</string>
   <string name="import_export_keys_dialog_password">kodeord</string>
   <string name="backup_wallet_dialog_password_again">igen</string>
@@ -270,11 +276,11 @@
   <string name="preferences_initiate_reset_summary">Nulstil blokkæde, overførsler og saldo for tegnebogen. Gennemløb af blokkæden vil tage et stykke tid, så gør kun dette hvis du ved hvorfor.</string>
   <string name="preferences_initiate_reset_dialog_message">Vil du nulstille og gennemløbe blokkæden igen?\n\nDette vil midlertidigt skjule din saldo og fjerne overførsler. Begge dele vil dukke op igen, efterhånden som der synkroniseres med blokkæden. Sørg for at du har en stabil forbindelse til Internet.</string>
   <string name="preferences_initiate_reset_dialog_positive">Nulstil</string>
-  <string name="preferences_extended_public_key_title">Vis xpub</string>
+  <string name="preferences_extended_public_key_title">Vis extended public key</string>
   <string name="preferences_extended_public_key_summary">Vis din tegnebogs udvidede offentlige nøgle så den kan importeres til andre apps og tjenester. Vær forsigtig: Du vil afsløre dit økonomiske privatliv til pågældende app, hvis du gør dette.</string>
   <string name="bitmap_fragment_share">Del…</string>
   <string name="extended_public_key_fragment_title">Udvidet offentlig nøgle</string>
-  <string name="extended_public_key_fragment_share">Del xpub…</string>
+  <string name="extended_public_key_fragment_share">Del extended public key…</string>
   <string name="report_issue_dialog_title_issue">Rapportér problem</string>
   <string name="report_issue_dialog_title_crash">Tidligere programnedbrud opfanget</string>
   <string name="report_issue_dialog_title_transaction">Rapportér problem med valgt betaling</string>
@@ -295,13 +301,15 @@
   <string name="about_category_credits">Denne app bruger…</string>
   <string name="about_credits_bitcoinj_title">bitcoinj %s, en implementation af Bitcoin-protokollen</string>
   <string name="about_credits_zxing_title">ZXing, et bibliotek til processering af QR-koder</string>
-  <string name="about_credits_scrypt_title">Scrypt, implementeret af Will Glozer og Colin Percival</string>
-  <string name="about_market_app_title">Google Play-side</string>
+  <string name="about_credits_bouncycastle_title">Bouncy Castle, et kryptografi-bibliotek</string>
+  <string name="about_credits_okhttp_title">OkHttp, et HTTP-klientbibliotek</string>
+  <string name="about_credits_moshi_title">Moshi, et JSON-bibliotek</string>
+  <string name="about_credits_guava_title">Guava, en samling af nyttige hjælpere</string>
+  <string name="about_credits_slf4j_title">SLF4J, et framework til logning</string>
+  <string name="about_market_app_title">%s-side</string>
   <string name="about_market_app_summary">Anmeld eller bedøm appen</string>
   <string name="about_faq_title">FAQ</string>
   <string name="about_faq_summary">Ofte stillede spørgsmål om app\'en</string>
-  <string name="about_community_googleplus_title">Google+-fællesskab</string>
-  <string name="about_community_googleplus_summary">Diskussioner om appen</string>
   <string name="notification_coins_received_msg">Modtog %s</string>
   <string name="notification_peers_connected_msg">%d peers forbundet</string>
   <string name="notification_inactivity_title">Du har stadig bitcoin på denne enhed!</string>

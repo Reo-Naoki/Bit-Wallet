@@ -1,5 +1,5 @@
 <?xml version='1.0' encoding='UTF-8'?>
-<resources>
+<resources xmlns:android="http://schemas.android.com/apk/res/android">
   <string name="toast_wallet_reset">Lommeboken ble nullstilt!\nDet vil ta litt tid å gjenopprette.</string>
   <string name="wallet_disclaimer_fragment_remind_safety">Bruk på egen risiko. Les &lt;u&gt;sikkerhetsnotatene&lt;/u&gt;.</string>
   <string name="wallet_disclaimer_fragment_remind_backup">Du bør &lt;u&gt;ta sikkerhetskopi av din lommebok&lt;/u&gt;!</string>
@@ -26,7 +26,7 @@
   <string name="exchange_rates_options_search">Søk i valutakurser</string>
   <string name="wallet_transactions_fragment_empty_text_received">Ingen bitcoins mottatt ennå.</string>
   <string name="wallet_transactions_fragment_empty_text_sent">Ingen bitcoins sendt ennå.</string>
-  <string name="wallet_transactions_fragment_empty_text_howto">Hvordan får man bitcoins?\n\nKjøp for tradisjonelle penger,\nselg varer eller tjenester eller\ntjen dem ved å arbeide.</string>
+  <string name="wallet_transactions_fragment_empty_text_howto">Hvordan får man bitcoins?\nKjøp for tradisjonelle penger,\nselg varer eller tjenester eller\ntjen dem ved å arbeide.</string>
   <string name="wallet_transactions_row_warning_backup">Gratulerer, du har mottatt din første betaling! Har du &lt;u&gt;tatt en sikkerhetskopi av din lommebok&lt;/u&gt;, for å beskytte deg mot tap?</string>
   <string name="wallet_transactions_row_warning_storage_encryption">Tips: For å øke sikkerheten for lommeboka, kan du &lt;u&gt;kryptere enheten&lt;/u&gt;. Dette beskytter også andre apper sine data.</string>
   <string name="wallet_transactions_row_warning_chain_forking">Bitcoin-nettverket er under vedlikehold. Du rådes til å ikke sende eller motta mynter inntil vedlikeholdet er ferdig. &lt;u&gt;Mer informasjon.&lt;/u&gt;</string>
@@ -51,9 +51,8 @@
   <string name="wallet_timeskew_dialog_title">Sjekk dato- og tidsinnstillinger</string>
   <string name="wallet_timeskew_dialog_msg">Din enhets tid fraviker med %d minutter. Du kan sannsynligvis ikke sende eller motta bitcoin på grunn av dette problemet.\n\nDu bør sjekke og eventuelt korrigere innstillingene for dato, klokkeslett og tidssone.</string>
   <string name="wallet_version_dialog_title">En ny versjon er tilgjengelig!</string>
-  <string name="wallet_version_dialog_msg">Denne versjonen retter viktige feil. For detaljer, se endringsloggen på Google Play.</string>
+  <string name="wallet_version_dialog_msg">Denne versjonen retter viktige feil. For detaljer, se endringsloggen på %s.</string>
   <string name="wallet_version_dialog_msg_deprecated">Hvis du ikke ser en oppdatering, betyr dette sannsynligvis at din versjon av Android ikke støttes lenger.</string>
-  <string name="wallet_version_dialog_button_market">Google Play</string>
   <string name="wallet_version_dialog_button_binary">Last ned</string>
   <string name="wallet_old_sdk_dialog_title">Android-versjon er utdatert</string>
   <string name="wallet_old_sdk_dialog_message">Der er risiko for at en av de neste utgivelsene av Bitcoin Wallet ikke vil støtte din enhet lenger. I noen tilfeller kan det være vanskelig å bruke mynter på denne enheten.\n\nMed mindre du vet hva du gjør, anbefales det å straks flytte dine mynter vekk.</string>
@@ -162,9 +161,9 @@
   <string name="edit_address_book_entry_dialog_label_label">Merkelapp</string>
   <string name="edit_address_book_entry_dialog_button_edit">Lagre</string>
   <string name="transaction_row_fee">Nettverksgebyr</string>
+  <string name="transaction_row_confidence_message_sent_unbroadcasted">Denne betalingen er ikke sendt ennå.</string>
   <string name="transaction_row_message_purpose_key_rotation">Denne transaksjonen styrker din lommebok mot tyveri. &lt;u&gt;Mer info.&lt;/u&gt;</string>
   <string name="transaction_row_message_purpose_raise_fee">Denne transaksjonen øker nettverksgebyret for en tidligere betaling.</string>
-  <string name="transaction_row_message_own_unbroadcasted">Denne betalingen er ikke sendt ennå.</string>
   <string name="transaction_row_message_received_direct">Denne betalingen er mottatt direkte. Det er en risiko for at den aldri blir brukbar.</string>
   <string name="transaction_row_message_received_unconfirmed_delayed">Bekreftelsen av denne betalingen er forsinket, sannsynligvis på grunn av en overbelastning av Bitcoin-nettverket.</string>
   <string name="transaction_row_message_received_unconfirmed_unlocked">Denne betalingen bør bli brukbar om få minutter.</string>
@@ -270,11 +269,11 @@
   <string name="preferences_initiate_reset_summary">Tilbakestill blokkjeden, transaksjoner og lommebok-balansen. Gjennomgangen vil ta en stund, så bare gjør dette hvis du vet hvorfor.</string>
   <string name="preferences_initiate_reset_dialog_message">Har du lyst til å nullstille og gjennomgå blokkjeden?\n\nDette vil midlertidig skjule din lommebok-balanse og fjerne transaksjoner. Begge vil gjenopprettes etter hvert som blokkjeden synkroniseres. Sørg for at du har en pålitelig tilkobling til internett.</string>
   <string name="preferences_initiate_reset_dialog_positive">Nullstill</string>
-  <string name="preferences_extended_public_key_title">Vis xpub</string>
+  <string name="preferences_extended_public_key_title">Vis extended public key</string>
   <string name="preferences_extended_public_key_summary">Vis den utvidede offentlige nøkkelen til lommeboken din, slik at den kan importeres i andre programmer og tjenester. Vær forsiktig: dette vil utlevere dine transaksjoner og privatliv til det programmet.</string>
   <string name="bitmap_fragment_share">Del…</string>
   <string name="extended_public_key_fragment_title">Utvidet Offentlig Nøkkel</string>
-  <string name="extended_public_key_fragment_share">Del xpub…</string>
+  <string name="extended_public_key_fragment_share">Del extended public key…</string>
   <string name="report_issue_dialog_title_issue">Rapporter problem</string>
   <string name="report_issue_dialog_title_crash">Tidligere krasj oppdaget</string>
   <string name="report_issue_dialog_title_transaction">Rapporter problem med valgte betaling</string>
@@ -295,13 +294,10 @@
   <string name="about_category_credits">Appen bruker…</string>
   <string name="about_credits_bitcoinj_title">bitcoinj %s</string>
   <string name="about_credits_zxing_title">ZXing</string>
-  <string name="about_credits_scrypt_title">Scrypt, implementert av Will Glozer og Colin Percival</string>
-  <string name="about_market_app_title">Google Play-siden</string>
+  <string name="about_market_app_title">%s-siden</string>
   <string name="about_market_app_summary">Anmeld eller bedøm appen</string>
   <string name="about_faq_title">FAQ</string>
   <string name="about_faq_summary">Ofte stilte spørsmål om appen</string>
-  <string name="about_community_googleplus_title">Google+ samfunnet</string>
-  <string name="about_community_googleplus_summary">Diskuter om appen</string>
   <string name="notification_coins_received_msg">Mottok %s</string>
   <string name="notification_peers_connected_msg">%d peers tilkoblet</string>
   <string name="notification_inactivity_title">Du har fortsatt bitcoins på denne enheten!</string>

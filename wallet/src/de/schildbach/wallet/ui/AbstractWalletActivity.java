@@ -12,7 +12,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 package de.schildbach.wallet.ui;
@@ -26,9 +26,10 @@ import de.schildbach.wallet.WalletApplication;
 import android.app.ActivityManager.TaskDescription;
 import android.os.Build;
 import android.os.Bundle;
-import android.support.v4.app.FragmentActivity;
 import android.view.MenuItem;
 import android.view.WindowManager;
+import androidx.core.content.ContextCompat;
+import androidx.fragment.app.FragmentActivity;
 
 /**
  * @author Andreas Schildbach
@@ -41,10 +42,7 @@ public abstract class AbstractWalletActivity extends FragmentActivity {
     @Override
     protected void onCreate(final Bundle savedInstanceState) {
         application = (WalletApplication) getApplication();
-
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP)
-            setTaskDescription(new TaskDescription(null, null, getResources().getColor(R.color.bg_action_bar)));
-
+        setTaskDescription(new TaskDescription(null, null, ContextCompat.getColor(this, R.color.bg_action_bar)));
         super.onCreate(savedInstanceState);
     }
 
@@ -61,20 +59,6 @@ public abstract class AbstractWalletActivity extends FragmentActivity {
         }
 
         return super.onOptionsItemSelected(item);
-    }
-
-    @Override
-    public void reportFullyDrawn() {
-        if (Build.VERSION.SDK_INT > Build.VERSION_CODES.KITKAT) {
-            super.reportFullyDrawn();
-        } else {
-            // work around bug in KitKat
-            try {
-                super.reportFullyDrawn();
-            } catch (final SecurityException x) {
-                // swallow
-            }
-        }
     }
 
     @SuppressWarnings("deprecation")

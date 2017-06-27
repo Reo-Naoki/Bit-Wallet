@@ -1,5 +1,5 @@
 <?xml version='1.0' encoding='UTF-8'?>
-<resources>
+<resources xmlns:android="http://schemas.android.com/apk/res/android">
   <string name="toast_wallet_reset">钱包已重置，\n 需要一些时间才能恢复</string>
   <string name="wallet_disclaimer_fragment_remind_safety">使用时请您自担风险。请务必阅读 &lt;u&gt;安全提示&lt;/u&gt;.</string>
   <string name="wallet_disclaimer_fragment_remind_backup">你需要 &lt;u&gt;备份你的钱包&lt;/u&gt;!</string>
@@ -25,7 +25,7 @@
   <string name="exchange_rates_options_search">搜索汇率</string>
   <string name="wallet_transactions_fragment_empty_text_received">尚未收到比特币。</string>
   <string name="wallet_transactions_fragment_empty_text_sent">尚未发送比特币。</string>
-  <string name="wallet_transactions_fragment_empty_text_howto">如何获得比特币？\n\n用传统货币进行交易，\n出售商品或服务，或者\n通过劳动赚取。</string>
+  <string name="wallet_transactions_fragment_empty_text_howto">如何获得比特币？\n用传统货币进行交易，\n出售商品或服务，或者\n通过劳动赚取。</string>
   <string name="wallet_transactions_row_warning_backup">恭喜，您收到了第一笔付款！您是否已经 &lt;u&gt;备份了您的钱包&lt;/u&gt;，以避免损失？</string>
   <string name="wallet_transactions_row_warning_storage_encryption">提示: 为增加钱包的安全性, 你可以&lt;u&gt;加密你的设备&lt;/u&gt;. 这同样能保护其他应用的数据.</string>
   <string name="wallet_transactions_fragment_coinbase">挖矿所的</string>
@@ -46,9 +46,8 @@
   <string name="wallet_timeskew_dialog_title">检查日期 &amp; 时间设置</string>
   <string name="wallet_timeskew_dialog_msg">您的设备时间已关闭 %d 分钟。由于这个问题您可能无法发送或接收比特币。\n\n您应检查，如果必须更正您的日期、时间和时区设置。</string>
   <string name="wallet_version_dialog_title">有新的版本可用！</string>
-  <string name="wallet_version_dialog_msg">该版本修复了重要的bug，详情请详见 Google Play 上的更改日志。</string>
+  <string name="wallet_version_dialog_msg">该版本修复了重要的bug，详情请详见 %s 上的更改日志。</string>
   <string name="wallet_version_dialog_msg_deprecated">如果你没有看到更新，这可能意味您的 Android 版本已经不被支持了。</string>
-  <string name="wallet_version_dialog_button_market">Google Play</string>
   <string name="wallet_version_dialog_button_binary">下载</string>
   <string name="wallet_old_sdk_dialog_title">您的 Android 版本已过时</string>
   <string name="wallet_old_sdk_dialog_message">下一个版本的比特币钱包程序很有可能不再支持您当前的设备。这将导致在某些情况下您无法在该设备上支付比特币。\n除非您知道自己在做什么，否则强烈建议您尽快转移您存储在该设备上的比特币。</string>
@@ -153,9 +152,9 @@
   <string name="edit_address_book_entry_dialog_label_label">标签</string>
   <string name="edit_address_book_entry_dialog_button_edit">保存</string>
   <string name="transaction_row_fee">网络费用</string>
+  <string name="transaction_row_confidence_message_sent_unbroadcasted">此项支付尚未传输。</string>
   <string name="transaction_row_message_purpose_key_rotation">该项交易能加强您的钱包安全性，防止被盗。&lt;u&gt;更多信息.&lt;/u&gt;</string>
   <string name="transaction_row_message_purpose_raise_fee">此交易会提高先前付款的网络费用。</string>
-  <string name="transaction_row_message_own_unbroadcasted">此项支付尚未传输。</string>
   <string name="transaction_row_message_received_direct">此项付款已经被直接接收。这存在所获取的比特币可能永远无法使用的风险。</string>
   <string name="transaction_row_message_received_unconfirmed_delayed">此付款的确认被延迟，可能是由于比特币网络的过载。</string>
   <string name="transaction_row_message_received_unconfirmed_unlocked">此项付款所获得的比特币将在几分钟之后可以使用。</string>
@@ -281,10 +280,7 @@
   <string name="about_category_credits">此应用正在使用...</string>
   <string name="about_credits_bitcoinj_title">bitcoinj %s, 一个比特币协议库</string>
   <string name="about_credits_zxing_title">ZXing，一个QR码处理库</string>
-  <string name="about_credits_scrypt_title">Scrypt，由Will Glozer和Colin Percival执行</string>
-  <string name="about_community_googleplus_title">Google+ 社区</string>
-  <string name="about_community_googleplus_summary">有关此应用程序的讨论</string>
-  <string name="about_market_app_title">Google Play 页面</string>
+  <string name="about_market_app_title">%s 页面</string>
   <string name="about_market_app_summary">评价这个应用</string>
   <string name="notification_coins_received_msg">收到了 %s</string>
   <string name="notification_peers_connected_msg">%d 个已连接的peer </string>

@@ -12,22 +12,21 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 package de.schildbach.wallet.ui;
 
-import javax.annotation.Nullable;
-
 import org.bitcoinj.crypto.KeyCrypterException;
 import org.bitcoinj.crypto.KeyCrypterScrypt;
 import org.bitcoinj.wallet.Wallet;
+import org.bouncycastle.crypto.params.KeyParameter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.spongycastle.crypto.params.KeyParameter;
 
 import com.google.common.base.Strings;
 
+import de.schildbach.wallet.Constants;
 import de.schildbach.wallet.R;
 import de.schildbach.wallet.WalletApplication;
 import de.schildbach.wallet.util.WalletUtils;
@@ -42,8 +41,6 @@ import android.os.Bundle;
 import android.os.Handler;
 import android.os.HandlerThread;
 import android.os.Process;
-import android.support.v4.app.DialogFragment;
-import android.support.v4.app.FragmentManager;
 import android.text.Editable;
 import android.text.TextWatcher;
 import android.view.LayoutInflater;
@@ -52,6 +49,11 @@ import android.widget.Button;
 import android.widget.CheckBox;
 import android.widget.EditText;
 import android.widget.TextView;
+import androidx.annotation.Nullable;
+import androidx.core.content.ContextCompat;
+import androidx.fragment.app.DialogFragment;
+import androidx.fragment.app.FragmentManager;
+import androidx.lifecycle.ViewModelProviders;
 
 /**
  * @author Andreas Schildbach
@@ -118,6 +120,7 @@ public class EncryptKeysDialogFragment extends DialogFragment {
     @Override
     public void onCreate(final Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        log.info("opening dialog {}", getClass().getName());
 
         backgroundThread = new HandlerThread("backgroundThread", Process.THREAD_PRIORITY_BACKGROUND);
         backgroundThread.start();
@@ -247,6 +250,7 @@ public class EncryptKeysDialogFragment extends DialogFragment {
                 handler.post(new Runnable() {
                     @Override
                     public void run() {
+                        // Decrypt from old password
                         if (wallet.isEncrypted()) {
                             if (oldKey == null) {
                                 log.info("wallet is encrypted, but did not provide spending password");
@@ -267,6 +271,12 @@ public class EncryptKeysDialogFragment extends DialogFragment {
                             }
                         }
 
+                        // Use opportunity to maybe upgrade wallet
+                        if (wallet.isDeterministicUpgradeRequired(Constants.UPGRADE_OUTPUT_SCRIPT_TYPE)
+                                && !wallet.isEncrypted())
+                            wallet.upgradeToDeterministic(Constants.UPGRADE_OUTPUT_SCRIPT_TYPE, null);
+
+                        // Encrypt to new password
                         if (newKey != null && !wallet.isEncrypted()) {
                             wallet.encrypt(keyCrypter, newKey);
 
@@ -280,6 +290,8 @@ public class EncryptKeysDialogFragment extends DialogFragment {
 
                         if (state == State.DONE) {
                             WalletUtils.autoBackupWallet(activity, wallet);
+                            // trigger load manually because of missing callbacks for encryption state
+                            ViewModelProviders.of(activity).get(WalletActivityViewModel.class).walletEncrypted.load();
                             delayedDismiss();
                         }
                     }
@@ -318,16 +330,16 @@ public class EncryptKeysDialogFragment extends DialogFragment {
         passwordStrengthView.setVisibility(state == State.INPUT && passwordLength > 0 ? View.VISIBLE : View.INVISIBLE);
         if (passwordLength < 4) {
             passwordStrengthView.setText(R.string.encrypt_keys_dialog_password_strength_weak);
-            passwordStrengthView.setTextColor(getResources().getColor(R.color.fg_password_strength_weak));
+            passwordStrengthView.setTextColor(ContextCompat.getColor(activity, R.color.fg_password_strength_weak));
         } else if (passwordLength < 6) {
             passwordStrengthView.setText(R.string.encrypt_keys_dialog_password_strength_fair);
-            passwordStrengthView.setTextColor(getResources().getColor(R.color.fg_password_strength_fair));
+            passwordStrengthView.setTextColor(ContextCompat.getColor(activity, R.color.fg_password_strength_fair));
         } else if (passwordLength < 8) {
             passwordStrengthView.setText(R.string.encrypt_keys_dialog_password_strength_good);
-            passwordStrengthView.setTextColor(getResources().getColor(R.color.fg_less_significant));
+            passwordStrengthView.setTextColor(ContextCompat.getColor(activity, R.color.fg_less_significant));
         } else {
             passwordStrengthView.setText(R.string.encrypt_keys_dialog_password_strength_strong);
-            passwordStrengthView.setTextColor(getResources().getColor(R.color.fg_password_strength_strong));
+            passwordStrengthView.setTextColor(ContextCompat.getColor(activity, R.color.fg_password_strength_strong));
         }
 
         showView.setEnabled(state == State.INPUT);

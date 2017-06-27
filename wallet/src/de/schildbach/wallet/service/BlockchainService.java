@@ -12,7 +12,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 package de.schildbach.wallet.service;
@@ -32,8 +32,6 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
-
-import javax.annotation.Nullable;
 
 import org.bitcoinj.core.Address;
 import org.bitcoinj.core.Block;
@@ -72,9 +70,10 @@ import de.schildbach.wallet.Constants;
 import de.schildbach.wallet.R;
 import de.schildbach.wallet.WalletApplication;
 import de.schildbach.wallet.WalletBalanceWidgetProvider;
-import de.schildbach.wallet.data.AddressBookProvider;
+import de.schildbach.wallet.data.AddressBookDao;
+import de.schildbach.wallet.data.AppDatabase;
 import de.schildbach.wallet.data.ExchangeRate;
-import de.schildbach.wallet.data.ExchangeRateLiveData;
+import de.schildbach.wallet.data.SelectedExchangeRateLiveData;
 import de.schildbach.wallet.data.TimeLiveData;
 import de.schildbach.wallet.data.WalletBalanceLiveData;
 import de.schildbach.wallet.data.WalletLiveData;
@@ -86,9 +85,6 @@ import de.schildbach.wallet.util.WalletUtils;
 import android.app.AlarmManager;
 import android.app.NotificationManager;
 import android.app.PendingIntent;
-import android.arch.lifecycle.LifecycleService;
-import android.arch.lifecycle.LiveData;
-import android.arch.lifecycle.Observer;
 import android.content.BroadcastReceiver;
 import android.content.ComponentCallbacks2;
 import android.content.Context;
@@ -104,9 +100,13 @@ import android.os.Handler;
 import android.os.IBinder;
 import android.os.PowerManager;
 import android.os.PowerManager.WakeLock;
-import android.support.v4.app.NotificationCompat;
-import android.support.v4.content.LocalBroadcastManager;
 import android.text.format.DateUtils;
+import androidx.annotation.Nullable;
+import androidx.core.app.NotificationCompat;
+import androidx.lifecycle.LifecycleService;
+import androidx.lifecycle.LiveData;
+import androidx.lifecycle.Observer;
+import androidx.localbroadcastmanager.content.LocalBroadcastManager;
 
 /**
  * @author Andreas Schildbach
@@ -114,6 +114,7 @@ import android.text.format.DateUtils;
 public class BlockchainService extends LifecycleService {
     private WalletApplication application;
     private Configuration config;
+    private AddressBookDao addressBookDao;
     private WalletLiveData wallet;
 
     private BlockStore blockStore;
@@ -206,7 +207,7 @@ public class BlockchainService extends LifecycleService {
     public static void broadcastTransaction(final Context context, final Transaction tx) {
         final Intent intent = new Intent(BlockchainService.ACTION_BROADCAST_TRANSACTION, null, context,
                 BlockchainService.class);
-        intent.putExtra(BlockchainService.ACTION_BROADCAST_TRANSACTION_HASH, tx.getHash().getBytes());
+        intent.putExtra(BlockchainService.ACTION_BROADCAST_TRANSACTION_HASH, tx.getTxId().getBytes());
         context.startService(intent);
     }
 
@@ -273,8 +274,8 @@ public class BlockchainService extends LifecycleService {
             for (final Address notificationAddress : notificationAddresses) {
                 if (text.length() > 0)
                     text.append(", ");
-                final String addressStr = notificationAddress.toBase58();
-                final String label = AddressBookProvider.resolveLabel(getApplicationContext(), addressStr);
+                final String addressStr = notificationAddress.toString();
+                final String label = addressBookDao.resolveLabel(addressStr);
                 text.append(label != null ? label : addressStr);
             }
             summaryNotification.setContentText(text);
@@ -294,8 +295,8 @@ public class BlockchainService extends LifecycleService {
         childNotification.setTicker(msg);
         childNotification.setContentTitle(msg);
         if (address != null) {
-            final String addressStr = address.toBase58();
-            final String addressLabel = AddressBookProvider.resolveLabel(getApplicationContext(), addressStr);
+            final String addressStr = address.toString();
+            final String addressLabel = addressBookDao.resolveLabel(addressStr);
             if (addressLabel != null)
                 childNotification.setContentText(addressLabel);
             else
@@ -504,6 +505,7 @@ public class BlockchainService extends LifecycleService {
         wakeLock = pm.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, getClass().getName());
         application = (WalletApplication) getApplication();
         config = application.getConfiguration();
+        addressBookDao = AppDatabase.getDatabase(application).addressBookDao();
         blockChainFile = new File(getDir("blockstore", Context.MODE_PRIVATE), Constants.Files.BLOCKCHAIN_FILENAME);
 
         peerConnectivityListener = new PeerConnectivityListener();
@@ -511,7 +513,7 @@ public class BlockchainService extends LifecycleService {
         broadcastPeerState(0);
 
         final WalletBalanceLiveData walletBalance = new WalletBalanceLiveData(application);
-        final ExchangeRateLiveData exchangeRate = new ExchangeRateLiveData(application);
+        final SelectedExchangeRateLiveData exchangeRate = new SelectedExchangeRateLiveData(application);
         walletBalance.observe(this, new Observer<Coin>() {
             @Override
             public void onChanged(final Coin walletBalance) {
@@ -541,7 +543,8 @@ public class BlockchainService extends LifecycleService {
                 }
 
                 try {
-                    blockStore = new SPVBlockStore(Constants.NETWORK_PARAMETERS, blockChainFile);
+                    blockStore = new SPVBlockStore(Constants.NETWORK_PARAMETERS, blockChainFile,
+                            Constants.Files.BLOCKCHAIN_STORE_CAPACITY, true);
                     blockStore.getChainHead(); // detect corruptions as early as possible
 
                     final long earliestKeyCreationTime = wallet.getEarliestKeyCreationTime();
@@ -590,11 +593,10 @@ public class BlockchainService extends LifecycleService {
                 if (amount.isPositive()) {
                     final Address address = WalletUtils.getWalletAddressOfReceived(tx, wallet);
                     final ConfidenceType confidenceType = tx.getConfidence().getConfidenceType();
-                    final Sha256Hash hash = tx.getHash();
                     final boolean replaying = blockChain.getBestChainHeight() < config.getBestChainHeightEver();
                     final boolean isReplayedTx = confidenceType == ConfidenceType.BUILDING && replaying;
                     if (!isReplayedTx)
-                        notifyCoinsReceived(address, amount, hash);
+                        notifyCoinsReceived(address, amount, tx.getTxId());
                 }
             }
         });
@@ -695,8 +697,8 @@ public class BlockchainService extends LifecycleService {
                     CrashReporter.saveBackgroundTrace(new RuntimeException(message), application.packageInfo());
                 }
 
-                log.info("starting peergroup");
                 peerGroup = new PeerGroup(Constants.NETWORK_PARAMETERS, blockChain);
+                log.info("creating {}", peerGroup);
                 peerGroup.setDownloadTxDependencies(0); // recursive implementation causes StackOverflowError
                 peerGroup.addWallet(wallet);
                 peerGroup.setUserAgent(Constants.USER_AGENT, application.packageInfo().versionName);
@@ -755,6 +757,7 @@ public class BlockchainService extends LifecycleService {
                 });
 
                 // start peergroup
+                log.info("starting {} asynchronously", peerGroup);
                 peerGroup.startAsync();
                 peerGroup.startBlockChainDownload(blockchainDownloadListener);
             }
@@ -762,10 +765,10 @@ public class BlockchainService extends LifecycleService {
             private void shutdown() {
                 final Wallet wallet = BlockchainService.this.wallet.getValue();
 
-                log.info("stopping peergroup");
                 peerGroup.removeDisconnectedEventListener(peerConnectivityListener);
                 peerGroup.removeConnectedEventListener(peerConnectivityListener);
                 peerGroup.removeWallet(wallet);
+                log.info("stopping {} asynchronously", peerGroup);
                 peerGroup.stopAsync();
                 peerGroup = null;
 
@@ -802,10 +805,10 @@ public class BlockchainService extends LifecycleService {
                 final Transaction tx = application.getWallet().getTransaction(hash);
 
                 if (peerGroup != null) {
-                    log.info("broadcasting transaction " + tx.getHashAsString());
+                    log.info("broadcasting transaction {}", tx.getTxId());
                     peerGroup.broadcastTransaction(tx);
                 } else {
-                    log.info("peergroup not available, not broadcasting transaction " + tx.getHashAsString());
+                    log.info("peergroup not available, not broadcasting transaction {}", tx.getTxId());
                 }
             }
         } else {
@@ -823,9 +826,8 @@ public class BlockchainService extends LifecycleService {
             peerGroup.removeDisconnectedEventListener(peerConnectivityListener);
             peerGroup.removeConnectedEventListener(peerConnectivityListener);
             peerGroup.removeWallet(wallet.getValue());
-            peerGroup.stop();
-
-            log.info("peergroup stopped");
+            peerGroup.stopAsync();
+            log.info("stopping {} asynchronously", peerGroup);
         }
 
         peerConnectivityListener.stop();

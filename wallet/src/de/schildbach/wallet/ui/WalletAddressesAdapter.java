@@ -12,7 +12,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 package de.schildbach.wallet.ui;
@@ -20,8 +20,7 @@ package de.schildbach.wallet.ui;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
-
-import javax.annotation.Nullable;
+import java.util.Map;
 
 import org.bitcoinj.core.Address;
 import org.bitcoinj.core.ECKey;
@@ -29,50 +28,50 @@ import org.bitcoinj.wallet.Wallet;
 
 import de.schildbach.wallet.Constants;
 import de.schildbach.wallet.R;
-import de.schildbach.wallet.data.AddressBookProvider;
+import de.schildbach.wallet.data.AddressBookEntry;
 import de.schildbach.wallet.util.WalletUtils;
 
 import android.content.Context;
-import android.content.res.Resources;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.BaseAdapter;
 import android.widget.TextView;
+import androidx.annotation.Nullable;
+import androidx.core.content.ContextCompat;
 
 /**
  * @author Andreas Schildbach
  */
 public class WalletAddressesAdapter extends BaseAdapter {
-    private final Context context;
     private final int colorSignificant;
     private final int colorInsignificant;
     private final int colorLessSignificant;
     private final LayoutInflater inflater;
 
-    private final List<ECKey> derivedKeys = new ArrayList<ECKey>();
-    private final List<ECKey> randomKeys = new ArrayList<ECKey>();
+    private final List<Address> derivedAddresses = new ArrayList<>();
+    private final List<Address> randomAddresses = new ArrayList<>();
     @Nullable
     private Wallet wallet = null;
+    @Nullable
+    private Map<String, AddressBookEntry> addressBook = null;
 
     public WalletAddressesAdapter(final Context context) {
-        this.context = context;
-        final Resources res = context.getResources();
-        colorSignificant = res.getColor(R.color.fg_significant);
-        colorInsignificant = res.getColor(R.color.fg_insignificant);
-        colorLessSignificant = res.getColor(R.color.fg_less_significant);
+        colorSignificant = ContextCompat.getColor(context, R.color.fg_significant);
+        colorInsignificant = ContextCompat.getColor(context, R.color.fg_insignificant);
+        colorLessSignificant = ContextCompat.getColor(context, R.color.fg_less_significant);
         inflater = LayoutInflater.from(context);
     }
 
-    public void replaceDerivedKeys(final Collection<ECKey> keys) {
-        this.derivedKeys.clear();
-        this.derivedKeys.addAll(keys);
+    public void replaceDerivedAddresses(final Collection<Address> addresses) {
+        this.derivedAddresses.clear();
+        this.derivedAddresses.addAll(addresses);
         notifyDataSetChanged();
     }
 
-    public void replaceRandomKeys(final Collection<ECKey> keys) {
-        this.randomKeys.clear();
-        this.randomKeys.addAll(keys);
+    public void replaceRandomAddresses(final Collection<Address> addresses) {
+        this.randomAddresses.clear();
+        this.randomAddresses.addAll(addresses);
         notifyDataSetChanged();
     }
 
@@ -81,23 +80,28 @@ public class WalletAddressesAdapter extends BaseAdapter {
         notifyDataSetChanged();
     }
 
+    public void setAddressBook(final Map<String, AddressBookEntry> addressBook) {
+        this.addressBook = addressBook;
+        notifyDataSetChanged();
+    }
+
     @Override
     public int getCount() {
-        int count = derivedKeys.size();
-        if (!randomKeys.isEmpty())
-            count += randomKeys.size() + 1;
+        int count = derivedAddresses.size();
+        if (!randomAddresses.isEmpty())
+            count += randomAddresses.size() + 1;
         return count;
     }
 
     @Override
     public Object getItem(final int position) {
-        final int numDerivedKeys = derivedKeys.size();
-        if (position < numDerivedKeys)
-            return derivedKeys.get(position);
-        else if (position == numDerivedKeys)
+        final int numDerived = derivedAddresses.size();
+        if (position < numDerived)
+            return derivedAddresses.get(position);
+        else if (position == numDerived)
             return null;
         else
-            return randomKeys.get(position - numDerivedKeys - 1);
+            return randomAddresses.get(position - numDerived - 1);
     }
 
     @Override
@@ -113,10 +117,10 @@ public class WalletAddressesAdapter extends BaseAdapter {
 
     @Override
     public int getItemViewType(final int position) {
-        final int numDerivedKeys = derivedKeys.size();
-        if (position < numDerivedKeys)
+        final int numDerived = derivedAddresses.size();
+        if (position < numDerived)
             return 0;
-        else if (position == numDerivedKeys)
+        else if (position == numDerived)
             return 1;
         else
             return 0;
@@ -136,10 +140,15 @@ public class WalletAddressesAdapter extends BaseAdapter {
     }
 
     private View rowKey(final int position, View row) {
-        final ECKey key = (ECKey) getItem(position);
-        final Address address = key.toAddress(Constants.NETWORK_PARAMETERS);
+        final Address address = (Address) getItem(position);
         final Wallet wallet = this.wallet;
-        final boolean isRotateKey = wallet != null && wallet.isKeyRotating(key);
+        final boolean isRotateKey;
+        if (wallet != null) {
+            final ECKey key = wallet.findKeyFromAddress(address);
+            isRotateKey = wallet != null && wallet.isKeyRotating(key);
+        } else {
+            isRotateKey = false;
+        }
 
         if (row == null)
             row = inflater.inflate(R.layout.address_book_row, null);
@@ -150,10 +159,16 @@ public class WalletAddressesAdapter extends BaseAdapter {
         addressView.setTextColor(isRotateKey ? colorInsignificant : colorSignificant);
 
         final TextView labelView = (TextView) row.findViewById(R.id.address_book_row_label);
-        final String label = AddressBookProvider.resolveLabel(context, address.toBase58());
-        if (label != null) {
-            labelView.setText(label);
-            labelView.setTextColor(isRotateKey ? colorInsignificant : colorLessSignificant);
+        final Map<String, AddressBookEntry> addressBook = this.addressBook;
+        if (addressBook != null) {
+            final AddressBookEntry entry = addressBook.get(address.toString());
+            if (entry != null) {
+                labelView.setText(entry.getLabel());
+                labelView.setTextColor(isRotateKey ? colorInsignificant : colorLessSignificant);
+            } else {
+                labelView.setText(R.string.address_unlabeled);
+                labelView.setTextColor(colorInsignificant);
+            }
         } else {
             labelView.setText(R.string.address_unlabeled);
             labelView.setTextColor(colorInsignificant);

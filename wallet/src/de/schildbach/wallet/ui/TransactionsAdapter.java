@@ -12,7 +12,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 package de.schildbach.wallet.ui;
@@ -23,8 +23,6 @@ import java.util.EnumSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-
-import javax.annotation.Nullable;
 
 import org.bitcoinj.core.Address;
 import org.bitcoinj.core.Coin;
@@ -41,21 +39,15 @@ import org.bitcoinj.wallet.Wallet;
 
 import de.schildbach.wallet.Constants;
 import de.schildbach.wallet.R;
+import de.schildbach.wallet.data.AddressBookEntry;
 import de.schildbach.wallet.ui.TransactionsAdapter.ListItem.TransactionItem;
 import de.schildbach.wallet.ui.TransactionsAdapter.ListItem.WarningItem;
 import de.schildbach.wallet.util.Formats;
 import de.schildbach.wallet.util.WalletUtils;
 
 import android.content.Context;
-import android.content.res.Resources;
 import android.graphics.Color;
 import android.graphics.Typeface;
-import android.support.v7.recyclerview.extensions.ListAdapter;
-import android.support.v7.util.DiffUtil;
-import android.support.v7.widget.CardView;
-import android.support.v7.widget.DefaultItemAnimator;
-import android.support.v7.widget.RecyclerView;
-import android.support.v7.widget.RecyclerView.ViewHolder;
 import android.text.Html;
 import android.text.Spanned;
 import android.text.SpannedString;
@@ -65,21 +57,30 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ImageButton;
 import android.widget.TextView;
+import androidx.annotation.Nullable;
+import androidx.cardview.widget.CardView;
+import androidx.core.content.ContextCompat;
+import androidx.recyclerview.widget.DefaultItemAnimator;
+import androidx.recyclerview.widget.DiffUtil;
+import androidx.recyclerview.widget.ListAdapter;
+import androidx.recyclerview.widget.RecyclerView;
+import androidx.recyclerview.widget.RecyclerView.ViewHolder;
 
 /**
  * @author Andreas Schildbach
  */
 public class TransactionsAdapter extends ListAdapter<TransactionsAdapter.ListItem, RecyclerView.ViewHolder> {
     public static List<ListItem> buildListItems(final Context context, final List<Transaction> transactions,
-            final WarningType warning, final @Nullable Wallet wallet, final @Nullable Map<String, String> addressBook,
-            final MonetaryFormat format, final int maxConnectedPeers, final @Nullable Sha256Hash selectedTransaction) {
+            final WarningType warning, final @Nullable Wallet wallet,
+            final @Nullable Map<String, AddressBookEntry> addressBook, final MonetaryFormat format,
+            final int maxConnectedPeers, final @Nullable Sha256Hash selectedTransaction) {
         final MonetaryFormat noCodeFormat = format.noCode();
         final List<ListItem> items = new ArrayList<>(transactions.size() + 1);
         if (warning != null)
             items.add(new ListItem.WarningItem(warning));
         for (final Transaction tx : transactions)
             items.add(new ListItem.TransactionItem(context, tx, wallet, addressBook, noCodeFormat, maxConnectedPeers,
-                    tx.getHash().equals(selectedTransaction)));
+                    tx.getTxId().equals(selectedTransaction)));
         return items;
     }
 
@@ -92,6 +93,8 @@ public class TransactionsAdapter extends ListAdapter<TransactionsAdapter.ListIte
             @Nullable
             public final String confidenceTextual;
             public final int confidenceTextualColor;
+            @Nullable
+            public final Spanned confidenceMessage;
             public final CharSequence time;
             public final int timeColor;
             @Nullable
@@ -118,18 +121,17 @@ public class TransactionsAdapter extends ListAdapter<TransactionsAdapter.ListIte
             public final boolean isSelected;
 
             public TransactionItem(final Context context, final Transaction tx, final @Nullable Wallet wallet,
-                    final @Nullable Map<String, String> addressBook, final MonetaryFormat format,
+                    final @Nullable Map<String, AddressBookEntry> addressBook, final MonetaryFormat format,
                     final int maxConnectedPeers, final boolean isSelected) {
-                this.transactionHash = tx.getHash();
+                this.transactionHash = tx.getTxId();
                 this.isSelected = isSelected;
 
-                final Resources res = context.getResources();
-                final int colorSignificant = res.getColor(R.color.fg_significant);
-                final int colorLessSignificant = res.getColor(R.color.fg_less_significant);
-                final int colorInsignificant = res.getColor(R.color.fg_insignificant);
-                final int colorValuePositve = res.getColor(R.color.fg_value_positive);
-                final int colorValueNegative = res.getColor(R.color.fg_value_negative);
-                final int colorError = res.getColor(R.color.fg_error);
+                final int colorSignificant = ContextCompat.getColor(context, R.color.fg_significant);
+                final int colorLessSignificant = ContextCompat.getColor(context, R.color.fg_less_significant);
+                final int colorInsignificant = ContextCompat.getColor(context, R.color.fg_insignificant);
+                final int colorValuePositve = ContextCompat.getColor(context, R.color.fg_value_positive);
+                final int colorValueNegative = ContextCompat.getColor(context, R.color.fg_value_negative);
+                final int colorError = ContextCompat.getColor(context, R.color.fg_error);
 
                 final Coin value = tx.getValue(wallet);
                 final boolean sent = value.signum() < 0;
@@ -165,6 +167,10 @@ public class TransactionsAdapter extends ListAdapter<TransactionsAdapter.ListIte
                     this.confidenceCircularStrokeColor = Color.TRANSPARENT;
                     this.confidenceTextual = null;
                     this.confidenceTextualColor = 0;
+                    this.confidenceMessage = sent && confidence.numBroadcastPeers() == 0
+                            ? SpannedString.valueOf(
+                                    context.getString(R.string.transaction_row_confidence_message_sent_unbroadcasted))
+                            : null;
                 } else if (confidenceType == ConfidenceType.IN_CONFLICT) {
                     this.confidenceTextual = CONFIDENCE_SYMBOL_IN_CONFLICT;
                     this.confidenceTextualColor = colorError;
@@ -174,6 +180,7 @@ public class TransactionsAdapter extends ListAdapter<TransactionsAdapter.ListIte
                     this.confidenceCircularSize = 0;
                     this.confidenceCircularFillColor = 0;
                     this.confidenceCircularStrokeColor = 0;
+                    this.confidenceMessage = null;
                 } else if (confidenceType == ConfidenceType.BUILDING) {
                     this.confidenceCircularMaxProgress = tx.isCoinBase()
                             ? Constants.NETWORK_PARAMETERS.getSpendableCoinbaseDepth()
@@ -186,6 +193,10 @@ public class TransactionsAdapter extends ListAdapter<TransactionsAdapter.ListIte
                     this.confidenceCircularStrokeColor = Color.TRANSPARENT;
                     this.confidenceTextual = null;
                     this.confidenceTextualColor = 0;
+                    this.confidenceMessage = isSelected ? SpannedString.valueOf(
+                            context.getString(sent ? R.string.transaction_row_confidence_message_sent_successful
+                                    : R.string.transaction_row_confidence_message_received_successful))
+                            : null;
                 } else if (confidenceType == ConfidenceType.DEAD) {
                     this.confidenceTextual = CONFIDENCE_SYMBOL_DEAD;
                     this.confidenceTextualColor = colorError;
@@ -195,6 +206,9 @@ public class TransactionsAdapter extends ListAdapter<TransactionsAdapter.ListIte
                     this.confidenceCircularSize = 0;
                     this.confidenceCircularFillColor = 0;
                     this.confidenceCircularStrokeColor = 0;
+                    this.confidenceMessage = SpannedString
+                            .valueOf(context.getString(sent ? R.string.transaction_row_confidence_message_sent_failed
+                                    : R.string.transaction_row_confidence_message_received_failed));
                 } else {
                     this.confidenceTextual = CONFIDENCE_SYMBOL_UNKNOWN;
                     this.confidenceTextualColor = colorInsignificant;
@@ -204,6 +218,7 @@ public class TransactionsAdapter extends ListAdapter<TransactionsAdapter.ListIte
                     this.confidenceCircularSize = 0;
                     this.confidenceCircularFillColor = 0;
                     this.confidenceCircularStrokeColor = 0;
+                    this.confidenceMessage = null;
                 }
 
                 // time
@@ -217,8 +232,16 @@ public class TransactionsAdapter extends ListAdapter<TransactionsAdapter.ListIte
                 // address
                 final Address address = sent ? WalletUtils.getToAddressOfSent(tx, wallet)
                         : WalletUtils.getWalletAddressOfReceived(tx, wallet);
-                final String addressLabel = addressBook != null && address != null ? addressBook.get(address.toString())
-                        : null;
+                final String addressLabel;
+                if (addressBook == null || address == null) {
+                    addressLabel = null;
+                } else {
+                    final AddressBookEntry entry = addressBook.get(address.toString());
+                    if (entry != null)
+                        addressLabel = entry.getLabel();
+                    else
+                        addressLabel = null;
+                }
                 if (tx.isCoinBase()) {
                     this.address = SpannedString
                             .valueOf(context.getString(R.string.wallet_transactions_fragment_coinbase));
@@ -294,11 +317,6 @@ public class TransactionsAdapter extends ListAdapter<TransactionsAdapter.ListIte
                 } else if (purpose == Purpose.RAISE_FEE) {
                     this.message = SpannedString
                             .valueOf(context.getString(R.string.transaction_row_message_purpose_raise_fee));
-                    this.messageColor = colorInsignificant;
-                    this.messageSingleLine = false;
-                } else if (isOwn && confidenceType == ConfidenceType.PENDING && confidence.numBroadcastPeers() == 0) {
-                    this.message = SpannedString
-                            .valueOf(context.getString(R.string.transaction_row_message_own_unbroadcasted));
                     this.messageColor = colorInsignificant;
                     this.messageSingleLine = false;
                 } else if (!isOwn && confidenceType == ConfidenceType.PENDING && confidence.numBroadcastPeers() == 0) {
@@ -430,6 +448,8 @@ public class TransactionsAdapter extends ListAdapter<TransactionsAdapter.ListIte
                     if (!Objects.equals(oldTransactionItem.confidenceTextualColor,
                             newTransactionItem.confidenceTextualColor))
                         return false;
+                    if (!Objects.equals(oldTransactionItem.confidenceMessage, newTransactionItem.confidenceMessage))
+                        return false;
                     if (!Objects.equals(oldTransactionItem.time, newTransactionItem.time))
                         return false;
                     if (!Objects.equals(oldTransactionItem.timeColor, newTransactionItem.timeColor))
@@ -499,7 +519,9 @@ public class TransactionsAdapter extends ListAdapter<TransactionsAdapter.ListIte
                             && Objects.equals(oldTransactionItem.confidenceTextual,
                                     newTransactionItem.confidenceTextual)
                             && Objects.equals(oldTransactionItem.confidenceTextualColor,
-                                    newTransactionItem.confidenceTextualColor)))
+                                    newTransactionItem.confidenceTextualColor)
+                            && Objects.equals(oldTransactionItem.confidenceMessage,
+                                    newTransactionItem.confidenceMessage)))
                         changes.add(ChangeType.CONFIDENCE);
                     if (!(Objects.equals(oldTransactionItem.time, newTransactionItem.time)
                             && Objects.equals(oldTransactionItem.timeColor, newTransactionItem.timeColor)))
@@ -693,6 +715,8 @@ public class TransactionsAdapter extends ListAdapter<TransactionsAdapter.ListIte
         private final View extendAddressView;
         private final CircularProgressView confidenceCircularNormalView, confidenceCircularSelectedView;
         private final TextView confidenceTextualNormalView, confidenceTextualSelectedView;
+        private final View extendConfidenceMessageNormalView, extendConfidenceMessageSelectedView;
+        private final TextView confidenceMessageNormalView, confidenceMessageSelectedView;
         private final TextView timeView;
         private final TextView addressView;
         private final CurrencyTextView valueView;
@@ -705,9 +729,9 @@ public class TransactionsAdapter extends ListAdapter<TransactionsAdapter.ListIte
 
         public TransactionViewHolder(final View itemView) {
             super(itemView);
-            final Resources res = itemView.getResources();
-            this.colorBackground = res.getColor(R.color.bg_bright);
-            this.colorBackgroundSelected = res.getColor(R.color.bg_panel);
+            final Context context = itemView.getContext();
+            this.colorBackground = ContextCompat.getColor(context, R.color.bg_bright);
+            this.colorBackgroundSelected = ContextCompat.getColor(context, R.color.bg_panel);
 
             this.extendTimeView = itemView.findViewById(R.id.transaction_row_extend_time);
             this.fullTimeView = (TextView) itemView.findViewById(R.id.transaction_row_full_time);
@@ -720,6 +744,14 @@ public class TransactionsAdapter extends ListAdapter<TransactionsAdapter.ListIte
                     .findViewById(R.id.transaction_row_confidence_textual);
             this.confidenceTextualSelectedView = (TextView) itemView
                     .findViewById(R.id.transaction_row_confidence_textual_selected);
+            this.extendConfidenceMessageNormalView = itemView
+                    .findViewById(R.id.transaction_row_extend_confidence_message);
+            this.extendConfidenceMessageSelectedView = itemView
+                    .findViewById(R.id.transaction_row_extend_confidence_message_selected);
+            this.confidenceMessageNormalView = (TextView) itemView
+                    .findViewById(R.id.transaction_row_confidence_message);
+            this.confidenceMessageSelectedView = (TextView) itemView
+                    .findViewById(R.id.transaction_row_confidence_message_selected);
             this.timeView = (TextView) itemView.findViewById(R.id.transaction_row_time);
             this.addressView = (TextView) itemView.findViewById(R.id.transaction_row_address);
             this.valueView = (CurrencyTextView) itemView.findViewById(R.id.transaction_row_value);
@@ -761,6 +793,12 @@ public class TransactionsAdapter extends ListAdapter<TransactionsAdapter.ListIte
             confidenceTextualView.setVisibility(item.confidenceTextual != null ? View.VISIBLE : View.GONE);
             confidenceTextualView.setText(item.confidenceTextual);
             confidenceTextualView.setTextColor(item.confidenceTextualColor);
+            extendConfidenceMessageSelectedView
+                    .setVisibility(item.isSelected && item.confidenceMessage != null ? View.VISIBLE : View.GONE);
+            extendConfidenceMessageNormalView
+                    .setVisibility(!item.isSelected && item.confidenceMessage != null ? View.VISIBLE : View.GONE);
+            (item.isSelected ? confidenceMessageSelectedView : confidenceMessageNormalView)
+                    .setText(item.confidenceMessage);
         }
 
         private void bindTime(final TransactionItem item) {
@@ -783,7 +821,7 @@ public class TransactionsAdapter extends ListAdapter<TransactionsAdapter.ListIte
             extendFeeView.setVisibility(item.fee != null ? View.VISIBLE : View.GONE);
             feeView.setAlwaysSigned(true);
             feeView.setFormat(item.feeFormat);
-            feeView.setAmount(item.fee != null ? item.fee.negate() : null);
+            feeView.setAmount(item.fee != null ? item.fee : null);
         }
 
         private void bindValue(final TransactionItem item) {

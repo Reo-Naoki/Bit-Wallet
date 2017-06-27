@@ -12,14 +12,14 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 package de.schildbach.wallet.data;
 
-import android.arch.lifecycle.LiveData;
 import android.os.Handler;
-import android.support.annotation.MainThread;
+import androidx.annotation.MainThread;
+import androidx.lifecycle.LiveData;
 
 /**
  * @author Andreas Schildbach

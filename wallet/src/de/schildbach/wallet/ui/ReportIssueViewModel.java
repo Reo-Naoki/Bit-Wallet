@@ -12,7 +12,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 package de.schildbach.wallet.ui;
@@ -21,7 +21,7 @@ import de.schildbach.wallet.WalletApplication;
 import de.schildbach.wallet.data.WalletLiveData;
 
 import android.app.Application;
-import android.arch.lifecycle.AndroidViewModel;
+import androidx.lifecycle.AndroidViewModel;
 
 /**
  * @author Andreas Schildbach

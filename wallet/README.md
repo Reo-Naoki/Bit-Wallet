@@ -53,21 +53,16 @@ is world readable/writeable. The goal is to be able to debug easily.
 
 You can probably skip some steps, especially if you built Android apps before.
 
-You'll need git, a Java SDK 6 (or later) and Gradle 2.10 (or later) for this. I'll assume Ubuntu Xenial Linux
-for the package installs, which comes with slightly more recent versions.
+You'll need git, a Java 7 SDK (or later) and Gradle 4.4 (or later) for this. I'll assume Ubuntu 18.04 LTS (Bionic Beaver)
+for the package installs, which comes with OpenJDK 8 and Gradle 4.4.1 out of the box.
 
     # first time only
-    sudo apt install git gradle openjdk-8-jdk libstdc++6:i386 zlib1g:i386
+    sudo apt install git gradle openjdk-8-jdk
+
+Create a directory for the Android SDK (e.g. `android-sdk`) and point the `ANDROID_HOME` variable to it.
 
 Download the [Android SDK Tools](https://developer.android.com/studio/index.html#command-tools)
-and unpack to your workspace directory. Point your `ANDROID_HOME` variable to the unpacked Android SDK directory
-and switch to it.
-
-Download and install the required Android dependencies:
-
-    tools/android update sdk --no-ui --force --all --filter tool,platform-tool,build-tools-27.0.3,android-15,android-27
-
-Download the [Android NDK](https://developer.android.com/ndk/downloads/), then unpack it to your workspace directory. Point your `ANDROID_NDK_HOME` variable to the unpacked Android NDK directory.
+and unpack it to `$ANDROID_HOME/`.
 
 Finally, you can build Bitcoin Wallet and sign it with your development key. Again in your workspace,
 use:
@@ -78,15 +73,12 @@ use:
     # each time
     cd bitcoin-wallet
     git pull
-    gradle clean :native-scrypt:copy test build
+    gradle clean test build
 
 To install the app on your Android device, use:
 
-    # first time only
-    sudo apt install android-tools-adb
-
     # each time
-    adb install wallet/build/outputs/apk/bitcoin-wallet-debug.apk
+    gradle installDebug
 
 If installation fails, make sure "Developer options" and "USB debugging" are enabled on your Android device, and an ADB
 connection is established.
@@ -106,7 +98,7 @@ separate 'prod' branch that gets rebased against master with each released versi
     cd bitcoin-wallet
     git fetch origin
     git checkout origin/prod
-    gradle clean :native-scrypt:copy test build
+    gradle clean test build
 
 
 ### SETTING UP FOR DEVELOPMENT
@@ -177,8 +169,8 @@ Bitcoin Wallet reads this feed from "BitcoinAverage" for getting exchange rates:
 
     https://apiv2.bitcoinaverage.com/indices/global/ticker/short?crypto=BTC
 
-We chose this feed because it is not dependent on a single exchange. However, you should keep in
-mind it's always a 24h average. This feature can be disabled with the compile-time flag
+We chose this feed because it is not dependent on a single exchange. This feature can be disabled
+with the compile-time flag
 
     Constants.ENABLE_EXCHANGE_RATES
 

@@ -12,7 +12,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 package de.schildbach.wallet.service;
@@ -38,8 +38,8 @@ import android.app.PendingIntent;
 import android.content.Context;
 import android.content.Intent;
 import android.os.Build;
-import android.support.v4.app.NotificationCompat;
-import android.support.v4.content.ContextCompat;
+import androidx.core.app.NotificationCompat;
+import androidx.core.content.ContextCompat;
 
 /**
  * This service is responsible for showing a notification if the user hasn't used the app for a longer time.
@@ -109,7 +109,8 @@ public final class InactivityNotificationService extends IntentService {
             log.info("detected balance, showing inactivity notification");
 
             final Coin availableBalance = wallet.getBalance(BalanceType.AVAILABLE_SPENDABLE);
-            final boolean canDonate = Constants.DONATION_ADDRESS != null && availableBalance.isPositive();
+            final boolean canDonate = Constants.DONATION_ADDRESS != null
+                    && !availableBalance.isLessThan(Constants.SOME_BALANCE_THRESHOLD);
 
             final MonetaryFormat btcFormat = config.getFormat();
             final String title = getString(R.string.notification_inactivity_title);

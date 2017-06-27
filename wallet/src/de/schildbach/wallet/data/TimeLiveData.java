@@ -12,7 +12,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 package de.schildbach.wallet.data;
@@ -21,11 +21,11 @@ import java.util.Date;
 
 import de.schildbach.wallet.WalletApplication;
 
-import android.arch.lifecycle.LiveData;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
+import androidx.lifecycle.LiveData;
 
 /**
  * @author Andreas Schildbach

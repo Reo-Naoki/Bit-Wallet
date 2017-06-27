@@ -1,4 +1,133 @@
-v6.20
+v7.15
+
+* Handle edge case when restoring via an external app.
+* Reduce Scrypt iterations for non-64-bit devices.
+* Update translations from Transifex.
+
+v7.14
+
+* Remove native code from app.
+* Update translations from Transifex.
+* Based on bitcoinj 0.15.3.
+
+v7.13
+
+* Add confidence messages, helping users to understand the confidence state of their payments.
+
+v7.11-v7.12
+
+* Various small bugfixes.
+
+v7.10
+
+* Segregated Witness - Phase IV: Existing wallets with spending PIN can be upgraded by changing or removing the PIN.
+
+v7.09
+
+* Based on bitcoinj 0.15.2.
+
+v7.08
+
+* Fix issue with sweeping paper wallets.
+
+v7.07
+
+* Segregated Witness - Phase III: Existing wallets without spending PIN are upgraded to use native segwit (Bech32) addresses.
+
+v7.06
+
+* Make more room for transactions list by scrolling away the balance panel.
+* Various design changes.
+
+v7.05
+
+* Various small bugfixes.
+
+v7.04
+
+* Fix issue with sweeping paper wallets.
+
+v7.03
+
+* Double the capacity of the block store.
+
+v7.02
+
+* Segregated Witness - Phase II: Receive to and spend from native segwit (Bech32) addresses.
+* Option to request coins to a legacy address (in case a sender doesn't support Bech32).
+
+v7.0-v7.01
+
+* Segregated Witness - Phase I: Send to native segwit (Bech32) addresses.
+* The app now requires Android 5.0 (Lollipop) or higher.
+* Based on bitcoinj 0.15.
+
+v6.41
+
+* Use the Unicode Bitcoin symbol if available.
+* Backup verification, just to be safe.
+* Update translations from Transifex.
+
+v6.40
+
+* Fix transaction fee is shown as a positive amount in the history.
+
+v6.39
+
+* Update the API used for sweeping paper wallets.
+
+v6.38
+
+* Update translations from Transifex.
+
+v6.36-v6.37
+
+* Remove ability to restore backups from list of base58-encoded private keys.
+
+v6.35
+
+* Fix crashes when opening dialogs at the wrong time.
+
+v6.34
+
+* Migrate support libraries and architecture components to AndroidX.
+* Add another backup reminder.
+
+v6.33
+
+* Fix rarely occurring crash when backing up the wallet.
+
+v6.32
+
+* Remove link to Google+ community.
+* Update link to direct APK download.
+
+v6.31
+
+* For Android 9.0 (Pie) and above, the FOREGROUND_SERVICE permission is now being requested.
+* Adds a network security configuration.
+
+v6.29-v6.30
+
+* The app now builds reproducible.
+
+v6.27-v6.28
+
+* Use the Room Persistence Library for access to the address book database.
+
+v6.25-v6.26
+
+* Update translations from Transifex.
+
+v6.24
+
+* Use live exchange rates, rather than 24h-averages.
+
+v6.23
+
+* Update build to Gradle 3.3+ and Android Plugin for Gradle 2.3.3.
+
+v6.20-v6.22
 
 * Bugfixes.
 

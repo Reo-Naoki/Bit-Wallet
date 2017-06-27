@@ -12,7 +12,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 package de.schildbach.wallet.data;
@@ -26,6 +26,7 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
 import java.nio.charset.StandardCharsets;
+import java.util.Arrays;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
@@ -36,17 +37,18 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.google.common.base.Stopwatch;
+import com.google.common.io.ByteStreams;
 
 import de.schildbach.wallet.Constants;
 import de.schildbach.wallet.WalletApplication;
 import de.schildbach.wallet.ui.send.FeeCategory;
-import de.schildbach.wallet.util.Io;
 
-import android.arch.lifecycle.LiveData;
 import android.content.pm.PackageInfo;
 import android.content.res.AssetManager;
 import android.os.AsyncTask;
+import androidx.lifecycle.LiveData;
 import okhttp3.Call;
+import okhttp3.ConnectionSpec;
 import okhttp3.HttpUrl;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
@@ -171,6 +173,7 @@ public class DynamicFeeLiveData extends LiveData<Map<FeeCategory, Coin>> {
             request.header("If-Modified-Since", HttpDate.format(new Date(targetFile.lastModified())));
 
         final OkHttpClient.Builder httpClientBuilder = Constants.HTTP_CLIENT.newBuilder();
+        httpClientBuilder.connectionSpecs(Arrays.asList(ConnectionSpec.RESTRICTED_TLS));
         httpClientBuilder.connectTimeout(5, TimeUnit.SECONDS);
         httpClientBuilder.writeTimeout(5, TimeUnit.SECONDS);
         httpClientBuilder.readTimeout(5, TimeUnit.SECONDS);
@@ -184,7 +187,7 @@ public class DynamicFeeLiveData extends LiveData<Map<FeeCategory, Coin>> {
             } else if (status == HttpURLConnection.HTTP_OK) {
                 final ResponseBody body = response.body();
                 final FileOutputStream os = new FileOutputStream(tempFile);
-                Io.copy(body.byteStream(), os);
+                ByteStreams.copy(body.byteStream(), os);
                 os.close();
                 final Date lastModified = response.headers().getDate("Last-Modified");
                 if (lastModified != null)

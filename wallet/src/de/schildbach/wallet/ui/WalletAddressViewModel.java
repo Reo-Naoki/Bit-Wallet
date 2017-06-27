@@ -12,7 +12,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 package de.schildbach.wallet.ui;
@@ -35,12 +35,13 @@ import de.schildbach.wallet.data.ConfigOwnNameLiveData;
 import de.schildbach.wallet.util.Qr;
 
 import android.app.Application;
-import android.arch.lifecycle.AndroidViewModel;
-import android.arch.lifecycle.MediatorLiveData;
-import android.arch.lifecycle.Observer;
 import android.graphics.Bitmap;
 import android.net.Uri;
 import android.os.AsyncTask;
+import androidx.lifecycle.AndroidViewModel;
+import androidx.lifecycle.MediatorLiveData;
+import androidx.lifecycle.MutableLiveData;
+import androidx.lifecycle.Observer;
 
 /**
  * @author Andreas Schildbach
@@ -51,6 +52,7 @@ public class WalletAddressViewModel extends AndroidViewModel {
     public final ConfigOwnNameLiveData ownName;
     public final MediatorLiveData<Bitmap> qrCode = new MediatorLiveData<>();
     public final MediatorLiveData<Uri> bitcoinUri = new MediatorLiveData<>();
+    public final MutableLiveData<Event<Void>> showWalletAddressDialog = new MutableLiveData<>();
 
     public WalletAddressViewModel(final Application application) {
         super(application);

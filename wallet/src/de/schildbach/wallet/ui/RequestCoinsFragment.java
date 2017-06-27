@@ -12,15 +12,14 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 package de.schildbach.wallet.ui;
 
-import javax.annotation.Nullable;
-
 import org.bitcoinj.core.Address;
 import org.bitcoinj.protocols.payments.PaymentProtocol;
+import org.bitcoinj.script.Script;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -36,8 +35,6 @@ import de.schildbach.wallet.util.Nfc;
 import de.schildbach.wallet.util.Toast;
 
 import android.app.Activity;
-import android.arch.lifecycle.Observer;
-import android.arch.lifecycle.ViewModelProviders;
 import android.bluetooth.BluetoothAdapter;
 import android.content.ActivityNotFoundException;
 import android.content.ClipData;
@@ -54,9 +51,6 @@ import android.nfc.NdefMessage;
 import android.nfc.NdefRecord;
 import android.nfc.NfcAdapter;
 import android.os.Bundle;
-import android.support.v4.app.Fragment;
-import android.support.v4.app.ShareCompat;
-import android.support.v7.widget.CardView;
 import android.text.SpannableStringBuilder;
 import android.view.LayoutInflater;
 import android.view.Menu;
@@ -70,6 +64,12 @@ import android.widget.CompoundButton;
 import android.widget.CompoundButton.OnCheckedChangeListener;
 import android.widget.ImageView;
 import android.widget.TextView;
+import androidx.annotation.Nullable;
+import androidx.cardview.widget.CardView;
+import androidx.core.app.ShareCompat;
+import androidx.fragment.app.Fragment;
+import androidx.lifecycle.Observer;
+import androidx.lifecycle.ViewModelProviders;
 
 /**
  * @author Andreas Schildbach
@@ -114,6 +114,10 @@ public final class RequestCoinsFragment extends Fragment {
         setHasOptionsMenu(true);
 
         viewModel = ViewModelProviders.of(this).get(RequestCoinsViewModel.class);
+        final Intent intent = activity.getIntent();
+        if (intent.hasExtra(RequestCoinsActivity.INTENT_EXTRA_OUTPUT_SCRIPT_TYPE))
+            viewModel.freshReceiveAddress.overrideOutputScriptType((Script.ScriptType) intent
+                    .getSerializableExtra(RequestCoinsActivity.INTENT_EXTRA_OUTPUT_SCRIPT_TYPE));
         viewModel.freshReceiveAddress.observe(this, new Observer<Address>() {
             @Override
             public void onChanged(final Address address) {
@@ -129,7 +133,7 @@ public final class RequestCoinsFragment extends Fragment {
                 qrCardView.setOnClickListener(new OnClickListener() {
                     @Override
                     public void onClick(final View v) {
-                        BitmapFragment.show(getFragmentManager(), viewModel.qrCode.getValue());
+                        viewModel.showBitmapDialog.setValue(new Event<>(viewModel.qrCode.getValue()));
                     }
                 });
             }
@@ -161,6 +165,12 @@ public final class RequestCoinsFragment extends Fragment {
                 }
             });
         }
+        viewModel.showBitmapDialog.observe(this, new Event.Observer<Bitmap>() {
+            @Override
+            public void onEvent(final Bitmap bitmap) {
+                BitmapFragment.show(getFragmentManager(), bitmap);
+            }
+        });
 
         if (savedInstanceState != null) {
             restoreInstanceState(savedInstanceState);
@@ -277,7 +287,7 @@ public final class RequestCoinsFragment extends Fragment {
 
     private void restoreInstanceState(final Bundle savedInstanceState) {
         if (savedInstanceState.containsKey(KEY_RECEIVE_ADDRESS))
-            viewModel.freshReceiveAddress.setValue(Address.fromBase58(Constants.NETWORK_PARAMETERS,
+            viewModel.freshReceiveAddress.setValue(Address.fromString(Constants.NETWORK_PARAMETERS,
                     savedInstanceState.getString(KEY_RECEIVE_ADDRESS)));
     }
 

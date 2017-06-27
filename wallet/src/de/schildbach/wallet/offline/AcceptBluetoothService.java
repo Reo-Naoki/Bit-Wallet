@@ -12,12 +12,12 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 package de.schildbach.wallet.offline;
 
-import static android.support.v4.util.Preconditions.checkNotNull;
+import static androidx.core.util.Preconditions.checkNotNull;
 
 import java.io.IOException;
 
@@ -34,8 +34,6 @@ import de.schildbach.wallet.service.BlockchainService;
 import de.schildbach.wallet.util.CrashReporter;
 import de.schildbach.wallet.util.Toast;
 
-import android.arch.lifecycle.LifecycleService;
-import android.arch.lifecycle.Observer;
 import android.bluetooth.BluetoothAdapter;
 import android.content.BroadcastReceiver;
 import android.content.Context;
@@ -46,6 +44,8 @@ import android.os.IBinder;
 import android.os.PowerManager;
 import android.os.PowerManager.WakeLock;
 import android.text.format.DateUtils;
+import androidx.lifecycle.LifecycleService;
+import androidx.lifecycle.Observer;
 
 /**
  * @author Andreas Schildbach
@@ -126,7 +126,7 @@ public final class AcceptBluetoothService extends LifecycleService {
     }
 
     private boolean handleTx(final Transaction tx) {
-        log.info("tx " + tx.getHashAsString() + " arrived via blueooth");
+        log.info("tx {} arrived via blueooth", tx.getTxId());
 
         final Wallet wallet = this.wallet.getValue();
         try {
@@ -140,12 +140,12 @@ public final class AcceptBluetoothService extends LifecycleService {
                     }
                 });
             } else {
-                log.info("tx " + tx.getHashAsString() + " irrelevant");
+                log.info("tx {} irrelevant", tx.getTxId());
             }
 
             return true;
         } catch (final VerificationException x) {
-            log.info("cannot verify tx " + tx.getHashAsString() + " received via bluetooth", x);
+            log.info("cannot verify tx " + tx.getTxId() + " received via bluetooth", x);
         }
 
         return false;

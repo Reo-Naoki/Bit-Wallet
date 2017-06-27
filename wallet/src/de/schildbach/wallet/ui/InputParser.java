@@ -12,7 +12,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 package de.schildbach.wallet.ui;
@@ -27,17 +27,15 @@ import java.util.ArrayList;
 import java.util.Date;
 import java.util.regex.Pattern;
 
-import javax.annotation.Nullable;
-
 import org.bitcoin.protocols.payments.Protos;
 import org.bitcoinj.core.Address;
 import org.bitcoinj.core.AddressFormatException;
 import org.bitcoinj.core.DumpedPrivateKey;
+import org.bitcoinj.core.LegacyAddress;
+import org.bitcoinj.core.PrefixedChecksummedBytes;
 import org.bitcoinj.core.ProtocolException;
 import org.bitcoinj.core.Transaction;
 import org.bitcoinj.core.VerificationException;
-import org.bitcoinj.core.VersionedChecksummedBytes;
-import org.bitcoinj.core.WrongNetworkException;
 import org.bitcoinj.crypto.BIP38PrivateKey;
 import org.bitcoinj.crypto.TrustStoreLoader;
 import org.bitcoinj.protocols.payments.PaymentProtocol;
@@ -50,17 +48,18 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.google.common.hash.Hashing;
+import com.google.common.io.ByteStreams;
 import com.google.protobuf.InvalidProtocolBufferException;
 import com.google.protobuf.UninitializedMessageException;
 
 import de.schildbach.wallet.Constants;
 import de.schildbach.wallet.R;
 import de.schildbach.wallet.data.PaymentIntent;
-import de.schildbach.wallet.util.Io;
 import de.schildbach.wallet.util.Qr;
 
 import android.content.Context;
 import android.content.DialogInterface.OnClickListener;
+import androidx.annotation.Nullable;
 
 /**
  * @author Andreas Schildbach
@@ -95,9 +94,9 @@ public abstract class InputParser {
 
                     error(R.string.input_parser_invalid_paymentrequest, x.getMessage());
                 }
-            } else if (input.startsWith("bitcoin:")) {
+            } else if (input.startsWith("bitcoin:") || input.startsWith("BITCOIN:")) {
                 try {
-                    final BitcoinURI bitcoinUri = new BitcoinURI(null, input);
+                    final BitcoinURI bitcoinUri = new BitcoinURI(null, "bitcoin:" + input.substring(8));
                     final Address address = bitcoinUri.getAddress();
                     if (address != null && !Constants.NETWORK_PARAMETERS.equals(address.getParameters()))
                         throw new BitcoinURIParseException("mismatched network");
@@ -132,9 +131,9 @@ public abstract class InputParser {
                     } catch (final AddressFormatException x2) {
                         try {
                             handlePaymentIntent(PaymentIntent
-                                    .fromAddress(Address.fromBase58(Constants.NETWORK_PARAMETERS, input), null));
-                        } catch (WrongNetworkException x3) {
-                            log.info("detected address, but wrong network: " + x3.verCode, x3);
+                                    .fromAddress(Address.fromString(Constants.NETWORK_PARAMETERS, input), null));
+                        } catch (AddressFormatException.WrongNetwork x3) {
+                            log.info("detected address, but wrong network", x3);
                             error(R.string.input_parser_invalid_address);
                         } catch (AddressFormatException x3) {
                             cannotClassify(input);
@@ -144,9 +143,9 @@ public abstract class InputParser {
             }
         }
 
-        protected void handlePrivateKey(final VersionedChecksummedBytes key) {
-            final Address address = new Address(Constants.NETWORK_PARAMETERS,
-                    ((DumpedPrivateKey) key).getKey().getPubKeyHash());
+        protected void handlePrivateKey(final PrefixedChecksummedBytes key) {
+            final Address address = LegacyAddress.fromKey(Constants.NETWORK_PARAMETERS,
+                    ((DumpedPrivateKey) key).getKey());
 
             handlePaymentIntent(PaymentIntent.fromAddress(address, null));
         }
@@ -209,7 +208,7 @@ public abstract class InputParser {
         public void parse() {
             if (PaymentProtocol.MIMETYPE_PAYMENTREQUEST.equals(inputType)) {
                 try (final ByteArrayOutputStream baos = new ByteArrayOutputStream()) {
-                    Io.copy(is, baos);
+                    ByteStreams.copy(is, baos);
                     parseAndHandlePaymentRequest(baos.toByteArray());
                 } catch (final IOException x) {
                     log.info("i/o error while fetching payment request", x);

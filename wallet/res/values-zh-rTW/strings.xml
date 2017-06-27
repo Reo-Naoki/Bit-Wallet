@@ -1,5 +1,5 @@
 <?xml version='1.0' encoding='UTF-8'?>
-<resources>
+<resources xmlns:android="http://schemas.android.com/apk/res/android">
   <string name="toast_wallet_reset">錢包重置了！\n恢復需要花一點時間。</string>
   <string name="wallet_disclaimer_fragment_remind_safety">使用注意安全風險，請詳讀&lt;u&gt;安全提示&lt;/u&gt;。</string>
   <string name="wallet_disclaimer_fragment_remind_backup">你必須要&lt;u&gt;備份你的錢包&lt;/u&gt;！</string>
@@ -26,7 +26,7 @@
   <string name="exchange_rates_options_search">搜尋匯率</string>
   <string name="wallet_transactions_fragment_empty_text_received">還沒收過 Bitcoin。</string>
   <string name="wallet_transactions_fragment_empty_text_sent">還沒付過 Bitcoin。</string>
-  <string name="wallet_transactions_fragment_empty_text_howto">如何取得 Bitcoin?\n\n可以用傳統貨幣購買、\n販賣貨物或服務、\n或是以工作賺取。</string>
+  <string name="wallet_transactions_fragment_empty_text_howto">如何取得 Bitcoin?\n可以用傳統貨幣購買、\n販賣貨物或服務、\n或是以工作賺取。</string>
   <string name="wallet_transactions_row_warning_backup">恭喜你收到第一筆付款！你是否已經&lt;u&gt;備份好你的錢包&lt;/u&gt;來防止遺失了呢？</string>
   <string name="wallet_transactions_row_warning_storage_encryption">提示: 為了讓錢包更安全，你可以&lt;u&gt;將設備加密&lt;/u&gt;。同時也可以保護其他應用程式的資料。</string>
   <string name="wallet_transactions_row_warning_chain_forking">Bitcoin 網路正在進行維護工作。建議暫時不要付款或是收款，直到維護完成為止。&lt;u&gt;更多資訊。&lt;/u&gt;</string>
@@ -49,9 +49,8 @@
   <string name="wallet_timeskew_dialog_title">檢查時間日期設定</string>
   <string name="wallet_timeskew_dialog_msg">設備的時間差了約 %d 分鐘，可能會因此沒辦法付或是收 Bitcoin。\n\n請檢查並修正時間、日期、以及時區的設定。</string>
   <string name="wallet_version_dialog_title">有新版程式了！</string>
-  <string name="wallet_version_dialog_msg">這個版本修正了重大錯誤。詳情請見 Google Play 上的改版紀錄。</string>
+  <string name="wallet_version_dialog_msg">這個版本修正了重大錯誤。詳情請見 %s 上的改版紀錄。</string>
   <string name="wallet_version_dialog_msg_deprecated">如果看不到任何程式更新，有可能你的 Android 版本已經不再支援了。</string>
-  <string name="wallet_version_dialog_button_market">Google Play</string>
   <string name="wallet_version_dialog_button_binary">下載</string>
   <string name="wallet_old_sdk_dialog_title">Android 版本太舊</string>
   <string name="wallet_old_sdk_dialog_message">接下來某個版本的 Bitcoin Wallet 可能就開始不再支援你的設備了。在這個設備上付款可能會變得很困難。\n\n建議你馬上把錢轉到其他地方去，除非你還知道其他處理方式。</string>
@@ -159,9 +158,9 @@
   <string name="edit_address_book_entry_dialog_label_label">標籤</string>
   <string name="edit_address_book_entry_dialog_button_edit">儲存</string>
   <string name="transaction_row_fee">網路手續費</string>
+  <string name="transaction_row_confidence_message_sent_unbroadcasted">付款尚未傳輸。</string>
   <string name="transaction_row_message_purpose_key_rotation">這筆交易會增強你的錢包的防竊力。&lt;u&gt;更多資訊。&lt;/u&gt;</string>
   <string name="transaction_row_message_purpose_raise_fee">這筆交易會增加前一筆付款的網路手續費。</string>
-  <string name="transaction_row_message_own_unbroadcasted">付款尚未傳輸。</string>
   <string name="transaction_row_message_received_direct">這筆付款被直接接收了，這類付款可能存在無法花用的風險。</string>
   <string name="transaction_row_message_received_unconfirmed_delayed">這筆付款確認的時間將會被延遲，可能是因為 Bitcoin 網路超過負荷量了。</string>
   <string name="transaction_row_message_received_unconfirmed_unlocked">這筆付款應該在幾分鐘之後就可以花用。</string>
@@ -267,11 +266,11 @@
   <string name="preferences_initiate_reset_summary">重置區塊鏈、交易資料、以及錢包餘額。重算會花一點時間，所以只有在你知道為什麼要做時才做。</string>
   <string name="preferences_initiate_reset_dialog_message">確定要重置且重算區塊鏈嗎？\n\n錢包餘額會暫時隱藏起來，交易也會不見。但是都會隨著區塊鏈同步的進展漸漸恢復。請先確認有穩定的網際網路連線。</string>
   <string name="preferences_initiate_reset_dialog_positive">重設</string>
-  <string name="preferences_extended_public_key_title">顯示 xpub</string>
+  <string name="preferences_extended_public_key_title">顯示 extended public key</string>
   <string name="preferences_extended_public_key_summary">顯示錢包的延伸公鑰，來匯入到其他的應用程式或網路服務去。請小心: 這會暴露你的財務隱私給該程式或服務。</string>
   <string name="bitmap_fragment_share">分享...</string>
   <string name="extended_public_key_fragment_title">延伸公鑰</string>
-  <string name="extended_public_key_fragment_share">分享 xpub…</string>
+  <string name="extended_public_key_fragment_share">分享 extended public key…</string>
   <string name="report_issue_dialog_title_issue">問題回報</string>
   <string name="report_issue_dialog_title_crash">發現前次當機</string>
   <string name="report_issue_dialog_title_transaction">回報關於選定付款交易的問題</string>
@@ -292,13 +291,10 @@
   <string name="about_category_credits">這個應用程式使用了...</string>
   <string name="about_credits_bitcoinj_title">bitcoinj %s, 一個 Bitcoin 通訊協定的實作</string>
   <string name="about_credits_zxing_title">ZXing, 一個處理 QR 代碼的程式庫</string>
-  <string name="about_credits_scrypt_title">Scrypt 演算法, Will Glozer 與 Colin Percival 的實作</string>
-  <string name="about_market_app_title">Google Play 商店頁面</string>
+  <string name="about_market_app_title">%s 商店頁面</string>
   <string name="about_market_app_summary">給這個應用程式評論或評分</string>
   <string name="about_faq_title">常見問答</string>
   <string name="about_faq_summary">關於這個應用程式的常見問題</string>
-  <string name="about_community_googleplus_title">Google+ 社群</string>
-  <string name="about_community_googleplus_summary">討論關於這個應用程式的事</string>
   <string name="notification_coins_received_msg">收到 %s</string>
   <string name="notification_peers_connected_msg">%d 個節點連線</string>
   <string name="notification_inactivity_title">這個設備上還有 Bitcoin 喔！</string>

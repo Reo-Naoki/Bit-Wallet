@@ -1,5 +1,5 @@
 <?xml version='1.0' encoding='UTF-8'?>
-<resources>
+<resources xmlns:android="http://schemas.android.com/apk/res/android">
   <string name="toast_wallet_reset">A tárcád alapállapotba került!\nA visszaállítás némi időt vesz igénybe.</string>
   <string name="wallet_disclaimer_fragment_remind_safety">Csak saját felelősségre használd. Olvasd el a &lt;u&gt;biztonsági megjegyzéseket&lt;/u&gt;.</string>
   <string name="wallet_disclaimer_fragment_remind_backup">Szükséges &lt;u&gt;biztonsági mentést készítened a tárcádról&lt;/u&gt;!</string>
@@ -25,7 +25,7 @@
   <string name="exchange_rates_options_search">Árfolyam keresése</string>
   <string name="wallet_transactions_fragment_empty_text_received">Eddig nem érkezett Bitcoin.</string>
   <string name="wallet_transactions_fragment_empty_text_sent">Eddig nem lett küldve Bitcoin.</string>
-  <string name="wallet_transactions_fragment_empty_text_howto">Hogyan szerezz Bitcoin-t?\n\nVásárolj hagyományos pénzért,\nadj el termékeket vagy szolgáltatásokat, vagy\nkeress munkával.</string>
+  <string name="wallet_transactions_fragment_empty_text_howto">Hogyan szerezz Bitcoin-t?\nVásárolj hagyományos pénzért,\nadj el termékeket vagy szolgáltatásokat, vagy\nkeress munkával.</string>
   <string name="wallet_transactions_row_warning_backup">Gratulálunk, megérkezett az első kifizetésed! Már készítettél &lt;u&gt;biztonsági mentést a tárcádról&lt;/u&gt;, hogy megóvd a veszteségtől?</string>
   <string name="wallet_transactions_row_warning_storage_encryption">Tipp: a tárcád biztonságának növeléséhez &lt;u&gt;titkosíthatod a készüléked&lt;/u&gt;. Ez más alkalmazások adatait is védi.</string>
   <string name="wallet_transactions_fragment_coinbase">bányászott</string>
@@ -46,9 +46,8 @@
   <string name="wallet_timeskew_dialog_title">Dátum &amp; időbeállítások ellenőrzése</string>
   <string name="wallet_timeskew_dialog_msg">A készülék időd késik %d percet. Valószínűleg nem tudsz küldeni és fogadni Bitcoin-okat ezen probléma miatt.\n\nLe kellene ellenőrizned, és ha szükséges, akkor javítanod a dátum, idő és időzóna beállításaidat.</string>
   <string name="wallet_version_dialog_title">Egy új verzió elérhető!</string>
-  <string name="wallet_version_dialog_msg">Ez a verzió fontos hibákat javít. A részletekért nézd meg a változásokat a Google Play-en.</string>
+  <string name="wallet_version_dialog_msg">Ez a verzió fontos hibákat javít. A részletekért nézd meg a változásokat a %s-en.</string>
   <string name="wallet_version_dialog_msg_deprecated">Ha nem látsz egy frissítést, az valószínűleg azt jelenti, hogy az Androidod verziója többé nem támogatott.</string>
-  <string name="wallet_version_dialog_button_market">Google Play</string>
   <string name="wallet_version_dialog_button_binary">Letöltés</string>
   <string name="wallet_old_sdk_dialog_title">Ez az Android verzió elavult</string>
   <string name="wallet_old_sdk_dialog_message">Van esély arra, hogy a Bitcoin Wallet következő kiadásaiból egy már nem fogja többé támogatni a készüléked. Egyes esetekben bonyolult lehet érméket küldeni ezen a készüléken.\n\nHacsak nem vagy tisztában vele, hogy mit csinálsz, akkor minél előbb ajánlott az érméid átmozgatása.</string>
@@ -151,9 +150,9 @@
   <string name="edit_address_book_entry_dialog_label_label">Címke</string>
   <string name="edit_address_book_entry_dialog_button_edit">Mentés</string>
   <string name="transaction_row_fee">Hálózati díj</string>
+  <string name="transaction_row_confidence_message_sent_unbroadcasted">Ez a kifizetés még nem került elküldésre.</string>
   <string name="transaction_row_message_purpose_key_rotation">Ez a művelet megerősíti a tárcád a lopások ellen. &lt;u&gt;Bővebb információ&lt;/u&gt;</string>
   <string name="transaction_row_message_purpose_raise_fee">Ez a tranzakció felemeli a hálózati díjat egy korábbi fizetésért.</string>
-  <string name="transaction_row_message_own_unbroadcasted">Ez a kifizetés még nem került elküldésre.</string>
   <string name="transaction_row_message_received_direct">Ez a fizetés közvetlenül érkezett. Fennáll a veszélye, hogy talán soha nem lesz elkölthető.</string>
   <string name="transaction_row_message_received_unconfirmed_unlocked">Ez a kifizetés perceken belül hozzáférhetővé válik.</string>
   <string name="transaction_row_message_received_in_conflict">Ennek a kifizetésnek megnövelt a kockázata a küldő általi visszafordításra. Ha tudsz, várj a megerősítésre.</string>
@@ -249,11 +248,11 @@
   <string name="preferences_initiate_reset_summary">Blokklánc, tranzakciók és tárcaegyenleg visszaállítása. A visszajátszás eltarthat egy ideig.</string>
   <string name="preferences_initiate_reset_dialog_message">Szeretnéd visszaállítani és visszajátszani a blokkláncot?\n\nEz átmenetileg elrejti a tárca egyenleged és eltávolítja a tranzakciókat. Mindkettő visszaáll a blokklánc szinkronizálás előrehaladtával.</string>
   <string name="preferences_initiate_reset_dialog_positive">Visszaállítás</string>
-  <string name="preferences_extended_public_key_title">Xpub megjelenítése</string>
+  <string name="preferences_extended_public_key_title">extended public key megjelenítése</string>
   <string name="preferences_extended_public_key_summary">Nézd meg a tárcád kiterjesztett nyilvános kulcsát, így tudod importálni másik alkalmazásokba és szolgáltatásokba. Legyél óvatos: ezt téve felfeded a pénzügyi magánéletedet annak az alkalmazásnak.</string>
   <string name="bitmap_fragment_share">Megosztás…</string>
   <string name="extended_public_key_fragment_title">Kiterjesztett nyilvános kulcs</string>
-  <string name="extended_public_key_fragment_share">Xpub megosztása…</string>
+  <string name="extended_public_key_fragment_share">extended public key megosztása…</string>
   <string name="report_issue_dialog_title_issue">Hiba jelentése</string>
   <string name="report_issue_dialog_title_crash">Az előző alkalommal a program összeomlott.</string>
   <string name="report_issue_dialog_message_issue">Kérlek elég precízen fejtsd ki a hibádat, hogy reprodukálni lehessen.</string>
@@ -272,9 +271,7 @@
   <string name="about_source_title">Forráskód</string>
   <string name="about_credits_bitcoinj_title">Az applikáció bitcoinj %s-t használ</string>
   <string name="about_credits_zxing_title">ZXing, egy QR-kód feldolgozó könyvtár</string>
-  <string name="about_community_googleplus_title">Google+ közösség</string>
-  <string name="about_community_googleplus_summary">Fórumok az applikációról</string>
-  <string name="about_market_app_title">Google Play oldal</string>
+  <string name="about_market_app_title">%s oldal</string>
   <string name="about_market_app_summary">Értékelések</string>
   <string name="notification_coins_received_msg">Fogadott mennyiség: %s</string>
   <string name="notification_peers_connected_msg">%d peer kapcsolódva</string>

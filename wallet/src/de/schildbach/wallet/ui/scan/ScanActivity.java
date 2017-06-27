@@ -12,15 +12,13 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 package de.schildbach.wallet.ui.scan;
 
 import java.util.EnumMap;
 import java.util.Map;
-
-import javax.annotation.Nullable;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -38,36 +36,33 @@ import com.google.zxing.qrcode.QRCodeReader;
 import de.schildbach.wallet.R;
 import de.schildbach.wallet.ui.AbstractWalletActivity;
 import de.schildbach.wallet.ui.DialogBuilder;
+import de.schildbach.wallet.ui.Event;
 import de.schildbach.wallet.util.OnFirstPreDraw;
 
 import android.Manifest;
 import android.animation.Animator;
+import android.animation.AnimatorListenerAdapter;
 import android.app.Activity;
 import android.app.ActivityOptions;
 import android.app.Dialog;
-import android.arch.lifecycle.Observer;
-import android.arch.lifecycle.ViewModelProviders;
 import android.content.Context;
 import android.content.DialogInterface;
 import android.content.DialogInterface.OnClickListener;
 import android.content.Intent;
+import android.content.pm.ActivityInfo;
 import android.content.pm.PackageManager;
 import android.graphics.Rect;
 import android.graphics.RectF;
 import android.graphics.SurfaceTexture;
+import android.graphics.drawable.ColorDrawable;
 import android.hardware.Camera;
 import android.hardware.Camera.CameraInfo;
 import android.hardware.Camera.PreviewCallback;
-import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.HandlerThread;
 import android.os.Process;
 import android.os.Vibrator;
-import android.support.v4.app.ActivityCompat;
-import android.support.v4.app.DialogFragment;
-import android.support.v4.app.FragmentManager;
-import android.support.v4.content.ContextCompat;
 import android.view.KeyEvent;
 import android.view.Surface;
 import android.view.TextureView;
@@ -76,6 +71,13 @@ import android.view.View;
 import android.view.ViewAnimationUtils;
 import android.view.WindowManager;
 import android.view.animation.AccelerateInterpolator;
+import androidx.annotation.Nullable;
+import androidx.core.app.ActivityCompat;
+import androidx.core.content.ContextCompat;
+import androidx.fragment.app.DialogFragment;
+import androidx.fragment.app.Fragment;
+import androidx.fragment.app.FragmentManager;
+import androidx.lifecycle.ViewModelProviders;
 
 /**
  * @author Andreas Schildbach
@@ -88,7 +90,7 @@ public final class ScanActivity extends AbstractWalletActivity
     public static final String INTENT_EXTRA_RESULT = "result";
 
     public static void startForResult(final Activity activity, @Nullable final View clickView, final int requestCode) {
-        if (clickView != null && Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+        if (clickView != null) {
             final int[] clickViewLocation = new int[2];
             clickView.getLocationOnScreen(clickViewLocation);
             final Intent intent = new Intent(activity, ScanActivity.class);
@@ -106,6 +108,10 @@ public final class ScanActivity extends AbstractWalletActivity
 
     public static void startForResult(final Activity activity, final int resultCode) {
         activity.startActivityForResult(new Intent(activity, ScanActivity.class), resultCode);
+    }
+
+    public static void startForResult(final Fragment fragment, final Activity activity, final int resultCode) {
+        fragment.startActivityForResult(new Intent(activity, ScanActivity.class), resultCode);
     }
 
     private static final long VIBRATE_DURATION = 50L;
@@ -134,24 +140,28 @@ public final class ScanActivity extends AbstractWalletActivity
         vibrator = (Vibrator) getSystemService(Context.VIBRATOR_SERVICE);
 
         viewModel = ViewModelProviders.of(this).get(ScanViewModel.class);
-        viewModel.showPermissionWarnDialog.observe(this, new Observer<Void>() {
+        viewModel.showPermissionWarnDialog.observe(this, new Event.Observer<Void>() {
             @Override
-            public void onChanged(final Void v) {
+            public void onEvent(final Void v) {
                 WarnDialogFragment.show(getSupportFragmentManager(), R.string.scan_camera_permission_dialog_title,
                         getString(R.string.scan_camera_permission_dialog_message));
             }
         });
-        viewModel.showProblemWarnDialog.observe(this, new Observer<Void>() {
+        viewModel.showProblemWarnDialog.observe(this, new Event.Observer<Void>() {
             @Override
-            public void onChanged(final Void v) {
+            public void onEvent(final Void v) {
                 WarnDialogFragment.show(getSupportFragmentManager(), R.string.scan_camera_problem_dialog_title,
                         getString(R.string.scan_camera_problem_dialog_message));
             }
         });
 
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP)
-            getWindow().setFlags(WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS,
-                    WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS);
+        // Stick to the orientation the activity was started with. We cannot declare this in the
+        // AndroidManifest.xml, because it's not allowed in combination with the windowIsTranslucent=true
+        // theme attribute.
+        setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_LOCKED);
+        // Draw under navigation and status bars.
+        getWindow().setFlags(WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS,
+                WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS);
 
         setContentView(R.layout.scan_activity);
         contentView = findViewById(android.R.id.content);
@@ -163,10 +173,12 @@ public final class ScanActivity extends AbstractWalletActivity
         cameraThread.start();
         cameraHandler = new Handler(cameraThread.getLooper());
 
-        if (ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED)
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED) {
+            log.info("missing {}, requesting", Manifest.permission.CAMERA);
             ActivityCompat.requestPermissions(this, new String[] { Manifest.permission.CAMERA }, 0);
+        }
 
-        if (savedInstanceState == null && Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+        if (savedInstanceState == null) {
             final Intent intent = getIntent();
             final int x = intent.getIntExtra(INTENT_EXTRA_SCENE_TRANSITION_X, -1);
             final int y = intent.getIntExtra(INTENT_EXTRA_SCENE_TRANSITION_Y, -1);
@@ -174,6 +186,8 @@ public final class ScanActivity extends AbstractWalletActivity
                 // Using alpha rather than visibility because 'invisible' will cause the surface view to never
                 // start up, so the animation will never start.
                 contentView.setAlpha(0);
+                getWindow().setBackgroundDrawable(
+                        new ColorDrawable(ContextCompat.getColor(this, android.R.color.transparent)));
                 OnFirstPreDraw.listen(contentView, new OnFirstPreDraw.Callback() {
                     @Override
                     public boolean onFirstPreDraw() {
@@ -195,6 +209,13 @@ public final class ScanActivity extends AbstractWalletActivity
     private void maybeTriggerSceneTransition() {
         if (sceneTransition != null) {
             contentView.setAlpha(1);
+            sceneTransition.addListener(new AnimatorListenerAdapter() {
+                @Override
+                public void onAnimationEnd(Animator animation) {
+                    getWindow().setBackgroundDrawable(
+                            new ColorDrawable(ContextCompat.getColor(ScanActivity.this, android.R.color.black)));
+                }
+            });
             sceneTransition.start();
             sceneTransition = null;
         }
@@ -222,16 +243,21 @@ public final class ScanActivity extends AbstractWalletActivity
 
         previewView.setSurfaceTextureListener(null);
 
+        // We're removing the requested orientation because if we don't, somehow the requested orientation is
+        // bleeding through to the calling activity, forcing it into a locked state until it is restarted.
+        setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED);
         super.onDestroy();
     }
 
     @Override
     public void onRequestPermissionsResult(final int requestCode, final String[] permissions,
             final int[] grantResults) {
-        if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED)
+        if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
             maybeOpenCamera();
-        else
-            viewModel.showPermissionWarnDialog.call();
+        } else {
+            log.info("missing {}, showing error", Manifest.permission.CAMERA);
+            viewModel.showPermissionWarnDialog.setValue(Event.simple());
+        }
     }
 
     private void maybeOpenCamera() {
@@ -269,7 +295,7 @@ public final class ScanActivity extends AbstractWalletActivity
     public void onBackPressed() {
         scannerView.setVisibility(View.GONE);
         setResult(RESULT_CANCELED);
-        postFinish();
+        finish();
     }
 
     @Override
@@ -339,12 +365,16 @@ public final class ScanActivity extends AbstractWalletActivity
 
                 if (nonContinuousAutoFocus)
                     cameraHandler.post(new AutoFocusRunnable(camera));
-
-                maybeTriggerSceneTransition();
+                runOnUiThread(new Runnable() {
+                    @Override
+                    public void run() {
+                        maybeTriggerSceneTransition();
+                    }
+                });
                 cameraHandler.post(fetchAndDecodeRunnable);
             } catch (final Exception x) {
                 log.info("problem opening camera", x);
-                viewModel.showProblemWarnDialog.postCall();
+                viewModel.showProblemWarnDialog.postValue(Event.simple());
             }
         }
 

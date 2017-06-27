@@ -12,7 +12,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 package de.schildbach.wallet.ui.send;
@@ -20,8 +20,6 @@ package de.schildbach.wallet.ui.send;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
-
-import javax.annotation.Nullable;
 
 import org.bitcoinj.protocols.payments.PaymentProtocol;
 import org.slf4j.Logger;
@@ -41,6 +39,7 @@ import android.bluetooth.BluetoothDevice;
 import android.bluetooth.BluetoothSocket;
 import android.os.Handler;
 import android.os.Looper;
+import androidx.annotation.Nullable;
 import okhttp3.CacheControl;
 import okhttp3.Call;
 import okhttp3.Request;

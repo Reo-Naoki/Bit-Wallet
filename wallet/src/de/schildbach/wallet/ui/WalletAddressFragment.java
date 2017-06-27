@@ -12,12 +12,10 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 package de.schildbach.wallet.ui;
-
-import javax.annotation.Nullable;
 
 import org.bitcoinj.core.Address;
 import org.slf4j.Logger;
@@ -25,8 +23,6 @@ import org.slf4j.LoggerFactory;
 
 import de.schildbach.wallet.R;
 
-import android.arch.lifecycle.Observer;
-import android.arch.lifecycle.ViewModelProviders;
 import android.content.Context;
 import android.graphics.Bitmap;
 import android.graphics.Color;
@@ -36,13 +32,16 @@ import android.nfc.NdefMessage;
 import android.nfc.NdefRecord;
 import android.nfc.NfcAdapter;
 import android.os.Bundle;
-import android.support.v4.app.Fragment;
-import android.support.v7.widget.CardView;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.View.OnClickListener;
 import android.view.ViewGroup;
 import android.widget.ImageView;
+import androidx.annotation.Nullable;
+import androidx.cardview.widget.CardView;
+import androidx.fragment.app.Fragment;
+import androidx.lifecycle.Observer;
+import androidx.lifecycle.ViewModelProviders;
 
 /**
  * @author Andreas Schildbach
@@ -79,9 +78,7 @@ public final class WalletAddressFragment extends Fragment {
                 currentAddressQrCardView.setOnClickListener(new OnClickListener() {
                     @Override
                     public void onClick(final View v) {
-                        final Address address = viewModel.currentAddress.getValue();
-                        WalletAddressDialogFragment.show(getFragmentManager(), address, viewModel.ownName.getValue());
-                        log.info("Current address enlarged: {}", address);
+                        viewModel.showWalletAddressDialog.setValue(Event.simple());
                     }
                 });
             }
@@ -92,7 +89,15 @@ public final class WalletAddressFragment extends Fragment {
                 final NfcAdapter nfcAdapter = WalletAddressFragment.this.nfcAdapter;
                 if (nfcAdapter != null)
                     nfcAdapter.setNdefPushMessage(createNdefMessage(bitcoinUri.toString()), activity);
-                ViewModelProviders.of(activity).get(WalletActivity.ViewModel.class).addressLoadingFinished();
+                ViewModelProviders.of(activity).get(WalletActivityViewModel.class).addressLoadingFinished();
+            }
+        });
+        viewModel.showWalletAddressDialog.observe(this, new Event.Observer<Void>() {
+            @Override
+            public void onEvent(final Void v) {
+                final Address address = viewModel.currentAddress.getValue();
+                WalletAddressDialogFragment.show(getFragmentManager(), address, viewModel.ownName.getValue());
+                log.info("Current address enlarged: {}", address);
             }
         });
     }

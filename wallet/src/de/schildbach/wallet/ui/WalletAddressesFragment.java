@@ -12,16 +12,16 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 package de.schildbach.wallet.ui;
 
 import java.util.List;
-import java.util.Map;
+import java.util.Locale;
 
 import org.bitcoinj.core.Address;
-import org.bitcoinj.core.ECKey;
+import org.bitcoinj.core.LegacyAddress;
 import org.bitcoinj.uri.BitcoinURI;
 import org.bitcoinj.wallet.Wallet;
 import org.slf4j.Logger;
@@ -30,18 +30,19 @@ import org.slf4j.LoggerFactory;
 import de.schildbach.wallet.Constants;
 import de.schildbach.wallet.R;
 import de.schildbach.wallet.WalletApplication;
-import de.schildbach.wallet.data.AddressBookProvider;
+import de.schildbach.wallet.data.AddressBookDao;
+import de.schildbach.wallet.data.AddressBookEntry;
+import de.schildbach.wallet.data.AppDatabase;
 import de.schildbach.wallet.util.Qr;
 import de.schildbach.wallet.util.Toast;
 import de.schildbach.wallet.util.WalletUtils;
 import de.schildbach.wallet.util.WholeStringBuilder;
 
-import android.arch.lifecycle.Observer;
-import android.arch.lifecycle.ViewModelProviders;
 import android.content.ClipData;
 import android.content.ClipboardManager;
 import android.content.Context;
 import android.content.Intent;
+import android.graphics.Bitmap;
 import android.net.Uri;
 import android.os.Bundle;
 import android.view.ActionMode;
@@ -50,13 +51,16 @@ import android.view.MenuInflater;
 import android.view.MenuItem;
 import android.view.View;
 import android.widget.ListView;
+import androidx.lifecycle.Observer;
+import androidx.lifecycle.ViewModelProviders;
 
 /**
  * @author Andreas Schildbach
  */
 public final class WalletAddressesFragment extends FancyListFragment {
-    private  WalletApplication application;
+    private WalletApplication application;
     private AbstractWalletActivity activity;
+    private AddressBookDao addressBookDao;
     private ClipboardManager clipboardManager;
 
     private WalletAddressesAdapter adapter;
@@ -70,6 +74,7 @@ public final class WalletAddressesFragment extends FancyListFragment {
         super.onAttach(context);
         this.activity = (AbstractWalletActivity) context;
         this.application = activity.getWalletApplication();
+        this.addressBookDao = AppDatabase.getDatabase(context).addressBookDao();
         this.clipboardManager = (ClipboardManager) activity.getSystemService(Context.CLIPBOARD_SERVICE);
     }
 
@@ -79,16 +84,16 @@ public final class WalletAddressesFragment extends FancyListFragment {
         setHasOptionsMenu(true);
 
         viewModel = ViewModelProviders.of(this).get(WalletAddressesViewModel.class);
-        viewModel.issuedReceiveKeys.observe(this, new Observer<List<ECKey>>() {
+        viewModel.issuedReceiveAddresses.observe(this, new Observer<List<Address>>() {
             @Override
-            public void onChanged(final List<ECKey> issuedReceiveKeys) {
-                adapter.replaceDerivedKeys(issuedReceiveKeys);
+            public void onChanged(final List<Address> issuedReceiveAddresses) {
+                adapter.replaceDerivedAddresses(issuedReceiveAddresses);
             }
         });
-        viewModel.importedKeys.observe(this, new Observer<List<ECKey>>() {
+        viewModel.importedAddresses.observe(this, new Observer<List<Address>>() {
             @Override
-            public void onChanged(final List<ECKey> importedKeys) {
-                adapter.replaceRandomKeys(importedKeys);
+            public void onChanged(final List<Address> importedAddresses) {
+                adapter.replaceRandomAddresses(importedAddresses);
             }
         });
         viewModel.wallet.observe(this, new Observer<Wallet>() {
@@ -97,16 +102,28 @@ public final class WalletAddressesFragment extends FancyListFragment {
                 adapter.setWallet(wallet);
             }
         });
-        viewModel.addressBook.observe(this, new Observer<Map<String, String>>() {
+        viewModel.addressBook.observe(this, new Observer<List<AddressBookEntry>>() {
             @Override
-            public void onChanged(final Map<String, String> addressBook) {
-                adapter.notifyDataSetChanged();
+            public void onChanged(final List<AddressBookEntry> addressBook) {
+                adapter.setAddressBook(AddressBookEntry.asMap(addressBook));
             }
         });
         viewModel.ownName.observe(this, new Observer<String>() {
             @Override
             public void onChanged(final String ownName) {
                 adapter.notifyDataSetChanged();
+            }
+        });
+        viewModel.showBitmapDialog.observe(this, new Event.Observer<Bitmap>() {
+            @Override
+            public void onEvent(final Bitmap bitmap) {
+                BitmapFragment.show(getFragmentManager(), bitmap);
+            }
+        });
+        viewModel.showEditAddressBookEntryDialog.observe(this, new Event.Observer<Address>() {
+            @Override
+            public void onEvent(final Address address) {
+                EditAddressBookEntryFragment.edit(getFragmentManager(), address);
             }
         });
 
@@ -139,9 +156,8 @@ public final class WalletAddressesFragment extends FancyListFragment {
 
             @Override
             public boolean onPrepareActionMode(final ActionMode mode, final Menu menu) {
-                final ECKey key = getKey(position);
-                final String address = key.toAddress(Constants.NETWORK_PARAMETERS).toBase58();
-                final String label = AddressBookProvider.resolveLabel(activity, address);
+                final String address = getAddress(position).toString();
+                final String label = addressBookDao.resolveLabel(address);
                 mode.setTitle(label != null ? label
                         : WalletUtils.formatHash(address, Constants.ADDRESS_FORMAT_GROUP_SIZE, 0));
                 return true;
@@ -149,24 +165,31 @@ public final class WalletAddressesFragment extends FancyListFragment {
 
             @Override
             public boolean onActionItemClicked(final ActionMode mode, final MenuItem item) {
+                final Address address = getAddress(position);
                 switch (item.getItemId()) {
                 case R.id.wallet_addresses_context_edit:
-                    handleEdit(getAddress(position));
+                    viewModel.showEditAddressBookEntryDialog.setValue(new Event<>(address));
                     mode.finish();
                     return true;
 
                 case R.id.wallet_addresses_context_show_qr:
-                    handleShowQr(getAddress(position));
+                    final String label = viewModel.ownName.getValue();
+                    final String uri;
+                    if (address instanceof LegacyAddress || label != null)
+                        uri = BitcoinURI.convertToBitcoinURI(address, null, label, null);
+                    else
+                        uri = address.toString().toUpperCase(Locale.US);
+                    viewModel.showBitmapDialog.setValue(new Event<>(Qr.bitmap(uri)));
+
                     mode.finish();
                     return true;
 
                 case R.id.wallet_addresses_context_copy_to_clipboard:
-                    handleCopyToClipboard(getAddress(position));
+                    handleCopyToClipboard(address);
                     mode.finish();
                     return true;
 
                 case R.id.wallet_addresses_context_browse:
-                    final String address = getAddress(position).toBase58();
                     final Uri blockExplorerUri = application.getConfiguration().getBlockExplorer();
                     log.info("Viewing address {} on {}", address, blockExplorerUri);
                     startActivity(new Intent(Intent.ACTION_VIEW,
@@ -182,25 +205,12 @@ public final class WalletAddressesFragment extends FancyListFragment {
             public void onDestroyActionMode(final ActionMode mode) {
             }
 
-            private ECKey getKey(final int position) {
-                return (ECKey) getListAdapter().getItem(position);
-            }
-
             private Address getAddress(final int position) {
-                return getKey(position).toAddress(Constants.NETWORK_PARAMETERS);
-            }
-
-            private void handleEdit(final Address address) {
-                EditAddressBookEntryFragment.edit(getFragmentManager(), address);
-            }
-
-            private void handleShowQr(final Address address) {
-                final String uri = BitcoinURI.convertToBitcoinURI(address, null, viewModel.ownName.getValue(), null);
-                BitmapFragment.show(getFragmentManager(), Qr.bitmap(uri));
+                return (Address) getListAdapter().getItem(position);
             }
 
             private void handleCopyToClipboard(final Address address) {
-                clipboardManager.setPrimaryClip(ClipData.newPlainText("Bitcoin address", address.toBase58()));
+                clipboardManager.setPrimaryClip(ClipData.newPlainText("Bitcoin address", address.toString()));
                 log.info("wallet address copied to clipboard: {}", address);
                 new Toast(activity).toast(R.string.wallet_address_fragment_clipboard_msg);
             }

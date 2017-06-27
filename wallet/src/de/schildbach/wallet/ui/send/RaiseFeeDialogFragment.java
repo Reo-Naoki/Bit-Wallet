@@ -1,5 +1,5 @@
 /*
- * Copyright 2015 the original author or authors.
+ * Copyright the original author or authors.
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -12,16 +12,14 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 package de.schildbach.wallet.ui.send;
 
-import static android.support.v4.util.Preconditions.checkNotNull;
+import static androidx.core.util.Preconditions.checkNotNull;
 
 import java.util.Map;
-
-import javax.annotation.Nullable;
 
 import org.bitcoinj.core.Coin;
 import org.bitcoinj.core.Sha256Hash;
@@ -31,26 +29,21 @@ import org.bitcoinj.crypto.KeyCrypterException;
 import org.bitcoinj.wallet.KeyChain.KeyPurpose;
 import org.bitcoinj.wallet.SendRequest;
 import org.bitcoinj.wallet.Wallet;
+import org.bouncycastle.crypto.params.KeyParameter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.spongycastle.crypto.params.KeyParameter;
 
 import de.schildbach.wallet.Configuration;
 import de.schildbach.wallet.Constants;
 import de.schildbach.wallet.R;
 import de.schildbach.wallet.WalletApplication;
-import de.schildbach.wallet.data.DynamicFeeLiveData;
 import de.schildbach.wallet.service.BlockchainService;
 import de.schildbach.wallet.ui.AbstractWalletActivity;
 import de.schildbach.wallet.ui.DialogBuilder;
 import de.schildbach.wallet.util.WalletUtils;
 
 import android.app.AlertDialog;
-import android.app.Application;
 import android.app.Dialog;
-import android.arch.lifecycle.AndroidViewModel;
-import android.arch.lifecycle.Observer;
-import android.arch.lifecycle.ViewModelProviders;
 import android.content.Context;
 import android.content.DialogInterface;
 import android.content.DialogInterface.OnShowListener;
@@ -59,8 +52,6 @@ import android.os.Bundle;
 import android.os.Handler;
 import android.os.HandlerThread;
 import android.os.Process;
-import android.support.v4.app.DialogFragment;
-import android.support.v4.app.FragmentManager;
 import android.text.Editable;
 import android.text.TextWatcher;
 import android.view.LayoutInflater;
@@ -69,6 +60,11 @@ import android.view.View.OnClickListener;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.TextView;
+import androidx.annotation.Nullable;
+import androidx.fragment.app.DialogFragment;
+import androidx.fragment.app.FragmentManager;
+import androidx.lifecycle.Observer;
+import androidx.lifecycle.ViewModelProviders;
 
 /**
  * @author Andreas Schildbach
@@ -86,7 +82,7 @@ public class RaiseFeeDialogFragment extends DialogFragment {
         final RaiseFeeDialogFragment fragment = new RaiseFeeDialogFragment();
 
         final Bundle args = new Bundle();
-        args.putSerializable(KEY_TRANSACTION, tx.getHash().getBytes());
+        args.putByteArray(KEY_TRANSACTION, tx.getTxId().getBytes());
         fragment.setArguments(args);
 
         return fragment;
@@ -109,7 +105,7 @@ public class RaiseFeeDialogFragment extends DialogFragment {
     private View badPasswordView;
     private Button positiveButton, negativeButton;
 
-    private ViewModel viewModel;
+    private RaiseFeeViewModel viewModel;
 
     private HandlerThread backgroundThread;
     private Handler backgroundHandler;
@@ -121,22 +117,6 @@ public class RaiseFeeDialogFragment extends DialogFragment {
     private State state = State.INPUT;
 
     private static final Logger log = LoggerFactory.getLogger(RaiseFeeDialogFragment.class);
-
-    public static class ViewModel extends AndroidViewModel {
-        private final WalletApplication application;
-        private DynamicFeeLiveData dynamicFees;
-
-        public ViewModel(final Application application) {
-            super(application);
-            this.application = (WalletApplication) application;
-        }
-
-        public DynamicFeeLiveData getDynamicFees() {
-            if (dynamicFees == null)
-                dynamicFees = new DynamicFeeLiveData(application);
-            return dynamicFees;
-        }
-    }
 
     @Override
     public void onAttach(final Context context) {
@@ -150,7 +130,9 @@ public class RaiseFeeDialogFragment extends DialogFragment {
     @Override
     public void onCreate(final Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        viewModel = ViewModelProviders.of(this).get(ViewModel.class);
+        log.info("opening dialog {}", getClass().getName());
+
+        viewModel = ViewModelProviders.of(this).get(RaiseFeeViewModel.class);
         viewModel.getDynamicFees().observe(this, new Observer<Map<FeeCategory, Coin>>() {
             @Override
             public void onChanged(final Map<FeeCategory, Coin> dynamicFees) {
@@ -163,8 +145,7 @@ public class RaiseFeeDialogFragment extends DialogFragment {
         });
 
         final Bundle args = getArguments();
-        final byte[] txHash = (byte[]) args.getSerializable(KEY_TRANSACTION);
-        transaction = checkNotNull(wallet.getTransaction(Sha256Hash.wrap(txHash)));
+        transaction = checkNotNull(wallet.getTransaction(Sha256Hash.wrap(args.getByteArray(KEY_TRANSACTION))));
 
         backgroundThread = new HandlerThread("backgroundThread", Process.THREAD_PRIORITY_BACKGROUND);
         backgroundThread.start();

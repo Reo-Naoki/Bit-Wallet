@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2015 the original author or authors.
+ * Copyright the original author or authors.
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -12,29 +12,18 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 package de.schildbach.wallet.ui;
 
 import java.util.Set;
 
-import de.schildbach.wallet.Configuration;
 import de.schildbach.wallet.R;
-import de.schildbach.wallet.WalletApplication;
-import de.schildbach.wallet.data.BlockchainStateLiveData;
 import de.schildbach.wallet.service.BlockchainState;
 import de.schildbach.wallet.service.BlockchainState.Impediment;
 
-import android.app.Application;
-import android.arch.lifecycle.AndroidViewModel;
-import android.arch.lifecycle.LiveData;
-import android.arch.lifecycle.Observer;
-import android.arch.lifecycle.ViewModelProviders;
-import android.content.SharedPreferences;
-import android.content.SharedPreferences.OnSharedPreferenceChangeListener;
 import android.os.Bundle;
-import android.support.v4.app.Fragment;
 import android.text.Html;
 import android.text.SpannableStringBuilder;
 import android.view.LayoutInflater;
@@ -44,6 +33,9 @@ import android.view.ViewGroup;
 import android.view.ViewParent;
 import android.widget.FrameLayout;
 import android.widget.TextView;
+import androidx.fragment.app.Fragment;
+import androidx.lifecycle.Observer;
+import androidx.lifecycle.ViewModelProviders;
 
 /**
  * @author Andreas Schildbach
@@ -51,35 +43,12 @@ import android.widget.TextView;
 public final class WalletDisclaimerFragment extends Fragment {
     private TextView messageView;
 
-    private ViewModel viewModel;
-
-    public static class ViewModel extends AndroidViewModel {
-        private final WalletApplication application;
-        private BlockchainStateLiveData blockchainState;
-        private DisclaimerEnabledLiveData disclaimerEnabled;
-
-        public ViewModel(final Application application) {
-            super(application);
-            this.application = (WalletApplication) application;
-        }
-
-        public BlockchainStateLiveData getBlockchainState() {
-            if (blockchainState == null)
-                blockchainState = new BlockchainStateLiveData(application);
-            return blockchainState;
-        }
-
-        public DisclaimerEnabledLiveData getDisclaimerEnabled() {
-            if (disclaimerEnabled == null)
-                disclaimerEnabled = new DisclaimerEnabledLiveData(application);
-            return disclaimerEnabled;
-        }
-    }
+    private WalletDisclaimerViewModel viewModel;
 
     @Override
     public void onCreate(final Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        viewModel = ViewModelProviders.of(this).get(ViewModel.class);
+        viewModel = ViewModelProviders.of(this).get(WalletDisclaimerViewModel.class);
         viewModel.getBlockchainState().observe(this, new Observer<BlockchainState>() {
             @Override
             public void onChanged(final BlockchainState blockchainState) {
@@ -101,7 +70,9 @@ public final class WalletDisclaimerFragment extends Fragment {
         messageView.setOnClickListener(new OnClickListener() {
             @Override
             public void onClick(final View v) {
-                HelpDialogFragment.page(getFragmentManager(), R.string.help_safety);
+                final WalletActivityViewModel viewModel = ViewModelProviders.of(getActivity())
+                        .get(WalletActivityViewModel.class);
+                viewModel.showHelpDialog.setValue(new Event<>(R.string.help_safety));
             }
         });
         return messageView;
@@ -133,31 +104,5 @@ public final class WalletDisclaimerFragment extends Fragment {
         final ViewParent parent = view.getParent();
         final View fragment = parent instanceof FrameLayout ? (FrameLayout) parent : view;
         fragment.setVisibility(text.length() > 0 ? View.VISIBLE : View.GONE);
-    }
-
-    private static class DisclaimerEnabledLiveData extends LiveData<Boolean>
-            implements OnSharedPreferenceChangeListener {
-        private final Configuration config;
-
-        public DisclaimerEnabledLiveData(final WalletApplication application) {
-            this.config = application.getConfiguration();
-        }
-
-        @Override
-        protected void onActive() {
-            config.registerOnSharedPreferenceChangeListener(this);
-            setValue(config.getDisclaimerEnabled());
-        }
-
-        @Override
-        protected void onInactive() {
-            config.unregisterOnSharedPreferenceChangeListener(this);
-        }
-
-        @Override
-        public void onSharedPreferenceChanged(final SharedPreferences sharedPreferences, final String key) {
-            if (Configuration.PREFS_KEY_DISCLAIMER.equals(key))
-                setValue(config.getDisclaimerEnabled());
-        }
     }
 }

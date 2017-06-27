@@ -12,14 +12,15 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 package de.schildbach.wallet.ui;
 
-import javax.annotation.Nullable;
+import java.util.Locale;
 
 import org.bitcoinj.core.Address;
+import org.bitcoinj.core.LegacyAddress;
 import org.bitcoinj.uri.BitcoinURI;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -34,14 +35,15 @@ import android.app.Dialog;
 import android.content.Context;
 import android.graphics.drawable.BitmapDrawable;
 import android.os.Bundle;
-import android.support.v4.app.DialogFragment;
-import android.support.v4.app.FragmentManager;
-import android.support.v4.app.ShareCompat;
 import android.view.View;
 import android.view.View.OnClickListener;
 import android.view.Window;
 import android.widget.ImageView;
 import android.widget.TextView;
+import androidx.annotation.Nullable;
+import androidx.core.app.ShareCompat;
+import androidx.fragment.app.DialogFragment;
+import androidx.fragment.app.FragmentManager;
 
 /**
  * @author Andreas Schildbach
@@ -61,7 +63,7 @@ public class WalletAddressDialogFragment extends DialogFragment {
         final WalletAddressDialogFragment fragment = new WalletAddressDialogFragment();
 
         final Bundle args = new Bundle();
-        args.putSerializable(KEY_ADDRESS, address);
+        args.putString(KEY_ADDRESS, address.toString());
         if (addressLabel != null)
             args.putString(KEY_ADDRESS_LABEL, addressLabel);
         fragment.setArguments(args);
@@ -78,10 +80,16 @@ public class WalletAddressDialogFragment extends DialogFragment {
     }
 
     @Override
+    public void onCreate(final Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        log.info("opening dialog {}", getClass().getName());
+    }
+
+    @Override
     public Dialog onCreateDialog(final Bundle savedInstanceState) {
         final Bundle args = getArguments();
-        final Address address = (Address) args.getSerializable(KEY_ADDRESS);
-        final String addressStr = address.toBase58();
+        final Address address = Address.fromString(Constants.NETWORK_PARAMETERS, args.getString(KEY_ADDRESS));
+        final String addressStr = address.toString();
         final String addressLabel = args.getString(KEY_ADDRESS_LABEL);
 
         final Dialog dialog = new Dialog(activity);
@@ -89,8 +97,13 @@ public class WalletAddressDialogFragment extends DialogFragment {
         dialog.setContentView(R.layout.wallet_address_dialog);
         dialog.setCanceledOnTouchOutside(true);
 
-        final String uri = BitcoinURI.convertToBitcoinURI(address, null, addressLabel, null);
-        final BitmapDrawable bitmap = new BitmapDrawable(getResources(), Qr.bitmap(uri));
+        final String addressUri;
+        if (address instanceof LegacyAddress || addressLabel != null)
+            addressUri = BitcoinURI.convertToBitcoinURI(address, null, addressLabel, null);
+        else
+            addressUri = address.toString().toUpperCase(Locale.US);
+
+        final BitmapDrawable bitmap = new BitmapDrawable(getResources(), Qr.bitmap(addressUri));
         bitmap.setFilterBitmap(false);
         final ImageView imageView = (ImageView) dialog.findViewById(R.id.wallet_address_dialog_image);
         imageView.setImageDrawable(bitmap);

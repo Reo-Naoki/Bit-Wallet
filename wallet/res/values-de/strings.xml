@@ -1,5 +1,5 @@
 <?xml version='1.0' encoding='UTF-8'?>
-<resources>
+<resources xmlns:android="http://schemas.android.com/apk/res/android">
 
     <string name="toast_wallet_reset">Wallet wurde zurückgesetzt,\nwird einige Zeit benötigen</string>
     <string name="wallet_disclaimer_fragment_remind_safety">Nutzung auf eigene Gefahr. Lies die &lt;u&gt;Sicherheitshinweise&lt;/u&gt;.</string>
@@ -27,7 +27,8 @@
     <string name="exchange_rates_options_search">Wechselkurs suchen</string>
     <string name="wallet_transactions_fragment_empty_text_received">Noch keine Bitcoins empfangen.</string>
     <string name="wallet_transactions_fragment_empty_text_sent">Noch keine Bitcoins gesendet.</string>
-    <string name="wallet_transactions_fragment_empty_text_howto">Wie komme ich an Bitcoins?\n\nHandle gegen traditionelles Geld,\nverkaufe Güter oder Dienstleistungen oder\nverdiene durch Arbeit.</string>
+    <string name="wallet_transactions_fragment_empty_text_howto">Wie komme ich an Bitcoins?\nHandle gegen traditionelles Geld,\nverkaufe Güter oder Dienstleistungen oder\nverdiene durch Arbeit.</string>
+    <string name="wallet_transactions_fragment_empty_remind_backup">Bitte sichere deine Wallet\nbevor du Bitcoins empfängst!</string>
     <string name="wallet_transactions_row_warning_backup">Gratulation, du hast deine erste Zahlung erhalten! Hast du deine Wallet bereits &lt;u&gt;gesichert&lt;/u&gt;, um dich gegen Verlust zu schützen?</string>
     <string name="wallet_transactions_row_warning_storage_encryption">Tipp: Um die Sicherheit deiner Wallet zu erhöhen, kannst du dein &lt;u&gt;Gerät verschlüsseln&lt;/u&gt;. Das schützt auch die Daten anderer Apps.</string>
     <string name="wallet_transactions_row_warning_chain_forking">Das Bitcoin-Netzwerk befindet sich in Wartungsarbeiten. Es wird empfohlen, keine Bitcoins zu versenden oder zu empfangen bis die Arbeiten beendet sind. &lt;u&gt;Weitere Informationen.&lt;/u&gt;</string>
@@ -37,6 +38,7 @@
     <string name="wallet_transactions_options_filter_all">Alle Zahlungen</string>
     <string name="wallet_transactions_options_filter_received">Empfangene Zahlungen</string>
     <string name="wallet_transactions_options_filter_sent">Gesendete Zahlungen</string>
+    <string name="wallet_options_request_legacy">An alte Addresse anfordern</string>
     <string name="wallet_options_safety_menu">Sicherheit</string>
     <string name="wallet_options_encrypt_keys_set">Ausgabe-PIN setzen</string>
     <string name="wallet_options_encrypt_keys_change">Ausgabe-PIN ändern</string>
@@ -54,9 +56,8 @@
     <string name="wallet_timeskew_dialog_title">Überprüfe Datums &amp; Uhrzeit-Einstellungen</string>
     <string name="wallet_timeskew_dialog_msg">Deine Gerätezeit geht um %d Minuten falsch. Deswegen kannst Du möglicherweise keine Bitcoins senden oder empfangen.\n\nDu solltest deine Datums, Zeit- und Zeitzoneneinstellungen überprüfen und ggf. korrigieren.</string>
     <string name="wallet_version_dialog_title">Eine neue Version ist verfügbar!</string>
-    <string name="wallet_version_dialog_msg">Diese Version behebt wichtige Fehler. Die Einzelheiten stehen in der Liste der Änderungen auf Google Play.</string>
+    <string name="wallet_version_dialog_msg">Diese Version behebt wichtige Fehler. Die Einzelheiten stehen in der Liste der Änderungen auf %s.</string>
     <string name="wallet_version_dialog_msg_deprecated">Wenn du kein Update siehst, heißt das vermutlich daß deine Android-Version nicht mehr unterstützt wird.</string>
-    <string name="wallet_version_dialog_button_market">Google Play</string>
     <string name="wallet_version_dialog_button_binary">Herunterladen</string>
     <string name="wallet_old_sdk_dialog_title">Android ist veraltet</string>
     <string name="wallet_old_sdk_dialog_message">Es ist möglich, daß eine der nächsten Versionen von Bitcoin Wallet dein Gerät nicht mehr unterstützt. In manchen Fällen kann es schwierig werden, Zahlungen zu tätigen.\n\nEs wird empfohlen, die enthaltenen Bitcoins bald zu verschieben, außer du weisst was du tust.</string>
@@ -126,6 +127,8 @@
     <string name="sweep_wallet_fragment_decrypt_progress">Entschlüsselung…\nDauert bis zu 2 Minuten.</string>
     <string name="sweep_wallet_fragment_request_wallet_balance_progress">Aktualisiere Guthaben…</string>
     <string name="sweep_wallet_fragment_request_wallet_balance_failed_title">Guthabenanforderung fehlgeschlagen</string>
+    <string name="sweep_wallet_fragment_request_wallet_balance_failed_connection">Du hast eine schlechte Verbindung zum Electrum-Netzwerk.</string>
+    <string name="sweep_wallet_fragment_request_wallet_balance_empty">Die Paper-Wallet ist leer.</string>
     <string name="sweep_wallet_fragment_insufficient_money_title">Nicht genug Bitcoins</string>
     <string name="sweep_wallet_fragment_insufficient_money_msg">Das zu leerende Guthaben ist zu gering zum Entleeren.</string>
     <string name="sweep_wallet_options_reload">Guthaben aktualisieren</string>
@@ -167,10 +170,14 @@
     <string name="edit_address_book_entry_dialog_address_label">Adresse</string>
     <string name="edit_address_book_entry_dialog_label_label">Name</string>
     <string name="edit_address_book_entry_dialog_button_edit">Speichern</string>
+    <string name="transaction_row_confidence_message_sent_unbroadcasted">Diese Zahlung ist noch nicht übertragen.</string>
+    <string name="transaction_row_confidence_message_received_successful">Diese Zahlung wurde deiner Wallet gutgeschrieben.</string>
+    <string name="transaction_row_confidence_message_sent_successful">Deine Zahlung war erfolgreich. Sie ist beim Empfänger angekommen.</string>
+    <string name="transaction_row_confidence_message_received_failed">Diese Zahlung ist fehlgeschlagen.</string>
+    <string name="transaction_row_confidence_message_sent_failed">Deine Zahlung ist fehlgeschlagen.</string>
     <string name="transaction_row_fee">Netzwerk-Gebühr</string>
     <string name="transaction_row_message_purpose_key_rotation">Diese Transaktion stärkt deine Wallet gegen Diebstahl. &lt;u&gt;Mehr Information.&lt;/u&gt;</string>
     <string name="transaction_row_message_purpose_raise_fee">Diese Transaktion erhöht die Netzwerk-Gebühr für eine vorherige Zahlung.</string>
-    <string name="transaction_row_message_own_unbroadcasted">Diese Zahlung ist noch nicht übertragen.</string>
     <string name="transaction_row_message_received_direct">Diese Zahlung wurde direkt empfangen. Es besteht das Risiko, daß sie niemals verfügbar wird.</string>
     <string name="transaction_row_message_received_unconfirmed_delayed">Die Bestätigung dieser Zahlung ist verspätet, wahrscheinlich aufgrund einer Überlastung des Bitcoin-Netzes.</string>
     <string name="transaction_row_message_received_unconfirmed_unlocked">Diese Zahlung sollte in ein paar Minuten verfügbar werden.</string>
@@ -276,11 +283,11 @@
     <string name="preferences_initiate_reset_summary">Blockchain, Transaktionen und Guthaben werden zurückgesetzt. Das Wiedereinspielen wird eine Weile dauern, also mach das nur wenn du weisst warum.</string>
     <string name="preferences_initiate_reset_dialog_message">Möchtest du die Blockchain zurücksetzen und wiedereinspielen?\n\nDies wird verübergehend dein Guthaben ausblenden und deine Transaktionen leeren. Beides wird sich während des Vorgangs erholen. Achte auf eine zuverlässige Internet-Verbindung.</string>
     <string name="preferences_initiate_reset_dialog_positive">Zurücksetzen</string>
-    <string name="preferences_extended_public_key_title">Xpub anzeigen</string>
+    <string name="preferences_extended_public_key_title">extended public key anzeigen</string>
     <string name="preferences_extended_public_key_summary">Zeigt den Extended Public Key deiner Wallet, so daß er in andere Apps oder Dienste importiert werden kann. Pass aber auf, denn das wird deine finanziellen Umstände gegenüber der App offenlegen.</string>
     <string name="bitmap_fragment_share">Teilen…</string>
     <string name="extended_public_key_fragment_title">Extended Public Key</string>
-    <string name="extended_public_key_fragment_share">Xpub teilen…</string>
+    <string name="extended_public_key_fragment_share">extended public key teilen…</string>
     <string name="report_issue_dialog_title_issue">Problem melden</string>
     <string name="report_issue_dialog_title_crash">Absturz erkannt</string>
     <string name="report_issue_dialog_title_transaction">Problem mit markierter Zahlung melden</string>
@@ -299,15 +306,17 @@
     <string name="about_license_title">Lizenz</string>
     <string name="about_source_title">Quellcode</string>
     <string name="about_category_credits">Diese App nutzt…</string>
-    <string name="about_credits_bitcoinj_title">bitcoinj %s, eine Bitcoin-Protokoll-Implementierung</string>
+    <string name="about_credits_bitcoinj_title">bitcoinj %s, eine Implementierung des Bitcoin-Protokolls</string>
     <string name="about_credits_zxing_title">ZXing, eine QR-Code-Bibliothek</string>
-    <string name="about_credits_scrypt_title">Scrypt, implementiert von Will Glozer und Colin Percival</string>
-    <string name="about_market_app_title">Eintrag bei Google Play</string>
+    <string name="about_credits_bouncycastle_title">Bouncy Castle, eine Kryptographie-Bibliothek</string>
+    <string name="about_credits_okhttp_title">OkHttp, eine HTTP-Client-Bibliothek</string>
+    <string name="about_credits_moshi_title">Moshi, eine JSON-Bibliothek</string>
+    <string name="about_credits_guava_title">Guava, eine Sammlung nützlicher Helfer</string>
+    <string name="about_credits_slf4j_title">SLF4J, ein Logging-Framework</string>
+    <string name="about_market_app_title">Eintrag bei %s</string>
     <string name="about_market_app_summary">Rezensionen und Bewertungen</string>
     <string name="about_faq_title">FAQ</string>
     <string name="about_faq_summary">Häufig gestellte Fragen über die App</string>
-    <string name="about_community_googleplus_title">Google+ Community</string>
-    <string name="about_community_googleplus_summary">Diskussionen über die App</string>
     <string name="notification_coins_received_msg">%s empfangen</string>
     <string name="notification_peers_connected_msg">%d Peers verbunden</string>
     <string name="notification_inactivity_title">Du hast noch Bitcoins auf diesem Gerät!</string>

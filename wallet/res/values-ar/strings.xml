@@ -1,5 +1,5 @@
 <?xml version='1.0' encoding='UTF-8'?>
-<resources>
+<resources xmlns:android="http://schemas.android.com/apk/res/android">
   <string name="toast_wallet_reset">تم اعادة تعيين محفظتك!\nهذا سيستغرق بضع الوقت.</string>
   <string name="wallet_disclaimer_fragment_remind_safety">استخدم على مسؤوليتك الخاصة. يرجى قراءة ملاحظات السلامة.</string>
   <string name="wallet_disclaimer_fragment_remind_backup">يجب عليك القيام بإجراء حفظ احتياطي لمحفظتك!</string>
@@ -49,9 +49,8 @@
   <string name="wallet_timeskew_dialog_title">تحقق من صحة تاريخ اليوم و إعدادت الوقت</string>
   <string name="wallet_timeskew_dialog_msg">إن إعدادت الوقت لجهازك منحرفة ب%d دقائق، لا يمكنك ارسال ولا استلام مبالغ بيتكوين بسبب هذه المشكلة.\nيجب أن تتأكد وتصحح إعدادات الوقت توقيت timezone.</string>
   <string name="wallet_version_dialog_title">يوجد إصدار جديد الآن!</string>
-  <string name="wallet_version_dialog_msg">يقوم هذ الإصدار بإصلاح أعطال مهمة. للمزيد من التفاصيل، يرجى مراجعة سجل التغييرات في متجر جوجل بلاي Google Play.</string>
+  <string name="wallet_version_dialog_msg">يقوم هذ الإصدار بإصلاح أعطال مهمة. للمزيد من التفاصيل، يرجى مراجعة سجل التغييرات في متجر جوجل بلاي %s.</string>
   <string name="wallet_version_dialog_msg_deprecated">إن لم تتلقى أي إشعار بالتحديث فمِن المحتمل أنّ نسخة نظام الأندرويد الخاصة بك لم تعد مدعومة قط.</string>
-  <string name="wallet_version_dialog_button_market">متجر جوجل بلاي Google Play.</string>
   <string name="wallet_version_dialog_button_binary">تنزيل</string>
   <string name="wallet_old_sdk_dialog_title">إصدار نظام الأندرويد الخاص بك قديم أو غير محدث</string>
   <string name="alert_dialogs_fragment_settings_failed_title">هناك مشكلة عند فتح الإعدادات</string>
@@ -138,8 +137,8 @@
   <string name="edit_address_book_entry_dialog_address_label">عنوان</string>
   <string name="edit_address_book_entry_dialog_button_edit">حفظ</string>
   <string name="transaction_row_fee">تكلفة الشبكة</string>
+  <string name="transaction_row_confidence_message_sent_unbroadcasted">لم يتم إرسال هذه الدفعة بعد.</string>
   <string name="transaction_row_message_purpose_key_rotation">هذه المعاملة تعزز محفظتك ضد السرقة. مزيد من المعلومات.</string>
-  <string name="transaction_row_message_own_unbroadcasted">لم يتم إرسال هذه الدفعة بعد.</string>
   <string name="transaction_row_message_received_direct">تم استلام هذه الدفعة مباشرة. توجد خطورة عدم القدرة على إنفاقها.</string>
   <string name="transaction_row_message_received_unconfirmed_unlocked">سيمكنك دفع هذه الدفعة في غضون دقائق.</string>
   <string name="transaction_row_message_received_dead">تم إرجاع هذه الدفعة من قبل المرسل.</string>
@@ -216,9 +215,9 @@
   <string name="preferences_initiate_reset_summary">إعادة تعيين Blockchain و المعاملات و رصيد المحفظة. الرد سيستغرق بعض الوقت.</string>
   <string name="preferences_initiate_reset_dialog_message">هل تود إعادة تعيين وإعادة تشغيل blockchain؟\n\nسيتم إخفاء رصيد محفظتك  مؤقتا وإزالة المعاملات. كلاهما سوف يسترجعان مع دم مزامنة بيانات blockchain.</string>
   <string name="preferences_initiate_reset_dialog_positive">إعادة تعيين</string>
-  <string name="preferences_extended_public_key_title">إظهار xpub</string>
+  <string name="preferences_extended_public_key_title">إظهار extended public key</string>
   <string name="bitmap_fragment_share">شارك ...</string>
-  <string name="extended_public_key_fragment_share">شارك xpub ...</string>
+  <string name="extended_public_key_fragment_share">شارك extended public key ...</string>
   <string name="report_issue_dialog_title_issue">الإبلاغ عن مشكلة</string>
   <string name="report_issue_dialog_title_crash">تم الكشف عن  حصول عطل للنظام مؤخرا</string>
   <string name="report_issue_dialog_title_transaction">الإبلاغ عن خلل في المعاملة التي تم تحديدها</string>
@@ -239,12 +238,9 @@
   <string name="about_category_credits">هذا التطبيق يَستخدم ...</string>
   <string name="about_credits_bitcoinj_title">bitcoinj %s، هو إدخال و دعم لبروتوكول بتكوين</string>
   <string name="about_credits_zxing_title">ZXing</string>
-  <string name="about_market_app_title">صفحة متجر غوغل للتطبيقات</string>
   <string name="about_market_app_summary">إعداد تقرير أو تقييم للتطبيق</string>
   <string name="about_faq_title">الأسئلة الشائعة</string>
   <string name="about_faq_summary">الأسئلة الشائعة عن التطبيق</string>
-  <string name="about_community_googleplus_title">مجتمع غوغل+</string>
-  <string name="about_community_googleplus_summary">إنضم إلى المناقشة حول التطبيق</string>
   <string name="notification_coins_received_msg">تم إستلام %s</string>
   <string name="notification_peers_connected_msg">الأقران المتصلة peers %d </string>
   <string name="notification_inactivity_title">لا يزال عندك بعضا من البيتكوين على هذا الجهاز !</string>

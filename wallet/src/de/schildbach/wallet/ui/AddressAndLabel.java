@@ -12,12 +12,10 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 package de.schildbach.wallet.ui;
-
-import javax.annotation.Nullable;
 
 import org.bitcoinj.core.Address;
 import org.bitcoinj.core.AddressFormatException;
@@ -29,6 +27,7 @@ import de.schildbach.wallet.Constants;
 
 import android.os.Parcel;
 import android.os.Parcelable;
+import androidx.annotation.Nullable;
 
 /**
  * @author Andreas Schildbach
@@ -44,7 +43,7 @@ public class AddressAndLabel implements Parcelable {
 
     public AddressAndLabel(final NetworkParameters addressParams, final String address, @Nullable final String label)
             throws AddressFormatException {
-        this(Address.fromBase58(addressParams, address), label);
+        this(Address.fromString(addressParams, address), label);
     }
 
     @Override
@@ -67,7 +66,7 @@ public class AddressAndLabel implements Parcelable {
         final StringBuilder builder = new StringBuilder();
         builder.append(getClass().getSimpleName());
         builder.append('[');
-        builder.append(address.toBase58());
+        builder.append(address.toString());
         if (label != null) {
             builder.append(',');
             builder.append(label);
@@ -83,7 +82,7 @@ public class AddressAndLabel implements Parcelable {
 
     @Override
     public void writeToParcel(final Parcel dest, final int flags) {
-        dest.writeString(address.toBase58());
+        dest.writeString(address.toString());
         dest.writeString(label);
     }
 
@@ -100,7 +99,7 @@ public class AddressAndLabel implements Parcelable {
     };
 
     private AddressAndLabel(final Parcel in) {
-        address = Address.fromBase58(Constants.NETWORK_PARAMETERS, in.readString());
+        address = Address.fromString(Constants.NETWORK_PARAMETERS, in.readString());
         label = in.readString();
     }
 }

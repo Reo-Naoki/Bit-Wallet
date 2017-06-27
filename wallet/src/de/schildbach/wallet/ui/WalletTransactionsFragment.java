@@ -12,7 +12,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 package de.schildbach.wallet.ui;
@@ -21,10 +21,10 @@ import java.util.List;
 import java.util.Set;
 
 import org.bitcoinj.core.Address;
-import org.bitcoinj.core.ScriptException;
 import org.bitcoinj.core.Sha256Hash;
 import org.bitcoinj.core.Transaction;
 import org.bitcoinj.core.Transaction.Purpose;
+import org.bitcoinj.script.ScriptException;
 import org.bitcoinj.wallet.Wallet;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -33,15 +33,15 @@ import de.schildbach.wallet.Configuration;
 import de.schildbach.wallet.Constants;
 import de.schildbach.wallet.R;
 import de.schildbach.wallet.WalletApplication;
-import de.schildbach.wallet.data.AddressBookProvider;
+import de.schildbach.wallet.data.AddressBookDao;
+import de.schildbach.wallet.data.AppDatabase;
 import de.schildbach.wallet.ui.TransactionsAdapter.ListItem;
+import de.schildbach.wallet.ui.TransactionsAdapter.WarningType;
 import de.schildbach.wallet.ui.send.RaiseFeeDialogFragment;
 import de.schildbach.wallet.util.Qr;
 import de.schildbach.wallet.util.WalletUtils;
 
 import android.app.admin.DevicePolicyManager;
-import android.arch.lifecycle.Observer;
-import android.arch.lifecycle.ViewModelProviders;
 import android.content.Context;
 import android.content.Intent;
 import android.graphics.Bitmap;
@@ -51,8 +51,6 @@ import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
 import android.provider.Settings;
-import android.support.v4.app.Fragment;
-import android.support.v7.widget.RecyclerView;
 import android.text.SpannableStringBuilder;
 import android.text.style.StyleSpan;
 import android.view.LayoutInflater;
@@ -65,6 +63,10 @@ import android.widget.PopupMenu;
 import android.widget.PopupMenu.OnMenuItemClickListener;
 import android.widget.TextView;
 import android.widget.ViewAnimator;
+import androidx.fragment.app.Fragment;
+import androidx.lifecycle.Observer;
+import androidx.lifecycle.ViewModelProviders;
+import androidx.recyclerview.widget.RecyclerView;
 
 /**
  * @author Andreas Schildbach
@@ -73,6 +75,7 @@ public class WalletTransactionsFragment extends Fragment implements Transactions
     private AbstractWalletActivity activity;
     private WalletApplication application;
     private Configuration config;
+    private AddressBookDao addressBookDao;
     private DevicePolicyManager devicePolicyManager;
 
     private ViewAnimator viewGroup;
@@ -94,6 +97,7 @@ public class WalletTransactionsFragment extends Fragment implements Transactions
         this.activity = (AbstractWalletActivity) context;
         this.application = activity.getWalletApplication();
         this.config = application.getConfiguration();
+        this.addressBookDao = AppDatabase.getDatabase(context).addressBookDao();
         this.devicePolicyManager = (DevicePolicyManager) application.getSystemService(Context.DEVICE_POLICY_SERVICE);
     }
 
@@ -103,13 +107,20 @@ public class WalletTransactionsFragment extends Fragment implements Transactions
         setHasOptionsMenu(true);
 
         viewModel = ViewModelProviders.of(this).get(WalletTransactionsViewModel.class);
+        viewModel.direction.observe(this, new Observer<WalletTransactionsViewModel.Direction>() {
+            @Override
+            public void onChanged(final WalletTransactionsViewModel.Direction direction) {
+                activity.invalidateOptionsMenu();
+            }
+        });
         viewModel.transactions.observe(this, new Observer<Set<Transaction>>() {
             @Override
             public void onChanged(final Set<Transaction> transactions) {
                 if (transactions.isEmpty()) {
-                    viewGroup.setDisplayedChild(1);
+                    viewGroup.setDisplayedChild(0);
 
                     final WalletTransactionsViewModel.Direction direction = viewModel.direction.getValue();
+                    final WarningType warning = viewModel.warning.getValue();
                     final SpannableStringBuilder emptyText = new SpannableStringBuilder(
                             getString(direction == WalletTransactionsViewModel.Direction.SENT
                                     ? R.string.wallet_transactions_fragment_empty_text_sent
@@ -119,9 +130,16 @@ public class WalletTransactionsFragment extends Fragment implements Transactions
                     if (direction != WalletTransactionsViewModel.Direction.SENT)
                         emptyText.append("\n\n")
                                 .append(getString(R.string.wallet_transactions_fragment_empty_text_howto));
+                    if (warning == WarningType.BACKUP) {
+                        final int start = emptyText.length();
+                        emptyText.append("\n\n")
+                                .append(getString(R.string.wallet_transactions_fragment_empty_remind_backup));
+                        emptyText.setSpan(new StyleSpan(Typeface.BOLD), start, emptyText.length(),
+                                SpannableStringBuilder.SPAN_POINT_MARK);
+                    }
                     emptyView.setText(emptyText);
                 } else {
-                    viewGroup.setDisplayedChild(2);
+                    viewGroup.setDisplayedChild(1);
                 }
             }
         });
@@ -129,7 +147,26 @@ public class WalletTransactionsFragment extends Fragment implements Transactions
             @Override
             public void onChanged(final List<ListItem> listItems) {
                 adapter.submitList(listItems);
-                ViewModelProviders.of(activity).get(WalletActivity.ViewModel.class).transactionsLoadingFinished();
+                ViewModelProviders.of(activity).get(WalletActivityViewModel.class).transactionsLoadingFinished();
+            }
+        });
+        viewModel.showBitmapDialog.observe(this, new Event.Observer<Bitmap>() {
+            @Override
+            public void onEvent(final Bitmap bitmap) {
+                BitmapFragment.show(getFragmentManager(), bitmap);
+            }
+        });
+        viewModel.showEditAddressBookEntryDialog.observe(this, new Event.Observer<Address>() {
+            @Override
+            public void onEvent(final Address address) {
+                EditAddressBookEntryFragment.edit(getFragmentManager(), address);
+            }
+        });
+        viewModel.showReportIssueDialog.observe(this, new Event.Observer<String>() {
+            @Override
+            public void onEvent(final String contextualData) {
+                ReportIssueDialogFragment.show(getFragmentManager(), R.string.report_issue_dialog_title_transaction,
+                        R.string.report_issue_dialog_message_issue, Constants.REPORT_SUBJECT_ISSUE, contextualData);
             }
         });
 
@@ -142,7 +179,6 @@ public class WalletTransactionsFragment extends Fragment implements Transactions
         final View view = inflater.inflate(R.layout.wallet_transactions_fragment, container, false);
 
         viewGroup = (ViewAnimator) view.findViewById(R.id.wallet_transactions_group);
-        viewGroup.setDisplayedChild(2); // don't show progress
 
         emptyView = (TextView) view.findViewById(R.id.wallet_transactions_empty);
 
@@ -216,7 +252,6 @@ public class WalletTransactionsFragment extends Fragment implements Transactions
         } else {
             return false;
         }
-        item.setChecked(true);
 
         viewModel.setDirection(direction);
         return true;
@@ -244,8 +279,8 @@ public class WalletTransactionsFragment extends Fragment implements Transactions
                 .findItem(R.id.wallet_transactions_context_edit_address);
         if (!txRotation && txAddress != null) {
             editAddressMenuItem.setVisible(true);
-            final boolean isAdd = AddressBookProvider.resolveLabel(activity, txAddress.toBase58()) == null;
-            final boolean isOwn = wallet.isPubKeyHashMine(txAddress.getHash160());
+            final boolean isAdd = addressBookDao.resolveLabel(txAddress.toString()) == null;
+            final boolean isOwn = wallet.isAddressMine(txAddress);
 
             if (isOwn)
                 editAddressMenuItem.setTitle(isAdd ? R.string.edit_address_book_entry_dialog_title_add_receive
@@ -267,11 +302,12 @@ public class WalletTransactionsFragment extends Fragment implements Transactions
             public boolean onMenuItemClick(final MenuItem item) {
                 switch (item.getItemId()) {
                 case R.id.wallet_transactions_context_edit_address:
-                    handleEditAddress(tx);
+                    viewModel.showEditAddressBookEntryDialog.setValue(new Event<>(txAddress));
                     return true;
 
                 case R.id.wallet_transactions_context_show_qr:
-                    handleShowQr();
+                    final Bitmap qrCodeBitmap = Qr.bitmap(Qr.encodeCompressBinary(txSerialized));
+                    viewModel.showBitmapDialog.setValue(new Event<>(qrCodeBitmap));
                     return true;
 
                 case R.id.wallet_transactions_context_raise_fee:
@@ -284,11 +320,10 @@ public class WalletTransactionsFragment extends Fragment implements Transactions
 
                 case R.id.wallet_transactions_context_browse:
                     if (!txRotation) {
-                        final String txHash = tx.getHashAsString();
                         final Uri blockExplorerUri = config.getBlockExplorer();
-                        log.info("Viewing transaction {} on {}", txHash, blockExplorerUri);
-                        startActivity(
-                                new Intent(Intent.ACTION_VIEW, Uri.withAppendedPath(blockExplorerUri, "tx/" + txHash)));
+                        log.info("Viewing transaction {} on {}", tx.getTxId(), blockExplorerUri);
+                        startActivity(new Intent(Intent.ACTION_VIEW,
+                                Uri.withAppendedPath(blockExplorerUri, "tx/" + tx.getTxId().toString())));
                     } else {
                         startActivity(new Intent(Intent.ACTION_VIEW, KEY_ROTATION_URI));
                     }
@@ -296,15 +331,6 @@ public class WalletTransactionsFragment extends Fragment implements Transactions
                 }
 
                 return false;
-            }
-
-            private void handleEditAddress(final Transaction tx) {
-                EditAddressBookEntryFragment.edit(getFragmentManager(), txAddress);
-            }
-
-            private void handleShowQr() {
-                final Bitmap qrCodeBitmap = Qr.bitmap(Qr.encodeCompressBinary(txSerialized));
-                BitmapFragment.show(getFragmentManager(), qrCodeBitmap);
             }
 
             private void handleReportIssue(final Transaction tx) {
@@ -319,9 +345,7 @@ public class WalletTransactionsFragment extends Fragment implements Transactions
                     contextualData.append("  confidence: ").append(tx.getConfidence()).append('\n');
                 contextualData.append(tx.toString());
 
-                ReportIssueDialogFragment.show(getFragmentManager(), R.string.report_issue_dialog_title_transaction,
-                        R.string.report_issue_dialog_message_issue, Constants.REPORT_SUBJECT_ISSUE,
-                        contextualData.toString());
+                viewModel.showReportIssueDialog.setValue(new Event<>(contextualData.toString()));
             }
         });
         popupMenu.show();
@@ -336,7 +360,9 @@ public class WalletTransactionsFragment extends Fragment implements Transactions
     public void onWarningClick(final View view) {
         switch (warning()) {
         case BACKUP:
-            ((WalletActivity) activity).handleBackupWallet();
+            final WalletActivityViewModel viewModel = ViewModelProviders.of(getActivity())
+                    .get(WalletActivityViewModel.class);
+            viewModel.showBackupWalletDialog.setValue(Event.simple());
             break;
 
         case STORAGE_ENCRYPTION:
@@ -349,9 +375,8 @@ public class WalletTransactionsFragment extends Fragment implements Transactions
         final int storageEncryptionStatus = devicePolicyManager.getStorageEncryptionStatus();
         if (config.remindBackup())
             return TransactionsAdapter.WarningType.BACKUP;
-        else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP
-                && (storageEncryptionStatus == DevicePolicyManager.ENCRYPTION_STATUS_INACTIVE
-                        || storageEncryptionStatus == DevicePolicyManager.ENCRYPTION_STATUS_ACTIVE_DEFAULT_KEY))
+        else if (storageEncryptionStatus == DevicePolicyManager.ENCRYPTION_STATUS_INACTIVE
+                || storageEncryptionStatus == DevicePolicyManager.ENCRYPTION_STATUS_ACTIVE_DEFAULT_KEY)
             return TransactionsAdapter.WarningType.STORAGE_ENCRYPTION;
         else
             return null;

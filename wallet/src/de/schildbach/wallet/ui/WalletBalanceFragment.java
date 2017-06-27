@@ -1,5 +1,5 @@
 /*
- * Copyright 2011-2015 the original author or authors.
+ * Copyright the original author or authors.
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -12,7 +12,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 package de.schildbach.wallet.ui;
@@ -24,23 +24,15 @@ import de.schildbach.wallet.Configuration;
 import de.schildbach.wallet.Constants;
 import de.schildbach.wallet.R;
 import de.schildbach.wallet.WalletApplication;
-import de.schildbach.wallet.data.BlockchainStateLiveData;
 import de.schildbach.wallet.data.ExchangeRate;
-import de.schildbach.wallet.data.ExchangeRateLiveData;
-import de.schildbach.wallet.data.WalletBalanceLiveData;
 import de.schildbach.wallet.service.BlockchainState;
 import de.schildbach.wallet.ui.send.FeeCategory;
 import de.schildbach.wallet.ui.send.SendCoinsActivity;
 
-import android.app.Application;
-import android.arch.lifecycle.AndroidViewModel;
-import android.arch.lifecycle.Observer;
-import android.arch.lifecycle.ViewModelProviders;
 import android.content.Context;
 import android.content.Intent;
 import android.os.Build;
 import android.os.Bundle;
-import android.support.v4.app.Fragment;
 import android.text.format.DateUtils;
 import android.view.LayoutInflater;
 import android.view.Menu;
@@ -50,6 +42,10 @@ import android.view.View;
 import android.view.View.OnClickListener;
 import android.view.ViewGroup;
 import android.widget.TextView;
+import androidx.core.content.ContextCompat;
+import androidx.fragment.app.Fragment;
+import androidx.lifecycle.Observer;
+import androidx.lifecycle.ViewModelProviders;
 
 /**
  * @author Andreas Schildbach
@@ -66,43 +62,10 @@ public final class WalletBalanceFragment extends Fragment {
     private TextView viewProgress;
 
     private boolean showLocalBalance;
-    private boolean installedFromGooglePlay;
 
-    private ViewModel viewModel;
+    private WalletBalanceViewModel viewModel;
 
     private static final long BLOCKCHAIN_UPTODATE_THRESHOLD_MS = DateUtils.HOUR_IN_MILLIS;
-    private static final Coin SOME_BALANCE_THRESHOLD = Coin.COIN.divide(800);
-    private static final Coin TOO_MUCH_BALANCE_THRESHOLD = Coin.COIN.divide(16);
-
-    public static class ViewModel extends AndroidViewModel {
-        private final WalletApplication application;
-        private BlockchainStateLiveData blockchainState;
-        private WalletBalanceLiveData balance;
-        private ExchangeRateLiveData exchangeRate;
-
-        public ViewModel(final Application application) {
-            super(application);
-            this.application = (WalletApplication) application;
-        }
-
-        public BlockchainStateLiveData getBlockchainState() {
-            if (blockchainState == null)
-                blockchainState = new BlockchainStateLiveData(application);
-            return blockchainState;
-        }
-
-        public WalletBalanceLiveData getBalance() {
-            if (balance == null)
-                balance = new WalletBalanceLiveData(application);
-            return balance;
-        }
-
-        public ExchangeRateLiveData getExchangeRate() {
-            if (exchangeRate == null)
-                exchangeRate = new ExchangeRateLiveData(application);
-            return exchangeRate;
-        }
-    }
 
     @Override
     public void onAttach(final Context context) {
@@ -112,8 +75,6 @@ public final class WalletBalanceFragment extends Fragment {
         this.config = application.getConfiguration();
 
         showLocalBalance = getResources().getBoolean(R.bool.show_local_balance);
-        installedFromGooglePlay = "com.android.vending"
-                .equals(application.getPackageManager().getInstallerPackageName(application.getPackageName()));
     }
 
     @Override
@@ -121,7 +82,7 @@ public final class WalletBalanceFragment extends Fragment {
         super.onCreate(savedInstanceState);
         setHasOptionsMenu(true);
 
-        viewModel = ViewModelProviders.of(this).get(ViewModel.class);
+        viewModel = ViewModelProviders.of(this).get(WalletBalanceViewModel.class);
         viewModel.getBlockchainState().observe(this, new Observer<BlockchainState>() {
             @Override
             public void onChanged(final BlockchainState blockchainState) {
@@ -133,7 +94,7 @@ public final class WalletBalanceFragment extends Fragment {
             public void onChanged(final Coin balance) {
                 activity.invalidateOptionsMenu();
                 updateView();
-                ViewModelProviders.of(activity).get(WalletActivity.ViewModel.class).balanceLoadingFinished();
+                ViewModelProviders.of(activity).get(WalletActivityViewModel.class).balanceLoadingFinished();
             }
         });
         if (Constants.ENABLE_EXCHANGE_RATES) {
@@ -192,9 +153,9 @@ public final class WalletBalanceFragment extends Fragment {
     @Override
     public void onPrepareOptionsMenu(final Menu menu) {
         final Coin balance = viewModel.getBalance().getValue();
-        final boolean hasSomeBalance = balance != null && !balance.isLessThan(SOME_BALANCE_THRESHOLD);
+        final boolean hasSomeBalance = balance != null && !balance.isLessThan(Constants.SOME_BALANCE_THRESHOLD);
         menu.findItem(R.id.wallet_balance_options_donate)
-                .setVisible(Constants.DONATION_ADDRESS != null && (!installedFromGooglePlay || hasSomeBalance));
+                .setVisible(Constants.DONATION_ADDRESS != null && hasSomeBalance);
         super.onPrepareOptionsMenu(menu);
     }
 
@@ -265,7 +226,7 @@ public final class WalletBalanceFragment extends Fragment {
                         viewBalanceLocal.setFormat(Constants.LOCAL_FORMAT.code(0,
                                 Constants.PREFIX_ALMOST_EQUAL_TO + exchangeRate.getCurrencyCode()));
                         viewBalanceLocal.setAmount(localValue);
-                        viewBalanceLocal.setTextColor(getResources().getColor(R.color.fg_less_significant));
+                        viewBalanceLocal.setTextColor(ContextCompat.getColor(activity, R.color.fg_less_significant));
                     } else {
                         viewBalanceLocal.setVisibility(View.INVISIBLE);
                     }
@@ -274,10 +235,10 @@ public final class WalletBalanceFragment extends Fragment {
                 viewBalanceBtc.setVisibility(View.INVISIBLE);
             }
 
-            if (balance != null && balance.isGreaterThan(TOO_MUCH_BALANCE_THRESHOLD)) {
+            if (balance != null && balance.isGreaterThan(Constants.TOO_MUCH_BALANCE_THRESHOLD)) {
                 viewBalanceWarning.setVisibility(View.VISIBLE);
                 viewBalanceWarning.setText(R.string.wallet_balance_fragment_too_much);
-            } else if (Build.VERSION.SDK_INT < Build.VERSION_CODES.KITKAT) {
+            } else if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M) {
                 viewBalanceWarning.setVisibility(View.VISIBLE);
                 viewBalanceWarning.setText(R.string.wallet_balance_fragment_insecure_device);
             } else {

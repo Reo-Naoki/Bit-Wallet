@@ -12,16 +12,15 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 package de.schildbach.wallet.ui;
 
-import javax.annotation.Nullable;
-
 import org.bitcoinj.core.Address;
 import org.bitcoinj.core.Coin;
 import org.bitcoinj.protocols.payments.PaymentProtocol;
+import org.bitcoinj.script.Script;
 import org.bitcoinj.uri.BitcoinURI;
 import org.bitcoinj.wallet.Wallet;
 
@@ -29,19 +28,20 @@ import de.schildbach.wallet.Constants;
 import de.schildbach.wallet.WalletApplication;
 import de.schildbach.wallet.data.AbstractWalletLiveData;
 import de.schildbach.wallet.data.ConfigOwnNameLiveData;
-import de.schildbach.wallet.data.ExchangeRateLiveData;
+import de.schildbach.wallet.data.SelectedExchangeRateLiveData;
 import de.schildbach.wallet.util.Bluetooth;
 import de.schildbach.wallet.util.Qr;
 
 import android.app.Application;
-import android.arch.lifecycle.AndroidViewModel;
-import android.arch.lifecycle.MediatorLiveData;
-import android.arch.lifecycle.MutableLiveData;
-import android.arch.lifecycle.Observer;
 import android.content.Intent;
 import android.graphics.Bitmap;
 import android.net.Uri;
 import android.os.AsyncTask;
+import androidx.annotation.Nullable;
+import androidx.lifecycle.AndroidViewModel;
+import androidx.lifecycle.MediatorLiveData;
+import androidx.lifecycle.MutableLiveData;
+import androidx.lifecycle.Observer;
 
 /**
  * @author Andreas Schildbach
@@ -50,12 +50,13 @@ public class RequestCoinsViewModel extends AndroidViewModel {
     private final WalletApplication application;
     public final FreshReceiveAddressLiveData freshReceiveAddress;
     private final ConfigOwnNameLiveData ownName;
-    public final ExchangeRateLiveData exchangeRate;
+    public final SelectedExchangeRateLiveData exchangeRate;
     public final MutableLiveData<Coin> amount = new MutableLiveData<>();
     public final MutableLiveData<String> bluetoothMac = new MutableLiveData<>();
     public final MediatorLiveData<Bitmap> qrCode = new MediatorLiveData<>();
     public final MediatorLiveData<byte[]> paymentRequest = new MediatorLiveData<>();
     public final MediatorLiveData<Uri> bitcoinUri = new MediatorLiveData<>();
+    public final MutableLiveData<Event<Bitmap>> showBitmapDialog = new MutableLiveData<>();
 
     @Nullable
     public Intent bluetoothServiceIntent = null;
@@ -65,7 +66,7 @@ public class RequestCoinsViewModel extends AndroidViewModel {
         this.application = (WalletApplication) application;
         this.freshReceiveAddress = new FreshReceiveAddressLiveData(this.application);
         this.ownName = new ConfigOwnNameLiveData(this.application);
-        this.exchangeRate = new ExchangeRateLiveData(this.application);
+        this.exchangeRate = new SelectedExchangeRateLiveData(this.application);
         this.qrCode.addSource(freshReceiveAddress, new Observer<Address>() {
             @Override
             public void onChanged(final Address receiveAddress) {
@@ -174,8 +175,14 @@ public class RequestCoinsViewModel extends AndroidViewModel {
     }
 
     public static class FreshReceiveAddressLiveData extends AbstractWalletLiveData<Address> {
+        private Script.ScriptType outputScriptType = null;
+
         public FreshReceiveAddressLiveData(final WalletApplication application) {
             super(application);
+        }
+
+        public void overrideOutputScriptType(final Script.ScriptType outputScriptType) {
+            this.outputScriptType = outputScriptType;
         }
 
         @Override
@@ -191,11 +198,13 @@ public class RequestCoinsViewModel extends AndroidViewModel {
         private void maybeLoad() {
             if (getValue() == null) {
                 final Wallet wallet = getWallet();
+                final Script.ScriptType outputScriptType = this.outputScriptType;
                 AsyncTask.execute(new Runnable() {
                     @Override
                     public void run() {
                         org.bitcoinj.core.Context.propagate(Constants.CONTEXT);
-                        postValue(wallet.freshReceiveAddress());
+                        postValue(outputScriptType != null ? wallet.freshReceiveAddress(outputScriptType)
+                                : wallet.freshReceiveAddress());
                     }
                 });
             }

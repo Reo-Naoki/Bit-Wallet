@@ -12,19 +12,18 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 package de.schildbach.wallet.data;
 
 import java.math.BigDecimal;
+import java.util.Arrays;
 import java.util.Currency;
 import java.util.Iterator;
 import java.util.Locale;
 import java.util.Map;
 import java.util.TreeMap;
-
-import javax.annotation.Nullable;
 
 import org.bitcoinj.core.Coin;
 import org.bitcoinj.utils.Fiat;
@@ -49,8 +48,11 @@ import android.database.MatrixCursor;
 import android.net.Uri;
 import android.provider.BaseColumns;
 import android.text.format.DateUtils;
+import androidx.annotation.Nullable;
 import okhttp3.Call;
+import okhttp3.ConnectionSpec;
 import okhttp3.HttpUrl;
+import okhttp3.OkHttpClient.Builder;
 import okhttp3.Request;
 import okhttp3.Response;
 
@@ -236,7 +238,9 @@ public class ExchangeRatesProvider extends ContentProvider {
         request.url(BITCOINAVERAGE_URL);
         request.header("User-Agent", userAgent);
 
-        final Call call = Constants.HTTP_CLIENT.newCall(request.build());
+        final Builder httpClientBuilder = Constants.HTTP_CLIENT.newBuilder();
+        httpClientBuilder.connectionSpecs(Arrays.asList(ConnectionSpec.RESTRICTED_TLS));
+        final Call call = httpClientBuilder.build().newCall(request.build());
         try {
             final Response response = call.execute();
             if (response.isSuccessful()) {
@@ -252,9 +256,8 @@ public class ExchangeRatesProvider extends ContentProvider {
                                 && !fiatCurrencyCode.equals(MonetaryFormat.CODE_MBTC)
                                 && !fiatCurrencyCode.equals(MonetaryFormat.CODE_UBTC)) {
                             final JSONObject exchangeRate = head.getJSONObject(currencyCode);
-                            final JSONObject averages = exchangeRate.getJSONObject("averages");
                             try {
-                                final Fiat rate = parseFiatInexact(fiatCurrencyCode, averages.getString("day"));
+                                final Fiat rate = parseFiatInexact(fiatCurrencyCode, exchangeRate.getString("last"));
                                 if (rate.signum() > 0)
                                     rates.put(fiatCurrencyCode, new ExchangeRate(
                                             new org.bitcoinj.utils.ExchangeRate(rate), BITCOINAVERAGE_SOURCE));

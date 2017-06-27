@@ -12,12 +12,12 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 package de.schildbach.wallet.ui.send;
 
-import org.bitcoinj.core.VersionedChecksummedBytes;
+import org.bitcoinj.core.PrefixedChecksummedBytes;
 
 import de.schildbach.wallet.R;
 import de.schildbach.wallet.service.BlockchainService;
@@ -37,7 +37,7 @@ public final class SweepWalletActivity extends AbstractWalletActivity {
         context.startActivity(new Intent(context, SweepWalletActivity.class));
     }
 
-    public static void start(final Context context, final VersionedChecksummedBytes key) {
+    public static void start(final Context context, final PrefixedChecksummedBytes key) {
         final Intent intent = new Intent(context, SweepWalletActivity.class);
         intent.putExtra(INTENT_EXTRA_KEY, key);
         context.startActivity(intent);

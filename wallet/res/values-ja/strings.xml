@@ -1,5 +1,5 @@
 <?xml version='1.0' encoding='UTF-8'?>
-<resources>
+<resources xmlns:android="http://schemas.android.com/apk/res/android">
   <string name="toast_wallet_reset">ウォレットはリセットされました!\n復元には多少時間がかかります。</string>
   <string name="wallet_disclaimer_fragment_remind_safety">自己の責任においてご使用下さい。&lt;u&gt;安全に関する注意事項&lt;/u&gt;をお読み下さい。</string>
   <string name="wallet_disclaimer_fragment_remind_backup">&lt;u&gt;ウォレットをバックアップ&lt;/u&gt;する必要があります!</string>
@@ -26,7 +26,8 @@
   <string name="exchange_rates_options_search">為替レートの検索</string>
   <string name="wallet_transactions_fragment_empty_text_received">まだビットコインを受け取っていません。</string>
   <string name="wallet_transactions_fragment_empty_text_sent">まだビットコインを送っていません。</string>
-  <string name="wallet_transactions_fragment_empty_text_howto">ビットコインを入手するには?\n\n通常通貨と交換するか、\nグッズやサービスを販売するか\nまたは働いて稼ぎましょう</string>
+  <string name="wallet_transactions_fragment_empty_text_howto">ビットコインを受け取る方法ですか?\n従来の通貨と交換するか、物やサービスを売るか、\n仕事をして得ましょう。</string>
+  <string name="wallet_transactions_fragment_empty_remind_backup">ビットコインを受け取り始める前に\nウォレットをバックアップしてください!</string>
   <string name="wallet_transactions_row_warning_backup">おめでとうございます、初めて支払いを受け取りました。遺失を防ぐために&lt;u&gt;ウォレットをバックアップ&lt;/u&gt;していますか?</string>
   <string name="wallet_transactions_row_warning_storage_encryption">ヒント: ウォレットの安全性を向上させる方法として、&lt;u&gt;デバイスの暗号化&lt;/u&gt;もあります。その場合、他のアプリのデータも保護されます。</string>
   <string name="wallet_transactions_row_warning_chain_forking">ビットコインネットワークはメンテナンス中です。メンテナンスが終わるまではコインの送受信を一切しないようお勧めします。&lt;u&gt;詳細情報&lt;/u&gt;。</string>
@@ -36,6 +37,7 @@
   <string name="wallet_transactions_options_filter_all">全ての支払い</string>
   <string name="wallet_transactions_options_filter_received">受け取った支払い</string>
   <string name="wallet_transactions_options_filter_sent">送った支払い</string>
+  <string name="wallet_options_request_legacy">レガシーアドレスへの送金を要求する</string>
   <string name="wallet_options_safety_menu">安全対策</string>
   <string name="wallet_options_encrypt_keys_set">送金用PINを設定</string>
   <string name="wallet_options_encrypt_keys_change">送金用PINを変更</string>
@@ -51,16 +53,16 @@
   <string name="wallet_timeskew_dialog_title">日付と時刻の設定を確認してください</string>
   <string name="wallet_timeskew_dialog_msg">デバイスの時刻が%d分ずれています。この問題のためビットコインのやり取りができなくなる可能性があります。\n\n日付と時刻とタイムゾーンの設定を確認し、必要であれば修正してください。</string>
   <string name="wallet_version_dialog_title">新バージョンが利用可能です!</string>
-  <string name="wallet_version_dialog_msg">このバージョンには重要なバグフィックスがあります。詳細を見るには、Google Playの最新情報を見てください。</string>
+  <string name="wallet_version_dialog_msg">このバージョンでは重大なバグを修正しました。詳細については%sをご覧ください。</string>
   <string name="wallet_version_dialog_msg_deprecated">アップデートが表示されない場合、それはおそらくあなたのバージョンのAndroidはもうサポートされないということです。</string>
-  <string name="wallet_version_dialog_button_market">Google Play</string>
   <string name="wallet_version_dialog_button_binary">ダウンロード</string>
   <string name="wallet_old_sdk_dialog_title">Androidのバージョンが古すぎます</string>
   <string name="wallet_old_sdk_dialog_message">次のBitcoin Walletのリリースの際、このデバイスはもうサポートされないかもしれません。場合によっては、このデバイスでのコインの利用が困難になるかもしれません。\n\n意図的にしているのでない限り、あなたのコインをすぐにでも移動させることをおすすめします。</string>
   <string name="alert_dialogs_fragment_settings_failed_title">設定を開けませんでした</string>
   <string name="send_coins_activity_title">ビットコインの送金</string>
   <string name="send_coins_fragment_request_payment_request_progress">%s から署名の取得中……</string>
-  <string name="send_coins_fragment_request_payment_request_failed_title">署名の取得に失敗しました</string>
+  <string name="send_coins_fragment_request_payment_request_failed_title">支払いリクエストの取得に失敗しました</string>
+  <string name="send_coins_fragment_request_payment_request_failed_message">受取人 (%1$s) は互換性がない支払いプロトコルを使用しています (原因: %2$s)。</string>
   <string name="send_coins_fragment_request_payment_request_wrong_signature">不正な署名です!</string>
   <string name="send_coins_fragment_payee_verified_by">認証者: %s</string>
   <string name="send_coins_fragment_payee_verified_by_unknown">不明</string>
@@ -71,7 +73,7 @@
   <string name="send_coins_fragment_receiving_address_complex">複雑な\nアドレス</string>
   <string name="send_coins_fragment_pending">(%sが確認待ちです)</string>
   <string name="send_coins_fragment_amount_label">合計支払</string>
-  <string name="send_coins_fragment_hint_fee_economic">格安料金 %s が支払われます。重要: 「格安」は確認時間を気にしない場合のみ利用してください。 </string>
+  <string name="send_coins_fragment_hint_fee_economic">格安料金 %s が支払われます。重要: 「格安」は確認時間を気にしない場合のみ利用してください。</string>
   <string name="send_coins_fragment_hint_fee">ネットワーク料金 %s が支払われます。</string>
   <string name="send_coins_fragment_hint_fee_priority">優先料金 %s が支払われます。もし料金の安さを気にするのであれば、「優先」はできるだけ早く確定が必要なときのみ利用してください。</string>
   <string name="send_coins_fragment_hint_dusty_send">送金額小さすぎます</string>
@@ -122,6 +124,8 @@
   <string name="sweep_wallet_fragment_decrypt_progress">復号中……\n2分程度かかる場合があります。</string>
   <string name="sweep_wallet_fragment_request_wallet_balance_progress">残高のロード中……</string>
   <string name="sweep_wallet_fragment_request_wallet_balance_failed_title">ウォレットの残高のロードに失敗しました</string>
+  <string name="sweep_wallet_fragment_request_wallet_balance_failed_connection">Electrumネットワークに正常に接続できませんでした。</string>
+  <string name="sweep_wallet_fragment_request_wallet_balance_empty">ペーパーウォレットは空です。</string>
   <string name="sweep_wallet_fragment_insufficient_money_title">充分なコインがありません</string>
   <string name="sweep_wallet_fragment_insufficient_money_msg">ウォレット内のコインがスイープするには不十分です。</string>
   <string name="sweep_wallet_options_reload">残高のリロード</string>
@@ -164,9 +168,13 @@
   <string name="edit_address_book_entry_dialog_label_label">ラベル</string>
   <string name="edit_address_book_entry_dialog_button_edit">保存</string>
   <string name="transaction_row_fee">ネットワーク手数料</string>
+  <string name="transaction_row_confidence_message_sent_unbroadcasted">この支払いはまだ送信されていません。</string>
+  <string name="transaction_row_confidence_message_received_successful">この支払いはあなたのウォレットに入金されました。</string>
+  <string name="transaction_row_confidence_message_sent_successful">送金に成功しました。受取人に届きました。</string>
+  <string name="transaction_row_confidence_message_received_failed">支払いの受け取りに失敗しました。</string>
+  <string name="transaction_row_confidence_message_sent_failed">送金に失敗しました。</string>
   <string name="transaction_row_message_purpose_key_rotation">このトランザクションはウォレットの窃盗に対する強度を上げます。&lt;u&gt;より詳細な情報。&lt;/u&gt;</string>
   <string name="transaction_row_message_purpose_raise_fee">このトランザクションは前の支払いのネットワーク手数料を増額します。</string>
-  <string name="transaction_row_message_own_unbroadcasted">この支払はまだ送信されていません。</string>
   <string name="transaction_row_message_received_direct">この支払は直接届きました。利用可能とならないリスクがあります。</string>
   <string name="transaction_row_message_received_unconfirmed_delayed">この支払いの確認が遅れています。おそらくビットコインネットワークの過負荷によるものです。</string>
   <string name="transaction_row_message_received_unconfirmed_unlocked">この支払は数分程度で利用可能となります。</string>
@@ -206,7 +214,7 @@
   <string name="backup_wallet_dialog_message">バックアップはあなたが決めたパスワードで暗号化され、外部ストレージに書き込まれます。</string>
   <string name="backup_wallet_dialog_warning_encrypted">あなたのウォレットは送金用PINで保護されています。バックアップ用パスワードに加えてPINも忘れないようにしてください。</string>
   <string name="export_keys_dialog_button_export">バックアップ</string>
-  <string name="export_keys_dialog_success"><![CDATA[<p>あなたのウォレットは<tt>%s</tt>にバックアップされました。</p><p>どのような場合であれ、バックアップパスワードは覚えておいてください。</p>]]></string>
+  <string name="export_keys_dialog_success"><![CDATA[<p>あなたのウォレットは<tt>%s</tt>にバックアップされました。</p><p><b>バックアップがこのデバイスにしか無い場合、両方を同時に紛失する危険があります!</b></p><p>どちらにしろ、バックアップパスワードは忘れないようにしてください。</p>]]></string>
   <string name="export_keys_dialog_failure">ウォレットをバックアップできませんでした:\n%s</string>
   <string name="import_export_keys_dialog_password">パスワード</string>
   <string name="backup_wallet_dialog_password_again">もう一度</string>
@@ -272,11 +280,11 @@
   <string name="preferences_initiate_reset_summary">ブロックチェーン・トランザクション・ウォレットの残高をリセットします。再生にしばらくかかるため、必要な理由がわかる場合のみ実行してください。</string>
   <string name="preferences_initiate_reset_dialog_message">ブロックチェーンのリセットと再生を実行しますか?\n\n一時的にウォレットの残高が見られなくなり、トランザクションも削除されます。ブロックチェーンが同期するにつれ、両方とも復元されます。インターネットとの信頼できる接続があることを確認してください。</string>
   <string name="preferences_initiate_reset_dialog_positive">リセット</string>
-  <string name="preferences_extended_public_key_title">xpubを表示</string>
+  <string name="preferences_extended_public_key_title">extended public key を表示</string>
   <string name="preferences_extended_public_key_summary">他のアプリやサービスにインポートできるように、ウォレットの拡張公開鍵を表示します。注意: その場合そのアプリに金銭的なプライバシー情報を公開することになります。</string>
   <string name="bitmap_fragment_share">共有…</string>
   <string name="extended_public_key_fragment_title">拡張公開鍵</string>
-  <string name="extended_public_key_fragment_share">xpubを共有……</string>
+  <string name="extended_public_key_fragment_share">extended public key を共有……</string>
   <string name="report_issue_dialog_title_issue">問題を報告</string>
   <string name="report_issue_dialog_title_crash">直前のクラッシュを検知しました</string>
   <string name="report_issue_dialog_title_transaction">選択した支払いについて問題を報告する</string>
@@ -295,15 +303,17 @@
   <string name="about_license_title">ライセンス</string>
   <string name="about_source_title">ソースコード</string>
   <string name="about_category_credits">このアプリは以下のソフトウェアを利用しています。</string>
-  <string name="about_credits_bitcoinj_title">Bitcoinプロトコルの実装、bitcoinj %s</string>
-  <string name="about_credits_zxing_title">QRコード処理ライブラリ、ZXing</string>
-  <string name="about_credits_scrypt_title">Will GlozerとColin Percivalによって実装されたScrypt</string>
-  <string name="about_market_app_title">Google Playのページ</string>
+  <string name="about_credits_bitcoinj_title">bitcoinj %s、Bitcoinプロトコルの実装</string>
+  <string name="about_credits_zxing_title">ZXing、QRコード処理ライブラリ</string>
+  <string name="about_credits_bouncycastle_title">Bouncy Castle、暗号ライブラリ</string>
+  <string name="about_credits_okhttp_title">OkHttp, HTTPクライアントライブラリ</string>
+  <string name="about_credits_moshi_title">Moshi, JSONライブラリ</string>
+  <string name="about_credits_guava_title">Guava, 便利なヘルパーの集まり</string>
+  <string name="about_credits_slf4j_title">SLF4J, ロギングフレームワーク</string>
+  <string name="about_market_app_title">%sのページ</string>
   <string name="about_market_app_summary">アプリのレビューや評価をしてください</string>
   <string name="about_faq_title">よくある質問</string>
   <string name="about_faq_summary">このアプリに関するよくある質問</string>
-  <string name="about_community_googleplus_title">Google+ コミュニティ</string>
-  <string name="about_community_googleplus_summary">このアプリについて議論する</string>
   <string name="notification_coins_received_msg">%sを受け取りました</string>
   <string name="notification_peers_connected_msg">%dピアが接続済</string>
   <string name="notification_inactivity_title">まだこの端末にビットコインが残っています!</string>
