@@ -17,6 +17,27 @@
 
 package de.schildbach.wallet.data;
 
+import android.content.pm.PackageInfo;
+import android.content.res.AssetManager;
+import android.os.AsyncTask;
+import androidx.lifecycle.LiveData;
+import com.google.common.base.Stopwatch;
+import com.google.common.io.ByteStreams;
+import de.schildbach.wallet.Constants;
+import de.schildbach.wallet.WalletApplication;
+import de.schildbach.wallet.ui.send.FeeCategory;
+import okhttp3.Call;
+import okhttp3.ConnectionSpec;
+import okhttp3.Headers;
+import okhttp3.HttpUrl;
+import okhttp3.OkHttpClient;
+import okhttp3.Request;
+import okhttp3.Response;
+import okhttp3.ResponseBody;
+import org.bitcoinj.core.Coin;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileInputStream;
@@ -26,35 +47,11 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
 import java.nio.charset.StandardCharsets;
-import java.util.Arrays;
+import java.util.Collections;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
-
-import org.bitcoinj.core.Coin;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import com.google.common.base.Stopwatch;
-import com.google.common.io.ByteStreams;
-
-import de.schildbach.wallet.Constants;
-import de.schildbach.wallet.WalletApplication;
-import de.schildbach.wallet.ui.send.FeeCategory;
-
-import android.content.pm.PackageInfo;
-import android.content.res.AssetManager;
-import android.os.AsyncTask;
-import androidx.lifecycle.LiveData;
-import okhttp3.Call;
-import okhttp3.ConnectionSpec;
-import okhttp3.HttpUrl;
-import okhttp3.OkHttpClient;
-import okhttp3.Request;
-import okhttp3.Response;
-import okhttp3.ResponseBody;
-import okhttp3.internal.http.HttpDate;
 
 /**
  * @author Andreas Schildbach
@@ -75,33 +72,30 @@ public class DynamicFeeLiveData extends LiveData<Map<FeeCategory, Coin>> {
                 + (versionNameSplit >= 0 ? packageInfo.versionName.substring(versionNameSplit) : ""));
         this.userAgent = WalletApplication.httpUserAgent(packageInfo.versionName);
         this.assets = application.getAssets();
-        this.dynamicFeesFile = new File(application.getFilesDir(), Constants.Files.FEES_FILENAME);
-        this.tempFile = new File(application.getCacheDir(), Constants.Files.FEES_FILENAME + ".temp");
+        this.dynamicFeesFile = new File(application.getFilesDir(), Constants.Files.FEES_ASSET);
+        this.tempFile = new File(application.getCacheDir(), Constants.Files.FEES_ASSET + ".temp");
     }
 
     @Override
     protected void onActive() {
-        AsyncTask.execute(new Runnable() {
-            @Override
-            public void run() {
-                final Map<FeeCategory, Coin> dynamicFees = loadInBackground();
-                postValue(dynamicFees);
-            }
+        AsyncTask.execute(() -> {
+            final Map<FeeCategory, Coin> dynamicFees = loadInBackground();
+            postValue(dynamicFees);
         });
     }
 
     private Map<FeeCategory, Coin> loadInBackground() {
         try {
-            final Map<FeeCategory, Coin> staticFees = parseFees(assets.open(Constants.Files.FEES_FILENAME));
+            final Map<FeeCategory, Coin> staticFees = parseFees(assets.open(Constants.Files.FEES_ASSET));
             fetchDynamicFees(dynamicFeesUrl, tempFile, dynamicFeesFile, userAgent);
             if (!dynamicFeesFile.exists())
                 return staticFees;
 
             // Check dynamic fees for sanity, based on the hardcoded fees.
             // The bounds are as follows (h is the respective hardcoded fee):
-            // ECONOMIC: h/8 to h*4
-            // NORMAL: h/4 to h*4
-            // PRIORITY: h/4 to h*8
+            // ECONOMIC: h/8 to h*8
+            // NORMAL: h/8 to h*8
+            // PRIORITY: h/8 to h*8
             final Map<FeeCategory, Coin> dynamicFees = parseFees(new FileInputStream(dynamicFeesFile));
             for (final FeeCategory category : FeeCategory.values()) {
                 final Coin staticFee = staticFees.get(category);
@@ -112,14 +106,14 @@ public class DynamicFeeLiveData extends LiveData<Map<FeeCategory, Coin>> {
                             staticFee.toFriendlyString());
                     continue;
                 }
-                final Coin upperBound = staticFee.shiftLeft(category == FeeCategory.PRIORITY ? 3 : 2);
+                final Coin upperBound = staticFee.shiftLeft(3);
                 if (dynamicFee.isGreaterThan(upperBound)) {
                     dynamicFees.put(category, upperBound);
                     log.warn("Down-adjusting dynamic fee: category {} from {}/kB to {}/kB", category,
                             dynamicFee.toFriendlyString(), upperBound.toFriendlyString());
                     continue;
                 }
-                final Coin lowerBound = staticFee.shiftRight(category == FeeCategory.ECONOMIC ? 3 : 2);
+                final Coin lowerBound = staticFee.shiftRight(3);
                 if (dynamicFee.isLessThan(lowerBound)) {
                     dynamicFees.put(category, lowerBound);
                     log.warn("Up-adjusting dynamic fee: category {} from {}/kB to {}/kB", category,
@@ -134,7 +128,7 @@ public class DynamicFeeLiveData extends LiveData<Map<FeeCategory, Coin>> {
     }
 
     private static Map<FeeCategory, Coin> parseFees(final InputStream is) throws IOException {
-        final Map<FeeCategory, Coin> dynamicFees = new HashMap<FeeCategory, Coin>();
+        final Map<FeeCategory, Coin> dynamicFees = new HashMap<>();
         String line = null;
         try (final BufferedReader reader = new BufferedReader(new InputStreamReader(is, StandardCharsets.US_ASCII))) {
             while (true) {
@@ -168,12 +162,14 @@ public class DynamicFeeLiveData extends LiveData<Map<FeeCategory, Coin>> {
 
         final Request.Builder request = new Request.Builder();
         request.url(url);
-        request.header("User-Agent", userAgent);
+        final Headers.Builder headers = new Headers.Builder();
+        headers.add("User-Agent", userAgent);
         if (targetFile.exists())
-            request.header("If-Modified-Since", HttpDate.format(new Date(targetFile.lastModified())));
+            headers.add("If-Modified-Since", new Date(targetFile.lastModified()));
+        request.headers(headers.build());
 
         final OkHttpClient.Builder httpClientBuilder = Constants.HTTP_CLIENT.newBuilder();
-        httpClientBuilder.connectionSpecs(Arrays.asList(ConnectionSpec.RESTRICTED_TLS));
+        httpClientBuilder.connectionSpecs(Collections.singletonList(ConnectionSpec.RESTRICTED_TLS));
         httpClientBuilder.connectTimeout(5, TimeUnit.SECONDS);
         httpClientBuilder.writeTimeout(5, TimeUnit.SECONDS);
         httpClientBuilder.readTimeout(5, TimeUnit.SECONDS);
@@ -198,7 +194,8 @@ public class DynamicFeeLiveData extends LiveData<Map<FeeCategory, Coin>> {
                 watch.stop();
                 log.info("Dynamic fees fetched from {}, took {}", url, watch);
             } else {
-                log.warn("HTTP status {} when fetching dynamic fees from {}", response.code(), url);
+                log.warn("HTTP status {} {} when fetching dynamic fees from {}", response.code(), response.message(),
+                        url);
             }
         } catch (final Exception x) {
             log.warn("Problem when fetching dynamic fees rates from " + url, x);

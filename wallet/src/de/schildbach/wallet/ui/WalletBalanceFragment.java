@@ -17,18 +17,6 @@
 
 package de.schildbach.wallet.ui;
 
-import org.bitcoinj.core.Coin;
-import org.bitcoinj.utils.Fiat;
-
-import de.schildbach.wallet.Configuration;
-import de.schildbach.wallet.Constants;
-import de.schildbach.wallet.R;
-import de.schildbach.wallet.WalletApplication;
-import de.schildbach.wallet.data.ExchangeRate;
-import de.schildbach.wallet.service.BlockchainState;
-import de.schildbach.wallet.ui.send.FeeCategory;
-import de.schildbach.wallet.ui.send.SendCoinsActivity;
-
 import android.content.Context;
 import android.content.Intent;
 import android.os.Build;
@@ -39,13 +27,21 @@ import android.view.Menu;
 import android.view.MenuInflater;
 import android.view.MenuItem;
 import android.view.View;
-import android.view.View.OnClickListener;
 import android.view.ViewGroup;
 import android.widget.TextView;
-import androidx.core.content.ContextCompat;
 import androidx.fragment.app.Fragment;
-import androidx.lifecycle.Observer;
-import androidx.lifecycle.ViewModelProviders;
+import androidx.lifecycle.ViewModelProvider;
+import de.schildbach.wallet.Configuration;
+import de.schildbach.wallet.Constants;
+import de.schildbach.wallet.R;
+import de.schildbach.wallet.WalletApplication;
+import de.schildbach.wallet.exchangerate.ExchangeRateEntry;
+import de.schildbach.wallet.service.BlockchainState;
+import de.schildbach.wallet.ui.send.FeeCategory;
+import de.schildbach.wallet.ui.send.SendCoinsActivity;
+import org.bitcoinj.core.Coin;
+import org.bitcoinj.core.NetworkParameters;
+import org.bitcoinj.utils.Fiat;
 
 /**
  * @author Andreas Schildbach
@@ -63,6 +59,7 @@ public final class WalletBalanceFragment extends Fragment {
 
     private boolean showLocalBalance;
 
+    private WalletActivityViewModel activityViewModel;
     private WalletBalanceViewModel viewModel;
 
     private static final long BLOCKCHAIN_UPTODATE_THRESHOLD_MS = DateUtils.HOUR_IN_MILLIS;
@@ -82,28 +79,17 @@ public final class WalletBalanceFragment extends Fragment {
         super.onCreate(savedInstanceState);
         setHasOptionsMenu(true);
 
-        viewModel = ViewModelProviders.of(this).get(WalletBalanceViewModel.class);
-        viewModel.getBlockchainState().observe(this, new Observer<BlockchainState>() {
-            @Override
-            public void onChanged(final BlockchainState blockchainState) {
-                updateView();
-            }
-        });
-        viewModel.getBalance().observe(this, new Observer<Coin>() {
-            @Override
-            public void onChanged(final Coin balance) {
-                activity.invalidateOptionsMenu();
-                updateView();
-                ViewModelProviders.of(activity).get(WalletActivityViewModel.class).balanceLoadingFinished();
-            }
+        activityViewModel = new ViewModelProvider(activity).get(WalletActivityViewModel.class);
+        viewModel = new ViewModelProvider(this).get(WalletBalanceViewModel.class);
+
+        application.blockchainState.observe(this, blockchainState -> updateView());
+        viewModel.getBalance().observe(this, balance -> {
+            activity.invalidateOptionsMenu();
+            updateView();
+            activityViewModel.balanceLoadingFinished();
         });
         if (Constants.ENABLE_EXCHANGE_RATES) {
-            viewModel.getExchangeRate().observe(this, new Observer<ExchangeRate>() {
-                @Override
-                public void onChanged(final ExchangeRate exchangeRate) {
-                    updateView();
-                }
-            });
+            viewModel.getExchangeRate().observe(this, exchangeRate -> updateView());
         }
     }
 
@@ -122,26 +108,21 @@ public final class WalletBalanceFragment extends Fragment {
 
         viewBalance = view.findViewById(R.id.wallet_balance);
         if (showExchangeRatesOption) {
-            viewBalance.setOnClickListener(new OnClickListener() {
-                @Override
-                public void onClick(final View v) {
-                    startActivity(new Intent(getActivity(), ExchangeRatesActivity.class));
-                }
-            });
+            viewBalance.setOnClickListener(v -> startActivity(new Intent(getActivity(), ExchangeRatesActivity.class)));
         } else {
             viewBalance.setEnabled(false);
         }
 
-        viewBalanceBtc = (CurrencyTextView) view.findViewById(R.id.wallet_balance_btc);
+        viewBalanceBtc = view.findViewById(R.id.wallet_balance_btc);
         viewBalanceBtc.setPrefixScaleX(0.9f);
 
-        viewBalanceWarning = (TextView) view.findViewById(R.id.wallet_balance_warning);
+        viewBalanceWarning = view.findViewById(R.id.wallet_balance_warning);
 
-        viewBalanceLocal = (CurrencyTextView) view.findViewById(R.id.wallet_balance_local);
+        viewBalanceLocal = view.findViewById(R.id.wallet_balance_local);
         viewBalanceLocal.setInsignificantRelativeSize(1);
-        viewBalanceLocal.setStrikeThru(Constants.TEST);
+        viewBalanceLocal.setStrikeThru(!Constants.NETWORK_PARAMETERS.getId().equals(NetworkParameters.ID_MAINNET));
 
-        viewProgress = (TextView) view.findViewById(R.id.wallet_balance_progress);
+        viewProgress = view.findViewById(R.id.wallet_balance_progress);
     }
 
     @Override
@@ -161,12 +142,10 @@ public final class WalletBalanceFragment extends Fragment {
 
     @Override
     public boolean onOptionsItemSelected(final MenuItem item) {
-        switch (item.getItemId()) {
-        case R.id.wallet_balance_options_donate:
+        if (item.getItemId() == R.id.wallet_balance_options_donate) {
             handleDonate();
             return true;
         }
-
         return super.onOptionsItemSelected(item);
     }
 
@@ -175,9 +154,9 @@ public final class WalletBalanceFragment extends Fragment {
     }
 
     private void updateView() {
-        final BlockchainState blockchainState = viewModel.getBlockchainState().getValue();
+        final BlockchainState blockchainState = application.blockchainState.getValue();
         final Coin balance = viewModel.getBalance().getValue();
-        final ExchangeRate exchangeRate = viewModel.getExchangeRate().getValue();
+        final ExchangeRateEntry exchangeRate = viewModel.getExchangeRate().getValue();
 
         final boolean showProgress;
 
@@ -221,12 +200,12 @@ public final class WalletBalanceFragment extends Fragment {
 
                 if (showLocalBalance) {
                     if (exchangeRate != null) {
-                        final Fiat localValue = exchangeRate.rate.coinToFiat(balance);
+                        final Fiat localValue = exchangeRate.exchangeRate().coinToFiat(balance);
                         viewBalanceLocal.setVisibility(View.VISIBLE);
                         viewBalanceLocal.setFormat(Constants.LOCAL_FORMAT.code(0,
                                 Constants.PREFIX_ALMOST_EQUAL_TO + exchangeRate.getCurrencyCode()));
                         viewBalanceLocal.setAmount(localValue);
-                        viewBalanceLocal.setTextColor(ContextCompat.getColor(activity, R.color.fg_less_significant));
+                        viewBalanceLocal.setTextColor(activity.getColor(R.color.fg_less_significant));
                     } else {
                         viewBalanceLocal.setVisibility(View.INVISIBLE);
                     }
@@ -238,7 +217,7 @@ public final class WalletBalanceFragment extends Fragment {
             if (balance != null && balance.isGreaterThan(Constants.TOO_MUCH_BALANCE_THRESHOLD)) {
                 viewBalanceWarning.setVisibility(View.VISIBLE);
                 viewBalanceWarning.setText(R.string.wallet_balance_fragment_too_much);
-            } else if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M) {
+            } else if (Build.VERSION.SECURITY_PATCH.compareToIgnoreCase(Constants.SECURITY_PATCH_INSECURE_BELOW) < 0) {
                 viewBalanceWarning.setVisibility(View.VISIBLE);
                 viewBalanceWarning.setText(R.string.wallet_balance_fragment_insecure_device);
             } else {

@@ -1,5 +1,5 @@
 <?xml version='1.0' encoding='UTF-8'?>
-<resources xmlns:android="http://schemas.android.com/apk/res/android">
+<resources>
   <string name="toast_wallet_reset">Portemonnee is gereset!\nHerstel zal enige tijd duren.</string>
   <string name="wallet_disclaimer_fragment_remind_safety">Gebruik op eigen risico. Lees de &lt;u&gt;veiligheidsvoorschriften&lt;/u&gt;.</string>
   <string name="wallet_disclaimer_fragment_remind_backup">U moet uw &lt;u&gt;portemonnee back-uppen&lt;/u&gt;!</string>
@@ -17,7 +17,6 @@
   <string name="wallet_balance_fragment_too_much">Dit is relatief veel om op zak te hebben. Verplaats iets naar een veiligere plek.</string>
   <string name="wallet_balance_fragment_replaying">Balans is onbeschikbaar tijdens herladen.</string>
   <string name="exchange_rates_activity_title">Wisselkoersen</string>
-  <string name="exchange_rates_fragment_empty_text">Kon geen wisselkoersen laden.</string>
   <string name="exchange_rates_fragment_empty_search">Wisselkoers niet gevonden.</string>
   <string name="exchange_rates_fragment_default">(standaard)</string>
   <string name="exchange_rates_fragment_rate">tarief</string>
@@ -152,10 +151,6 @@
   <string name="address_book_context_edit_title">Adres bewerken</string>
   <string name="address_book_context_remove_title">Verwijder adres</string>
   <string name="address_book_context_copy_to_clipboard_title">Kopieër naar klembord</string>
-  <string name="address_book_options_paste_from_clipboard_title">Plak vanuit het klembord</string>
-  <string name="address_book_options_paste_from_clipboard_empty">Klembord is leeg</string>
-  <string name="address_book_options_paste_from_clipboard_invalid">Data van klembord is niet herkenbaar</string>
-  <string name="address_book_options_paste_from_clipboard_own_address">Het adres op het klembord is van jezelf.</string>
   <string name="address_book_options_scan_title">Scan adres</string>
   <string name="address_book_options_scan_invalid">Doorzochte data is onherkenbaar</string>
   <string name="address_book_options_scan_own_address">Het gescande adres is van jezelf</string>
@@ -169,6 +164,10 @@
   <string name="edit_address_book_entry_dialog_button_edit">Opslaan</string>
   <string name="transaction_row_fee">Netwerkkosten</string>
   <string name="transaction_row_confidence_message_sent_unbroadcasted">Deze betaling is nog niet verzonden.</string>
+  <string name="transaction_row_confidence_message_received_successful">Deze betaling is vanuit je portemonee gedaan.</string>
+  <string name="transaction_row_confidence_message_sent_successful">Je betaling was succesvol. Het is aangekomen bij de ontvanger.</string>
+  <string name="transaction_row_confidence_message_received_failed">Deze betaling is mislukt</string>
+  <string name="transaction_row_confidence_message_sent_failed">Je betaling is mislukt.</string>
   <string name="transaction_row_message_purpose_key_rotation">Deze transactie maakt je wallet sterker tegen diefstal. &lt;u&gt;Meer info.&lt;/u&gt;</string>
   <string name="transaction_row_message_purpose_raise_fee">Deze transactie verhoogt de netwerkkosten van een eerder verstuurde betaling.</string>
   <string name="transaction_row_message_received_direct">Deze betaling is direct ontvangen. Het risico bestaat dat het nooit uitgegeven kan worden.</string>
@@ -188,19 +187,9 @@
   <string name="block_row_now">alleen nu</string>
   <string name="peer_list_fragment_empty">Geen connecties</string>
   <string name="peer_list_row_ping_time">⇆ %d&#x2009;ms</string>
-  <string name="restore_wallet_permission_dialog_title">Geen leesrechten</string>
-  <string name="restore_wallet_permission_dialog_message">Om te kunnen zoeken naar een backup in externe opslag moet je leestoestemming geven.</string>
   <string name="import_keys_dialog_title">Herstel portemonnee</string>
-  <string name="import_keys_dialog_message">Haal backup van je portemonnee van externe opslag (%s):</string>
-  <string name="restore_wallet_dialog_message_empty">Er is geen backup van je portemonnee gevonden. Controleer of deze in de externe opslag was opgeslagen (%s).</string>
   <string name="restore_wallet_dialog_replace_warning">U staat op het punt uw huidige wallet te vervangen. Tenzij u een losse back-up van uw Wallet heeft gemaakt zullen alle bitcoins die nog in uw huidige wallet aanwezig zijn verloren gaan!</string>
   <string name="import_keys_dialog_warning">Belangrijk: Laad geen prive-sleutels van twijfelachtige bronnen! Anderen kunnen anders wellicht over je saldo beschikken.</string>
-  <string name="import_keys_dialog_file_security_encrypted">wachtwoord versleuteld</string>
-  <string name="import_keys_dialog_file_security_unencrypted">niet versleuteld</string>
-  <string name="import_keys_dialog_file_security_external">externe opslag</string>
-  <string name="import_keys_dialog_file_security_internal">app-privé opslag</string>
-  <string name="import_keys_dialog_file_created_automatic">automatische backup %s</string>
-  <string name="import_keys_dialog_file_created_manual">handmatige backup %s</string>
   <string name="import_keys_dialog_button_import">Herstellen</string>
   <string name="restore_wallet_dialog_success">Portemonnee is hersteld.</string>
   <string name="restore_wallet_dialog_success_replay">Uw wallet is met succes hersteld. Nu zal het saldo worden vastgesteld. Dit kan enige tijd duren.</string>
@@ -255,9 +244,7 @@
   <string name="preferences_own_name_summary">Je naam, voor om toe te voegen aan betalingsverzoeken. Probeer het kort te houden.</string>
   <string name="preferences_send_coins_autoclose_title">Dialoog voor verzonden coins automatisch sluiten.</string>
   <string name="preferences_send_coins_autoclose_summary">Als de betaling is voltooid zal de verzend dialoog automatisch sluiten.</string>
-  <string name="preferences_connectivity_notification_title">Connectiviteitsindicator</string>
-  <string name="preferences_connectivity_notification_summary">Toon huidige aantal verbonden partners in het berichten gebied.</string>
-  <string name="preferences_trusted_peer_title">Vertrouwde partner</string>
+  <string name="preferences_trusted_peer_title">Vertrouwde peer</string>
   <string name="preferences_trusted_peer_summary">IP of hostnaam voor connectie naar enkele peer.</string>
   <string name="preferences_trusted_peer_resolve_progress">Oplossen…</string>
   <string name="preferences_trusted_peer_resolve_unknown_host">Hostname onbekend!</string>
@@ -267,10 +254,14 @@
   <string name="preferences_block_explorer_summary">Externe blokverkenner voor het browsen van transacties, adressen en blokken.</string>
   <string name="preferences_data_usage_title">Datagebruik</string>
   <string name="preferences_data_usage_summary">Toon opties om bandbreedte op mobiele netwerken te beperken.</string>
+  <string name="preferences_notifications_title">Notificaties</string>
+  <string name="preferences_notifications_summary">Toon opties om specifieke notificaties aan en uit te zetten.</string>
   <string name="preferences_remind_balance_title">Saldo herinnering</string>
   <string name="preferences_remind_balance_summary">Als de app een paar weken niet gebruikt is zal de wallet laten merken dat er nog steeds coins aanwezig.</string>
   <string name="preferences_show_disclaimer_title">Toon disclaimer</string>
   <string name="preferences_show_disclaimer_summary">Heb je echt de veiligheidsaanwijzingen gelezen? Heb je al op een veilige plek een backup gemaakt van je portemonnee?</string>
+  <string name="preferences_bluetooth_address_title">Bluetoothadres</string>
+  <string name="preferences_bluetooth_address_summary">Configureer handmatig jouw bluetoothadres zodat je betalingen kan ontvangen van personen zonder internetverbinding. Je zal eerst in de bluetoothinstellingen van Android het adres van je apparaat moeten opzoeken.</string>
   <string name="preferences_report_issue_title">Meld probleem</string>
   <string name="preferences_initiate_reset_title">Reset blokketen</string>
   <string name="preferences_initiate_reset_summary">Reset blokketen, transacties en wallet-inhoud. Herstel kan enige tijd duren dus doe dit alleen als je weet waarom.</string>
@@ -289,12 +280,12 @@
   <string name="report_issue_dialog_description">probleem beschrijving</string>
   <string name="report_issue_dialog_report">Verslag</string>
   <string name="report_issue_dialog_collect_device_info">Apparaat informatie toevoegen</string>
-  <string name="report_issue_dialog_collect_installed_packages">Lijst van geïnstalleerde pakketten toevoegen</string>
   <string name="report_issue_dialog_collect_application_log">Applicatie log toevoegen</string>
   <string name="report_issue_dialog_collect_wallet_dump">Wallet dump toevoegen</string>
   <string name="report_issue_dialog_mail_intent_chooser">Rapport versturen met…</string>
   <string name="about_title">Over</string>
   <string name="about_version_title">Versie</string>
+  <string name="about_version_apk_hash_title">SHA256-hash van de APK</string>
   <string name="about_copyright_title">Auteursrecht</string>
   <string name="about_license_title">Licentie</string>
   <string name="about_source_title">Broncode</string>
@@ -311,12 +302,17 @@
   <string name="about_faq_title">FAQ</string>
   <string name="about_faq_summary">Vaakgestelde vragen over de app</string>
   <string name="notification_coins_received_msg">Ontvangen %s</string>
+  <string name="notification_connectivity_syncing_message">Met het netwerk aan het synchroniseren…</string>
+  <string name="notification_connectivity_syncing_trusted_peer">Synchroniseer met een vertrouwde peer…</string>
   <string name="notification_peers_connected_msg">%d actieve verbindingen</string>
+  <string name="notification_peer_connected">verbonden</string>
+  <string name="notification_peer_not_connected">niet verbonden</string>
   <string name="notification_inactivity_title">Je hebt nog steeds Bitcoins op dit apparaat!</string>
   <string name="notification_inactivity_message">Onthou dat je saldo van %s verloren zal zijn als je de app verwijdert zonder de bitcoins eerst te verzenden.</string>
   <string name="notification_inactivity_message_donate">Als je geen waarde hecht aan je coins zou je deze ook kunnen doneren aan het Bitcoin Wallet project</string>
   <string name="notification_inactivity_action_dismiss">Opnieuw vragen</string>
   <string name="notification_inactivity_action_dismiss_forever">Niet herinneren</string>
+  <string name="notification_bluetooth_service_listening">Klaar om betalingen via bluetooth te ontvangen</string>
   <string name="notification_channel_received_name">Ontvangen betalingen</string>
   <string name="notification_channel_ongoing_name">Achtergrondactiviteit</string>
   <string name="notification_channel_important_name">Belangrijke meldingen</string>
@@ -347,6 +343,7 @@
   <string name="address_unlabeled">(niet-gemerkt)</string>
   <string name="private_key_password">Pincode</string>
   <string name="private_key_bad_password">foutieve pincode!</string>
+  <string name="qr_code">QR-code</string>
   <!--generic error messages-->
   <string name="error_io">I/O-fout: %s</string>
   <string name="error_parse">Parseerfout: %s</string>

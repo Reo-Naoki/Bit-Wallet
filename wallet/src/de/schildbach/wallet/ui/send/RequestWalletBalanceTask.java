@@ -17,6 +17,46 @@
 
 package de.schildbach.wallet.ui.send;
 
+import android.content.res.AssetManager;
+import android.os.Handler;
+import android.os.Looper;
+import androidx.annotation.Nullable;
+import com.google.common.base.Splitter;
+import com.google.common.base.Strings;
+import com.google.common.collect.HashMultiset;
+import com.google.common.collect.Multiset;
+import com.google.common.hash.Hashing;
+import com.squareup.moshi.JsonAdapter;
+import com.squareup.moshi.JsonDataException;
+import com.squareup.moshi.Moshi;
+import de.schildbach.wallet.Constants;
+import de.schildbach.wallet.R;
+import de.schildbach.wallet.util.Assets;
+import okio.BufferedSink;
+import okio.BufferedSource;
+import okio.Okio;
+import org.bitcoinj.core.Address;
+import org.bitcoinj.core.Coin;
+import org.bitcoinj.core.ECKey;
+import org.bitcoinj.core.LegacyAddress;
+import org.bitcoinj.core.SegwitAddress;
+import org.bitcoinj.core.Sha256Hash;
+import org.bitcoinj.core.UTXO;
+import org.bitcoinj.script.Script;
+import org.bitcoinj.script.ScriptBuilder;
+import org.bitcoinj.utils.ContextPropagatingThreadFactory;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import javax.net.SocketFactory;
+import javax.net.ssl.HttpsURLConnection;
+import javax.net.ssl.SSLContext;
+import javax.net.ssl.SSLPeerUnverifiedException;
+import javax.net.ssl.SSLSession;
+import javax.net.ssl.SSLSocket;
+import javax.net.ssl.SSLSocketFactory;
+import javax.net.ssl.TrustManager;
+import javax.net.ssl.X509TrustManager;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
@@ -33,6 +73,7 @@ import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Locale;
 import java.util.Set;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutionException;
@@ -40,49 +81,6 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
-
-import javax.net.SocketFactory;
-import javax.net.ssl.HttpsURLConnection;
-import javax.net.ssl.SSLContext;
-import javax.net.ssl.SSLPeerUnverifiedException;
-import javax.net.ssl.SSLSession;
-import javax.net.ssl.SSLSocket;
-import javax.net.ssl.SSLSocketFactory;
-import javax.net.ssl.TrustManager;
-import javax.net.ssl.X509TrustManager;
-
-import org.bitcoinj.core.Address;
-import org.bitcoinj.core.Coin;
-import org.bitcoinj.core.ECKey;
-import org.bitcoinj.core.LegacyAddress;
-import org.bitcoinj.core.SegwitAddress;
-import org.bitcoinj.core.Sha256Hash;
-import org.bitcoinj.core.UTXO;
-import org.bitcoinj.script.Script;
-import org.bitcoinj.script.ScriptBuilder;
-import org.bitcoinj.utils.ContextPropagatingThreadFactory;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import com.google.common.base.Splitter;
-import com.google.common.base.Strings;
-import com.google.common.collect.HashMultiset;
-import com.google.common.collect.Multiset;
-import com.google.common.hash.Hashing;
-import com.squareup.moshi.JsonAdapter;
-import com.squareup.moshi.JsonDataException;
-import com.squareup.moshi.Moshi;
-
-import de.schildbach.wallet.Constants;
-import de.schildbach.wallet.R;
-import de.schildbach.wallet.util.Assets;
-
-import android.content.res.AssetManager;
-import android.os.Handler;
-import android.os.Looper;
-import okio.BufferedSink;
-import okio.BufferedSource;
-import okio.Okio;
 
 /**
  * @author Andreas Schildbach
@@ -162,65 +160,62 @@ public final class RequestWalletBalanceTask {
                 }
 
                 final List<ElectrumServer> servers = loadElectrumServers(
-                        Assets.open(assets, Constants.Files.ELECTRUM_SERVERS_FILENAME));
+                        Assets.open(assets, Constants.Files.ELECTRUM_SERVERS_ASSET));
                 final List<Callable<Set<UTXO>>> tasks = new ArrayList<>(servers.size());
                 for (final ElectrumServer server : servers) {
-                    tasks.add(new Callable<Set<UTXO>>() {
-                        @Override
-                        public Set<UTXO> call() throws IOException {
-                            log.info("{} - trying to request wallet balance for {}", server.socketAddress,
-                                    addressesStr);
-                            try (final Socket socket = connect(server)) {
-                                final BufferedSink sink = Okio.buffer(Okio.sink(socket));
-                                sink.timeout().timeout(5000, TimeUnit.MILLISECONDS);
-                                final BufferedSource source = Okio.buffer(Okio.source(socket));
-                                source.timeout().timeout(5000, TimeUnit.MILLISECONDS);
-                                final Moshi moshi = new Moshi.Builder().build();
-                                final JsonAdapter<JsonRpcRequest> requestAdapter = moshi.adapter(JsonRpcRequest.class);
-                                for (final Script outputScript : outputScripts) {
-                                    requestAdapter.toJson(sink, new JsonRpcRequest(
-                                            outputScript.getScriptType().ordinal(), "blockchain.scripthash.listunspent",
-                                            new String[] { Constants.HEX.encode(
-                                                    Sha256Hash.of(outputScript.getProgram()).getReversedBytes()) }));
-                                    sink.writeUtf8("\n").flush();
-                                }
-                                final JsonAdapter<JsonRpcResponse> responseAdapter = moshi
-                                        .adapter(JsonRpcResponse.class);
-                                final Set<UTXO> utxos = new HashSet<>();
-                                for (final Script outputScript : outputScripts) {
-                                    final JsonRpcResponse response = responseAdapter.fromJson(source);
-                                    final int expectedResponseId = outputScript.getScriptType().ordinal();
-                                    if (response.id != expectedResponseId) {
-                                        log.warn("{} - id mismatch response:{} vs request:{}", server.socketAddress,
-                                                response.id, expectedResponseId);
-                                        return null;
-                                    }
-                                    if (response.error != null) {
-                                        log.info("{} - server error {}: {}", server.socketAddress, response.error.code,
-                                                response.error.message);
-                                        return null;
-                                    }
-                                    for (final JsonRpcResponse.Utxo responseUtxo : response.result) {
-                                        final Sha256Hash utxoHash = Sha256Hash.wrap(responseUtxo.tx_hash);
-                                        final int utxoIndex = responseUtxo.tx_pos;
-                                        final Coin utxoValue = Coin.valueOf(responseUtxo.value);
-                                        final UTXO utxo = new UTXO(utxoHash, utxoIndex, utxoValue, responseUtxo.height,
-                                                false, outputScript);
-                                        utxos.add(utxo);
-                                    }
-                                }
-                                log.info("{} - got {} UTXOs {}", server.socketAddress, utxos.size(), utxos);
-                                return utxos;
-                            } catch (final ConnectException | SSLPeerUnverifiedException | JsonDataException x) {
-                                log.warn("{} - {}", server.socketAddress, x.getMessage());
-                                return null;
-                            } catch (final IOException x) {
-                                log.info(server.socketAddress.toString(), x);
-                                return null;
-                            } catch (final RuntimeException x) {
-                                log.error(server.socketAddress.toString(), x);
-                                throw x;
+                    tasks.add(() -> {
+                        log.info("{} - trying to request wallet balance for {}", server.socketAddress,
+                                addressesStr);
+                        try (final Socket socket = connect(server)) {
+                            final BufferedSink sink = Okio.buffer(Okio.sink(socket));
+                            sink.timeout().timeout(5000, TimeUnit.MILLISECONDS);
+                            final BufferedSource source = Okio.buffer(Okio.source(socket));
+                            source.timeout().timeout(5000, TimeUnit.MILLISECONDS);
+                            final Moshi moshi = new Moshi.Builder().build();
+                            final JsonAdapter<JsonRpcRequest> requestAdapter = moshi.adapter(JsonRpcRequest.class);
+                            for (final Script outputScript : outputScripts) {
+                                requestAdapter.toJson(sink, new JsonRpcRequest(
+                                        outputScript.getScriptType().ordinal(), "blockchain.scripthash.listunspent",
+                                        new String[] { Constants.HEX.encode(
+                                                Sha256Hash.of(outputScript.getProgram()).getReversedBytes()) }));
+                                sink.writeUtf8("\n").flush();
                             }
+                            final JsonAdapter<JsonRpcResponse> responseAdapter = moshi
+                                    .adapter(JsonRpcResponse.class);
+                            final Set<UTXO> utxos = new HashSet<>();
+                            for (final Script outputScript : outputScripts) {
+                                final JsonRpcResponse response = responseAdapter.fromJson(source);
+                                final int expectedResponseId = outputScript.getScriptType().ordinal();
+                                if (response.id != expectedResponseId) {
+                                    log.warn("{} - id mismatch response:{} vs request:{}", server.socketAddress,
+                                            response.id, expectedResponseId);
+                                    return null;
+                                }
+                                if (response.error != null) {
+                                    log.info("{} - server error {}: {}", server.socketAddress, response.error.code,
+                                            response.error.message);
+                                    return null;
+                                }
+                                for (final JsonRpcResponse.Utxo responseUtxo : response.result) {
+                                    final Sha256Hash utxoHash = Sha256Hash.wrap(responseUtxo.tx_hash);
+                                    final int utxoIndex = responseUtxo.tx_pos;
+                                    final Coin utxoValue = Coin.valueOf(responseUtxo.value);
+                                    final UTXO utxo = new UTXO(utxoHash, utxoIndex, utxoValue, responseUtxo.height,
+                                            false, outputScript);
+                                    utxos.add(utxo);
+                                }
+                            }
+                            log.info("{} - got {} UTXOs {}", server.socketAddress, utxos.size(), utxos);
+                            return utxos;
+                        } catch (final ConnectException | SSLPeerUnverifiedException | JsonDataException x) {
+                            log.warn("{} - {}", server.socketAddress, x.getMessage());
+                            return null;
+                        } catch (final IOException x) {
+                            log.info(server.socketAddress.toString(), x);
+                            return null;
+                        } catch (final RuntimeException x) {
+                            log.error(server.socketAddress.toString(), x);
+                            throw x;
                         }
                     });
                 }
@@ -248,9 +243,7 @@ public final class RequestWalletBalanceTask {
                             } else {
                                 numFail++;
                             }
-                        } catch (InterruptedException x) {
-                            throw new RuntimeException(x);
-                        } catch (ExecutionException x) {
+                        } catch (InterruptedException | ExecutionException x) {
                             throw new RuntimeException(x);
                         }
                     } else {
@@ -308,21 +301,11 @@ public final class RequestWalletBalanceTask {
     }
 
     protected void onResult(final Set<UTXO> utxos) {
-        callbackHandler.post(new Runnable() {
-            @Override
-            public void run() {
-                resultCallback.onResult(utxos);
-            }
-        });
+        callbackHandler.post(() -> resultCallback.onResult(utxos));
     }
 
     protected void onFail(final int messageResId, final Object... messageArgs) {
-        callbackHandler.post(new Runnable() {
-            @Override
-            public void run() {
-                resultCallback.onFail(messageResId, messageArgs);
-            }
-        });
+        callbackHandler.post(() -> resultCallback.onFail(messageResId, messageArgs));
     }
 
     public static class ElectrumServer {
@@ -332,10 +315,11 @@ public final class RequestWalletBalanceTask {
 
         public final InetSocketAddress socketAddress;
         public final Type type;
+        @Nullable
         public final String certificateFingerprint;
 
-        public ElectrumServer(final String type, final String host, final String port,
-                final String certificateFingerprint) {
+        public ElectrumServer(final String type, final String host, final @Nullable String port,
+                final @Nullable String certificateFingerprint) {
             this.type = Type.valueOf(type.toUpperCase());
             if (port != null)
                 this.socketAddress = InetSocketAddress.createUnresolved(host, Integer.parseInt(port));
@@ -347,7 +331,8 @@ public final class RequestWalletBalanceTask {
                         Constants.ELECTRUM_SERVER_DEFAULT_PORT_TLS);
             else
                 throw new IllegalStateException("Cannot handle: " + type);
-            this.certificateFingerprint = certificateFingerprint;
+            this.certificateFingerprint = certificateFingerprint != null ?
+                    certificateFingerprint.toLowerCase(Locale.US) : null;
         }
     }
 
@@ -381,8 +366,7 @@ public final class RequestWalletBalanceTask {
         try {
             final SSLContext context = SSLContext.getInstance("SSL");
             context.init(null, new TrustManager[] { TRUST_ALL_CERTIFICATES }, null);
-            final SSLSocketFactory socketFactory = context.getSocketFactory();
-            return socketFactory;
+            return context.getSocketFactory();
         } catch (final Exception x) {
             throw new RuntimeException(x);
         }

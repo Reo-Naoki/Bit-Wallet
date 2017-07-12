@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2015 the original author or authors.
+ * Copyright the original author or authors.
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -17,16 +17,14 @@
 
 package de.schildbach.wallet.ui;
 
-import java.io.ByteArrayOutputStream;
-import java.io.FileNotFoundException;
-import java.io.IOException;
-import java.io.InputStream;
-import java.security.KeyStore;
-import java.security.KeyStoreException;
-import java.util.ArrayList;
-import java.util.Date;
-import java.util.regex.Pattern;
-
+import com.google.common.hash.Hashing;
+import com.google.common.io.ByteStreams;
+import com.google.protobuf.InvalidProtocolBufferException;
+import com.google.protobuf.UninitializedMessageException;
+import de.schildbach.wallet.Constants;
+import de.schildbach.wallet.R;
+import de.schildbach.wallet.data.PaymentIntent;
+import de.schildbach.wallet.util.Qr;
 import org.bitcoin.protocols.payments.Protos;
 import org.bitcoinj.core.Address;
 import org.bitcoinj.core.AddressFormatException;
@@ -47,19 +45,15 @@ import org.bitcoinj.uri.BitcoinURIParseException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.google.common.hash.Hashing;
-import com.google.common.io.ByteStreams;
-import com.google.protobuf.InvalidProtocolBufferException;
-import com.google.protobuf.UninitializedMessageException;
-
-import de.schildbach.wallet.Constants;
-import de.schildbach.wallet.R;
-import de.schildbach.wallet.data.PaymentIntent;
-import de.schildbach.wallet.util.Qr;
-
-import android.content.Context;
-import android.content.DialogInterface.OnClickListener;
-import androidx.annotation.Nullable;
+import java.io.ByteArrayOutputStream;
+import java.io.FileNotFoundException;
+import java.io.IOException;
+import java.io.InputStream;
+import java.security.KeyStore;
+import java.security.KeyStoreException;
+import java.util.ArrayList;
+import java.util.Date;
+import java.util.regex.Pattern;
 
 /**
  * @author Andreas Schildbach
@@ -280,7 +274,7 @@ public abstract class InputParser {
                 throw new PaymentProtocolException.InvalidNetwork(
                         "cannot handle payment request network: " + paymentSession.getNetworkParameters());
 
-            final ArrayList<PaymentIntent.Output> outputs = new ArrayList<PaymentIntent.Output>(1);
+            final ArrayList<PaymentIntent.Output> outputs = new ArrayList<>(1);
             for (final PaymentProtocol.Output output : paymentSession.getOutputs())
                 outputs.add(PaymentIntent.Output.valueOf(output));
 
@@ -301,13 +295,9 @@ public abstract class InputParser {
                         "cannot handle payment url: " + paymentIntent.paymentUrl);
 
             return paymentIntent;
-        } catch (final InvalidProtocolBufferException x) {
+        } catch (final InvalidProtocolBufferException | UninitializedMessageException x) {
             throw new PaymentProtocolException(x);
-        } catch (final UninitializedMessageException x) {
-            throw new PaymentProtocolException(x);
-        } catch (final FileNotFoundException x) {
-            throw new RuntimeException(x);
-        } catch (final KeyStoreException x) {
+        } catch (final FileNotFoundException | KeyStoreException x) {
             throw new RuntimeException(x);
         }
     }
@@ -322,16 +312,6 @@ public abstract class InputParser {
         log.info("cannot classify: '{}'", input);
 
         error(R.string.input_parser_cannot_classify, input);
-    }
-
-    protected void dialog(final Context context, @Nullable final OnClickListener dismissListener, final int titleResId,
-            final int messageResId, final Object... messageArgs) {
-        final DialogBuilder dialog = new DialogBuilder(context);
-        if (titleResId != 0)
-            dialog.setTitle(titleResId);
-        dialog.setMessage(context.getString(messageResId, messageArgs));
-        dialog.singleDismissButton(dismissListener);
-        dialog.show();
     }
 
     private static final Pattern PATTERN_TRANSACTION = Pattern

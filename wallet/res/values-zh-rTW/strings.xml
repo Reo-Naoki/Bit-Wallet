@@ -1,5 +1,5 @@
 <?xml version='1.0' encoding='UTF-8'?>
-<resources xmlns:android="http://schemas.android.com/apk/res/android">
+<resources>
   <string name="toast_wallet_reset">錢包重置了！\n恢復需要花一點時間。</string>
   <string name="wallet_disclaimer_fragment_remind_safety">使用注意安全風險，請詳讀&lt;u&gt;安全提示&lt;/u&gt;。</string>
   <string name="wallet_disclaimer_fragment_remind_backup">你必須要&lt;u&gt;備份你的錢包&lt;/u&gt;！</string>
@@ -17,7 +17,6 @@
   <string name="wallet_balance_fragment_too_much">在口袋裡放這麼多錢好像不是很好。建議拿一些出來到比較安全的地方。</string>
   <string name="wallet_balance_fragment_replaying">在重播時無法顯示餘額</string>
   <string name="exchange_rates_activity_title">匯率</string>
-  <string name="exchange_rates_fragment_empty_text">無法讀取匯率資料。</string>
   <string name="exchange_rates_fragment_empty_search">無法找到匯率資料。</string>
   <string name="exchange_rates_fragment_default">(預設值)</string>
   <string name="exchange_rates_fragment_rate">匯率</string>
@@ -142,10 +141,6 @@
   <string name="address_book_context_edit_title">編輯位址</string>
   <string name="address_book_context_remove_title">移除位址</string>
   <string name="address_book_context_copy_to_clipboard_title">複製到剪貼簿</string>
-  <string name="address_book_options_paste_from_clipboard_title">從剪貼簿貼上</string>
-  <string name="address_book_options_paste_from_clipboard_empty">剪貼簿是空的。</string>
-  <string name="address_book_options_paste_from_clipboard_invalid">剪貼簿資料無法辨識</string>
-  <string name="address_book_options_paste_from_clipboard_own_address">剪貼簿中的位址是你自己的。</string>
   <string name="address_book_options_scan_title">掃描位址</string>
   <string name="address_book_options_scan_invalid">掃描資料無法辨識</string>
   <string name="address_book_options_scan_own_address">掃描進來的位址是你自己的。</string>
@@ -178,19 +173,9 @@
   <string name="block_row_now">剛剛</string>
   <string name="peer_list_fragment_empty">沒有節點連線</string>
   <string name="peer_list_row_ping_time">⇆ %d 毫秒</string>
-  <string name="restore_wallet_permission_dialog_title">沒有讀檔的權限</string>
-  <string name="restore_wallet_permission_dialog_message">為了要從外部儲存裝置掃描錢包的備份，你必須要授權讓程式可以讀檔。</string>
   <string name="import_keys_dialog_title">復原錢包</string>
-  <string name="import_keys_dialog_message">請從外部儲存設備(%s)中選一個錢包備份檔:</string>
-  <string name="restore_wallet_dialog_message_empty">找不到錢包備份檔。請確認檔案放在外部儲存設備(%s)裡。</string>
   <string name="restore_wallet_dialog_replace_warning">將要替換目前的錢包。如果沒有另外的備份，目前錢包裡的所有錢幣就不能用了。</string>
   <string name="import_keys_dialog_warning">重要事項: 不要載入可疑來源的私鑰！可能會導致你的錢包反被控制。</string>
-  <string name="import_keys_dialog_file_security_encrypted">已用密碼加密</string>
-  <string name="import_keys_dialog_file_security_unencrypted">沒有加密</string>
-  <string name="import_keys_dialog_file_security_external">外部儲存空間</string>
-  <string name="import_keys_dialog_file_security_internal">應用程式私有儲存空間</string>
-  <string name="import_keys_dialog_file_created_automatic">自動備份 %s</string>
-  <string name="import_keys_dialog_file_created_manual">手動備份 %s</string>
   <string name="import_keys_dialog_button_import">復原</string>
   <string name="restore_wallet_dialog_success">錢包已經復原了。</string>
   <string name="restore_wallet_dialog_success_replay">錢包復原成功。接下來要計算錢包餘額，會花一點時間。</string>
@@ -245,8 +230,6 @@
   <string name="preferences_own_name_summary">你自己的名字，用來放到請款資料中。請盡量簡短。</string>
   <string name="preferences_send_coins_autoclose_title">自動關閉付款對話框</string>
   <string name="preferences_send_coins_autoclose_summary">付款完成後會自動關掉付款對話框。</string>
-  <string name="preferences_connectivity_notification_title">連線標示</string>
-  <string name="preferences_connectivity_notification_summary">在通知區顯示目前節點連線的數目。</string>
   <string name="preferences_trusted_peer_title">信任節點</string>
   <string name="preferences_trusted_peer_summary">一個要連線過去的節點位址或主機名稱。</string>
   <string name="preferences_trusted_peer_resolve_progress">正在解析域名...</string>
@@ -279,7 +262,6 @@
   <string name="report_issue_dialog_description">問題描述</string>
   <string name="report_issue_dialog_report">回報</string>
   <string name="report_issue_dialog_collect_device_info">附上設備資訊</string>
-  <string name="report_issue_dialog_collect_installed_packages">附上已安裝的應用程式列表</string>
   <string name="report_issue_dialog_collect_application_log">附上應用程式日誌</string>
   <string name="report_issue_dialog_collect_wallet_dump">附上錢包傾印資料</string>
   <string name="report_issue_dialog_mail_intent_chooser">用其他方式寄送回報…</string>

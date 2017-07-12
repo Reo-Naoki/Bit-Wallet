@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2015 the original author or authors.
+ * Copyright the original author or authors.
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -17,18 +17,16 @@
 
 package de.schildbach.wallet.ui;
 
-import de.schildbach.wallet.R;
-import de.schildbach.wallet.util.CheatSheet;
-
 import android.content.Context;
 import android.os.Bundle;
 import android.view.LayoutInflater;
 import android.view.View;
-import android.view.View.OnClickListener;
 import android.view.ViewGroup;
 import android.view.ViewParent;
 import android.widget.FrameLayout;
 import androidx.fragment.app.Fragment;
+import de.schildbach.wallet.R;
+import de.schildbach.wallet.util.CheatSheet;
 
 /**
  * @author Andreas Schildbach
@@ -45,31 +43,16 @@ public final class WalletActionsFragment extends Fragment {
     @Override
     public View onCreateView(final LayoutInflater inflater, final ViewGroup container,
             final Bundle savedInstanceState) {
-        final View view = inflater.inflate(R.layout.wallet_actions_fragment, container);
+        final View view = inflater.inflate(R.layout.wallet_actions_fragment, container, false);
 
         final View requestButton = view.findViewById(R.id.wallet_actions_request);
-        requestButton.setOnClickListener(new OnClickListener() {
-            @Override
-            public void onClick(final View v) {
-                activity.handleRequestCoins();
-            }
-        });
+        requestButton.setOnClickListener(v -> activity.handleRequestCoins());
 
         final View sendButton = view.findViewById(R.id.wallet_actions_send);
-        sendButton.setOnClickListener(new OnClickListener() {
-            @Override
-            public void onClick(final View v) {
-                activity.handleSendCoins();
-            }
-        });
+        sendButton.setOnClickListener(v -> activity.handleSendCoins());
 
         final View sendQrButton = view.findViewById(R.id.wallet_actions_send_qr);
-        sendQrButton.setOnClickListener(new OnClickListener() {
-            @Override
-            public void onClick(final View v) {
-                activity.handleScan(v);
-            }
-        });
+        sendQrButton.setOnClickListener(v -> activity.handleScan(v));
         CheatSheet.setup(sendQrButton);
 
         return view;

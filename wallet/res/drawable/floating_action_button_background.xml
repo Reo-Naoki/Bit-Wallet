@@ -1,7 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
-<shape xmlns:android="http://schemas.android.com/apk/res/android"
-    android:shape="oval" >
+<layer-list
+    xmlns:android="http://schemas.android.com/apk/res/android">
 
-    <solid android:color="@color/bg_action_bar" />
-
-</shape>
+    <item
+        android:width="42dp"
+        android:height="42dp"
+        android:gravity="center">
+        <shape android:shape="oval" />
+    </item>
+</layer-list>

@@ -1,5 +1,5 @@
 <?xml version='1.0' encoding='UTF-8'?>
-<resources xmlns:android="http://schemas.android.com/apk/res/android">
+<resources>
   <string name="help_wallet">
 <![CDATA[
 		<p>
@@ -105,7 +105,7 @@
 			<b>Teknisiä tietoja:</b>
 		</p>
 		<p>
-			Bitcoin-lompakko on SPV/kevytlompakko, joka seuraa suurinta ketjua enimmällä vahvistustyöllä (joskus myös kutsutaan nimellä \"pisin ketju\", \"voittava ketju\" tai \"Bitcoin-Blockchain\").
+			Bitcoin-lompakko on SPV/kevytlompakko, joka seuraa suurinta ketjua enimmällä vahvistustyöllä (joskus myös kutsutaan nimellä \"pisin ketju\", \"voittava ketju\" tai \"Bitcoin block chain\").
 			Vastaanotat ainoastaan saapuvia rahansiirtoja ja sinulla on mahdollisuus maksaa kyseisessä ketjussa.
 			Mitään takuuta ei voida antaa Bitcoineista pienemmissä ketjuissa, jotka ovat ketjuja vähemmällä vahvistustyöllä.
 		</p>

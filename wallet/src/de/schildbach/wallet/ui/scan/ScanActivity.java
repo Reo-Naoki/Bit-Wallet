@@ -17,28 +17,6 @@
 
 package de.schildbach.wallet.ui.scan;
 
-import java.util.EnumMap;
-import java.util.Map;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import com.google.zxing.BinaryBitmap;
-import com.google.zxing.DecodeHintType;
-import com.google.zxing.PlanarYUVLuminanceSource;
-import com.google.zxing.ReaderException;
-import com.google.zxing.Result;
-import com.google.zxing.ResultPoint;
-import com.google.zxing.ResultPointCallback;
-import com.google.zxing.common.HybridBinarizer;
-import com.google.zxing.qrcode.QRCodeReader;
-
-import de.schildbach.wallet.R;
-import de.schildbach.wallet.ui.AbstractWalletActivity;
-import de.schildbach.wallet.ui.DialogBuilder;
-import de.schildbach.wallet.ui.Event;
-import de.schildbach.wallet.util.OnFirstPreDraw;
-
 import android.Manifest;
 import android.animation.Animator;
 import android.animation.AnimatorListenerAdapter;
@@ -47,7 +25,6 @@ import android.app.ActivityOptions;
 import android.app.Dialog;
 import android.content.Context;
 import android.content.DialogInterface;
-import android.content.DialogInterface.OnClickListener;
 import android.content.Intent;
 import android.content.pm.ActivityInfo;
 import android.content.pm.PackageManager;
@@ -57,7 +34,6 @@ import android.graphics.SurfaceTexture;
 import android.graphics.drawable.ColorDrawable;
 import android.hardware.Camera;
 import android.hardware.Camera.CameraInfo;
-import android.hardware.Camera.PreviewCallback;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.HandlerThread;
@@ -77,7 +53,25 @@ import androidx.core.content.ContextCompat;
 import androidx.fragment.app.DialogFragment;
 import androidx.fragment.app.Fragment;
 import androidx.fragment.app.FragmentManager;
-import androidx.lifecycle.ViewModelProviders;
+import androidx.lifecycle.ViewModelProvider;
+import com.google.zxing.BinaryBitmap;
+import com.google.zxing.DecodeHintType;
+import com.google.zxing.PlanarYUVLuminanceSource;
+import com.google.zxing.ReaderException;
+import com.google.zxing.Result;
+import com.google.zxing.ResultPointCallback;
+import com.google.zxing.common.HybridBinarizer;
+import com.google.zxing.qrcode.QRCodeReader;
+import de.schildbach.wallet.R;
+import de.schildbach.wallet.ui.AbstractWalletActivity;
+import de.schildbach.wallet.ui.DialogBuilder;
+import de.schildbach.wallet.ui.Event;
+import de.schildbach.wallet.util.OnFirstPreDraw;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.util.EnumMap;
+import java.util.Map;
 
 /**
  * @author Andreas Schildbach
@@ -139,19 +133,36 @@ public final class ScanActivity extends AbstractWalletActivity
         super.onCreate(savedInstanceState);
         vibrator = (Vibrator) getSystemService(Context.VIBRATOR_SERVICE);
 
-        viewModel = ViewModelProviders.of(this).get(ScanViewModel.class);
+        viewModel = new ViewModelProvider(this).get(ScanViewModel.class);
         viewModel.showPermissionWarnDialog.observe(this, new Event.Observer<Void>() {
             @Override
-            public void onEvent(final Void v) {
+            protected void onEvent(final Void v) {
                 WarnDialogFragment.show(getSupportFragmentManager(), R.string.scan_camera_permission_dialog_title,
                         getString(R.string.scan_camera_permission_dialog_message));
             }
         });
         viewModel.showProblemWarnDialog.observe(this, new Event.Observer<Void>() {
             @Override
-            public void onEvent(final Void v) {
+            protected void onEvent(final Void v) {
                 WarnDialogFragment.show(getSupportFragmentManager(), R.string.scan_camera_problem_dialog_title,
                         getString(R.string.scan_camera_problem_dialog_message));
+            }
+        });
+        viewModel.maybeStartSceneTransition.observe(this, new Event.Observer<Void>() {
+            @Override
+            protected void onEvent(final Void v) {
+                if (sceneTransition != null) {
+                    contentView.setAlpha(1);
+                    sceneTransition.addListener(new AnimatorListenerAdapter() {
+                        @Override
+                        public void onAnimationEnd(Animator animation) {
+                            getWindow().setBackgroundDrawable(new ColorDrawable(
+                                    getColor(android.R.color.black)));
+                        }
+                    });
+                    sceneTransition.start();
+                    sceneTransition = null;
+                }
             }
         });
 
@@ -165,8 +176,8 @@ public final class ScanActivity extends AbstractWalletActivity
 
         setContentView(R.layout.scan_activity);
         contentView = findViewById(android.R.id.content);
-        scannerView = (ScannerView) findViewById(R.id.scan_activity_mask);
-        previewView = (TextureView) findViewById(R.id.scan_activity_preview);
+        scannerView = findViewById(R.id.scan_activity_mask);
+        previewView = findViewById(R.id.scan_activity_preview);
         previewView.setSurfaceTextureListener(this);
 
         cameraThread = new HandlerThread("cameraThread", Process.THREAD_PRIORITY_BACKGROUND);
@@ -187,37 +198,19 @@ public final class ScanActivity extends AbstractWalletActivity
                 // start up, so the animation will never start.
                 contentView.setAlpha(0);
                 getWindow().setBackgroundDrawable(
-                        new ColorDrawable(ContextCompat.getColor(this, android.R.color.transparent)));
-                OnFirstPreDraw.listen(contentView, new OnFirstPreDraw.Callback() {
-                    @Override
-                    public boolean onFirstPreDraw() {
-                        float finalRadius = (float) (Math.max(contentView.getWidth(), contentView.getHeight()));
-                        final int duration = getResources().getInteger(android.R.integer.config_mediumAnimTime);
-                        sceneTransition = ViewAnimationUtils.createCircularReveal(contentView, x, y, 0, finalRadius);
-                        sceneTransition.setDuration(duration);
-                        sceneTransition.setInterpolator(new AccelerateInterpolator());
-                        // TODO Here, the transition should start in a paused state, showing the first frame
-                        // of the animation. Sadly, RevealAnimator doesn't seem to support this, unlike
-                        // (subclasses of) ValueAnimator.
-                        return false;
-                    }
+                        new ColorDrawable(getColor(android.R.color.transparent)));
+                OnFirstPreDraw.listen(contentView, () -> {
+                    float finalRadius = (float) (Math.max(contentView.getWidth(), contentView.getHeight()));
+                    final int duration = getResources().getInteger(android.R.integer.config_mediumAnimTime);
+                    sceneTransition = ViewAnimationUtils.createCircularReveal(contentView, x, y, 0, finalRadius);
+                    sceneTransition.setDuration(duration);
+                    sceneTransition.setInterpolator(new AccelerateInterpolator());
+                    // TODO Here, the transition should start in a paused state, showing the first frame
+                    // of the animation. Sadly, RevealAnimator doesn't seem to support this, unlike
+                    // (subclasses of) ValueAnimator.
+                    return false;
                 });
             }
-        }
-    }
-
-    private void maybeTriggerSceneTransition() {
-        if (sceneTransition != null) {
-            contentView.setAlpha(1);
-            sceneTransition.addListener(new AnimatorListenerAdapter() {
-                @Override
-                public void onAnimationEnd(Animator animation) {
-                    getWindow().setBackgroundDrawable(
-                            new ColorDrawable(ContextCompat.getColor(ScanActivity.this, android.R.color.black)));
-                }
-            });
-            sceneTransition.start();
-            sceneTransition = null;
         }
     }
 
@@ -300,22 +293,13 @@ public final class ScanActivity extends AbstractWalletActivity
 
     @Override
     public boolean onKeyDown(final int keyCode, final KeyEvent event) {
-        switch (keyCode) {
-        case KeyEvent.KEYCODE_FOCUS:
-        case KeyEvent.KEYCODE_CAMERA:
+        if (keyCode == KeyEvent.KEYCODE_FOCUS || keyCode == KeyEvent.KEYCODE_CAMERA) {
             // don't launch camera app
             return true;
-        case KeyEvent.KEYCODE_VOLUME_DOWN:
-        case KeyEvent.KEYCODE_VOLUME_UP:
-            cameraHandler.post(new Runnable() {
-                @Override
-                public void run() {
-                    cameraManager.setTorch(keyCode == KeyEvent.KEYCODE_VOLUME_UP);
-                }
-            });
+        } else if (keyCode == KeyEvent.KEYCODE_VOLUME_DOWN || keyCode == KeyEvent.KEYCODE_VOLUME_UP) {
+            cameraHandler.post(() -> cameraManager.setTorch(keyCode == KeyEvent.KEYCODE_VOLUME_UP));
             return true;
         }
-
         return super.onKeyDown(keyCode, event);
     }
 
@@ -331,12 +315,7 @@ public final class ScanActivity extends AbstractWalletActivity
     }
 
     private void postFinish() {
-        new Handler().postDelayed(new Runnable() {
-            @Override
-            public void run() {
-                finish();
-            }
-        }, 50);
+        new Handler().postDelayed(() -> finish(), 50);
     }
 
     private final Runnable openRunnable = new Runnable() {
@@ -351,13 +330,8 @@ public final class ScanActivity extends AbstractWalletActivity
                 final boolean cameraFlip = cameraManager.getFacing() == CameraInfo.CAMERA_FACING_FRONT;
                 final int cameraRotation = cameraManager.getOrientation();
 
-                runOnUiThread(new Runnable() {
-                    @Override
-                    public void run() {
-                        scannerView.setFraming(framingRect, framingRectInPreview, displayRotation(), cameraRotation,
-                                cameraFlip);
-                    }
-                });
+                runOnUiThread(() -> scannerView.setFraming(framingRect, framingRectInPreview, displayRotation(), cameraRotation,
+                        cameraFlip));
 
                 final String focusMode = camera.getParameters().getFocusMode();
                 final boolean nonContinuousAutoFocus = Camera.Parameters.FOCUS_MODE_AUTO.equals(focusMode)
@@ -365,12 +339,7 @@ public final class ScanActivity extends AbstractWalletActivity
 
                 if (nonContinuousAutoFocus)
                     cameraHandler.post(new AutoFocusRunnable(camera));
-                runOnUiThread(new Runnable() {
-                    @Override
-                    public void run() {
-                        maybeTriggerSceneTransition();
-                    }
-                });
+                viewModel.maybeStartSceneTransition.postValue(Event.simple());
                 cameraHandler.post(fetchAndDecodeRunnable);
             } catch (final Exception x) {
                 log.info("problem opening camera", x);
@@ -428,16 +397,11 @@ public final class ScanActivity extends AbstractWalletActivity
 
     private final Runnable fetchAndDecodeRunnable = new Runnable() {
         private final QRCodeReader reader = new QRCodeReader();
-        private final Map<DecodeHintType, Object> hints = new EnumMap<DecodeHintType, Object>(DecodeHintType.class);
+        private final Map<DecodeHintType, Object> hints = new EnumMap<>(DecodeHintType.class);
 
         @Override
         public void run() {
-            cameraManager.requestPreviewFrame(new PreviewCallback() {
-                @Override
-                public void onPreviewFrame(final byte[] data, final Camera camera) {
-                    decode(data);
-                }
-            });
+            cameraManager.requestPreviewFrame((data, camera) -> decode(data));
         }
 
         private void decode(final byte[] data) {
@@ -445,25 +409,10 @@ public final class ScanActivity extends AbstractWalletActivity
             final BinaryBitmap bitmap = new BinaryBitmap(new HybridBinarizer(source));
 
             try {
-                hints.put(DecodeHintType.NEED_RESULT_POINT_CALLBACK, new ResultPointCallback() {
-                    @Override
-                    public void foundPossibleResultPoint(final ResultPoint dot) {
-                        runOnUiThread(new Runnable() {
-                            @Override
-                            public void run() {
-                                scannerView.addDot(dot);
-                            }
-                        });
-                    }
-                });
+                hints.put(DecodeHintType.NEED_RESULT_POINT_CALLBACK, (ResultPointCallback) dot -> runOnUiThread(() -> scannerView.addDot(dot)));
                 final Result scanResult = reader.decode(bitmap, hints);
 
-                runOnUiThread(new Runnable() {
-                    @Override
-                    public void run() {
-                        handleResult(scanResult);
-                    }
-                });
+                runOnUiThread(() -> handleResult(scanResult));
             } catch (final ReaderException x) {
                 // retry
                 cameraHandler.post(fetchAndDecodeRunnable);
@@ -488,14 +437,9 @@ public final class ScanActivity extends AbstractWalletActivity
         @Override
         public Dialog onCreateDialog(final Bundle savedInstanceState) {
             final Bundle args = getArguments();
-            final DialogBuilder dialog = DialogBuilder.warn(getActivity(), args.getInt("title"));
-            dialog.setMessage(args.getString("message"));
-            dialog.singleDismissButton(new OnClickListener() {
-                @Override
-                public void onClick(final DialogInterface dialog, final int which) {
-                    getActivity().finish();
-                }
-            });
+            final DialogBuilder dialog = DialogBuilder.warn(getActivity(), args.getInt("title"), args.getString(
+                    "message"));
+            dialog.singleDismissButton((d, which) -> getActivity().finish());
             return dialog.create();
         }
 

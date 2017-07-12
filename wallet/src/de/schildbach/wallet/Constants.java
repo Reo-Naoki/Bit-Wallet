@@ -1,5 +1,5 @@
 /*
- * Copyright 2011-2015 the original author or authors.
+ * Copyright the original author or authors.
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -17,37 +17,32 @@
 
 package de.schildbach.wallet;
 
-import java.io.File;
-import java.util.concurrent.TimeUnit;
-
+import android.os.Build;
+import android.text.format.DateUtils;
+import com.google.common.io.BaseEncoding;
+import okhttp3.HttpUrl;
+import okhttp3.OkHttpClient;
+import okhttp3.logging.HttpLoggingInterceptor;
 import org.bitcoinj.core.Coin;
 import org.bitcoinj.core.Context;
 import org.bitcoinj.core.NetworkParameters;
 import org.bitcoinj.params.MainNetParams;
 import org.bitcoinj.params.TestNet3Params;
 import org.bitcoinj.script.Script;
-import org.bitcoinj.store.SPVBlockStore;
 import org.bitcoinj.utils.MonetaryFormat;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.google.common.io.BaseEncoding;
-
-import android.os.Build;
-import android.os.Environment;
-import android.text.format.DateUtils;
-import okhttp3.HttpUrl;
-import okhttp3.OkHttpClient;
-import okhttp3.logging.HttpLoggingInterceptor;
+import java.util.concurrent.TimeUnit;
 
 /**
  * @author Andreas Schildbach
  */
 public final class Constants {
-    public static final boolean TEST = true;
 
     /** Network this wallet is on (e.g. testnet or mainnet). */
-    public static final NetworkParameters NETWORK_PARAMETERS = TEST ? TestNet3Params.get() : MainNetParams.get();
+    public static final NetworkParameters NETWORK_PARAMETERS =
+            !BuildConfig.FLAVOR.equals("prod") ? TestNet3Params.get() : MainNetParams.get();
 
     /** Bitcoinj global context. */
     public static final Context CONTEXT = new Context(NETWORK_PARAMETERS);
@@ -64,7 +59,7 @@ public final class Constants {
      */
     public static final Script.ScriptType UPGRADE_OUTPUT_SCRIPT_TYPE = Script.ScriptType.P2WPKH;
 
-    /** Enable switch for synching of the blockchain */
+    /** Enable switch for synching of the block chain */
     public static final boolean ENABLE_BLOCKCHAIN_SYNC = true;
     /** Enable switch for fetching and showing of exchange rates */
     public static final boolean ENABLE_EXCHANGE_RATES = true;
@@ -89,13 +84,6 @@ public final class Constants {
         /** Filename of the automatic wallet backup. */
         public static final String WALLET_KEY_BACKUP_PROTOBUF = "key-backup-protobuf" + FILENAME_NETWORK_SUFFIX;
 
-        /** Path to external storage */
-        public static final File EXTERNAL_STORAGE_DIR = Environment.getExternalStorageDirectory();
-
-        /** Manual backups go here. */
-        public static final File EXTERNAL_WALLET_BACKUP_DIR = Environment
-                .getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS);
-
         /** Filename of the manual wallet backup. */
         public static final String EXTERNAL_WALLET_BACKUP = "bitcoin-wallet-backup" + FILENAME_NETWORK_SUFFIX;
 
@@ -103,16 +91,19 @@ public final class Constants {
         public static final String BLOCKCHAIN_FILENAME = "blockchain" + FILENAME_NETWORK_SUFFIX;
 
         /** Capacity of the block store. */
-        public static final int BLOCKCHAIN_STORE_CAPACITY = SPVBlockStore.DEFAULT_CAPACITY * 2;
+        public static final int BLOCKCHAIN_STORE_CAPACITY = 10000;
 
-        /** Filename of the block checkpoints file. */
-        public static final String CHECKPOINTS_FILENAME = "checkpoints" + FILENAME_NETWORK_SUFFIX + ".txt";
+        /** Name of the asset containing the block checkpoints. */
+        public static final String CHECKPOINTS_ASSET = "checkpoints.txt";
 
-        /** Filename of the fees files. */
+        /** Name of the asset containing hardcoded fees. */
+        public static final String FEES_ASSET = "fees.txt";
+
+        /** Filename of the dynamic fees file. */
         public static final String FEES_FILENAME = "fees" + FILENAME_NETWORK_SUFFIX + ".txt";
 
-        /** Filename of the file containing Electrum servers. */
-        public static final String ELECTRUM_SERVERS_FILENAME = "electrum-servers.txt";
+        /** Name of the asset containing Electrum servers. */
+        public static final String ELECTRUM_SERVERS_ASSET = "electrum-servers.txt";
     }
 
     /** URL to fetch version alerts from. */
@@ -138,7 +129,7 @@ public final class Constants {
 
     /** Donation address for tip/donate action. */
     public static final String DONATION_ADDRESS = NETWORK_PARAMETERS.getId().equals(NetworkParameters.ID_MAINNET)
-            ? "bc1qzug4shzgksqfqxuphgxluhnayqq3rmmh5v0dql" : null;
+            ? "bc1q2ge5fmujrxaxhgs85fkmxnhk3mxfdyr87fal4q" : null;
 
     /** Recipient e-mail address for reports. */
     public static final String REPORT_EMAIL = "bitcoin.wallet.developers@gmail.com";
@@ -154,6 +145,7 @@ public final class Constants {
     public static final char CHAR_BITCOIN = '\u20bf';
     public static final char CHAR_ALMOST_EQUAL_TO = '\u2248';
     public static final char CHAR_CHECKMARK = '\u2713';
+    public static final char CHAR_CROSSMARK = '\u2715';
     public static final char CURRENCY_PLUS_SIGN = '\uff0b';
     public static final char CURRENCY_MINUS_SIGN = '\uff0d';
     public static final String PREFIX_ALMOST_EQUAL_TO = Character.toString(CHAR_ALMOST_EQUAL_TO) + CHAR_THIN_SPACE;
@@ -167,25 +159,29 @@ public final class Constants {
     public static final String SOURCE_URL = "https://github.com/bitcoin-wallet/bitcoin-wallet";
     public static final String BINARY_URL = "https://wallet.schildbach.de/";
 
-    public static final int PEER_DISCOVERY_TIMEOUT_MS = 10 * (int) DateUtils.SECOND_IN_MILLIS;
+    public static final int PEER_DISCOVERY_TIMEOUT_MS = 5 * (int) DateUtils.SECOND_IN_MILLIS;
     public static final int PEER_TIMEOUT_MS = 15 * (int) DateUtils.SECOND_IN_MILLIS;
 
     public static final long LAST_USAGE_THRESHOLD_JUST_MS = DateUtils.HOUR_IN_MILLIS;
-    public static final long LAST_USAGE_THRESHOLD_RECENTLY_MS = 2 * DateUtils.DAY_IN_MILLIS;
+    public static final long LAST_USAGE_THRESHOLD_TODAY_MS = DateUtils.DAY_IN_MILLIS;
+    public static final long LAST_USAGE_THRESHOLD_RECENTLY_MS = DateUtils.WEEK_IN_MILLIS;
     public static final long LAST_USAGE_THRESHOLD_INACTIVE_MS = 4 * DateUtils.WEEK_IN_MILLIS;
 
     public static final long DELAYED_TRANSACTION_THRESHOLD_MS = 2 * DateUtils.HOUR_IN_MILLIS;
+
+    public static final long AUTOCLOSE_DELAY_MS = 1000;
 
     /** A balance above this amount will show a warning */
     public static final Coin TOO_MUCH_BALANCE_THRESHOLD = Coin.COIN.divide(8);
     /** A balance above this amount will cause the donate option to be shown */
     public static final Coin SOME_BALANCE_THRESHOLD = Coin.COIN.divide(400);
 
-    public static final int SDK_DEPRECATED_BELOW = Build.VERSION_CODES.LOLLIPOP;
+    public static final int SDK_DEPRECATED_BELOW = Build.VERSION_CODES.M;
+    public static final String SECURITY_PATCH_INSECURE_BELOW = "2018-01-01";
 
-    public static final int NOTIFICATION_ID_CONNECTED = 1;
+    public static final int NOTIFICATION_ID_CONNECTIVITY = 1;
     public static final int NOTIFICATION_ID_COINS_RECEIVED = 2;
-    public static final int NOTIFICATION_ID_MAINTENANCE = 3;
+    public static final int NOTIFICATION_ID_BLUETOOTH = 3;
     public static final int NOTIFICATION_ID_INACTIVITY = 4;
     public static final String NOTIFICATION_GROUP_KEY_RECEIVED = "group-received";
     public static final String NOTIFICATION_CHANNEL_ID_RECEIVED = "received";

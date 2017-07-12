@@ -17,33 +17,24 @@
 
 package de.schildbach.wallet.ui;
 
-import de.schildbach.wallet.Configuration;
-import de.schildbach.wallet.WalletApplication;
-import de.schildbach.wallet.data.BlockchainStateLiveData;
-
 import android.app.Application;
 import android.content.SharedPreferences;
 import android.content.SharedPreferences.OnSharedPreferenceChangeListener;
 import androidx.lifecycle.AndroidViewModel;
 import androidx.lifecycle.LiveData;
+import de.schildbach.wallet.Configuration;
+import de.schildbach.wallet.WalletApplication;
 
 /**
  * @author Andreas Schildbach
  */
 public class WalletDisclaimerViewModel extends AndroidViewModel {
     private final WalletApplication application;
-    private BlockchainStateLiveData blockchainState;
     private DisclaimerEnabledLiveData disclaimerEnabled;
 
     public WalletDisclaimerViewModel(final Application application) {
         super(application);
         this.application = (WalletApplication) application;
-    }
-
-    public BlockchainStateLiveData getBlockchainState() {
-        if (blockchainState == null)
-            blockchainState = new BlockchainStateLiveData(application);
-        return blockchainState;
     }
 
     public DisclaimerEnabledLiveData getDisclaimerEnabled() {

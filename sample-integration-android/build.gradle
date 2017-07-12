@@ -1,19 +1,19 @@
-apply plugin: 'com.android.application'
+plugins {
+    id 'com.android.application'
+}
 
 configurations {
     all*.exclude group: 'com.google.android', module: 'android'
 }
 
 dependencies {
-    compile project(':integration-android')
-    compile 'org.bitcoinj:bitcoinj-core:0.12.3'
+    implementation project(':integration-android')
+    implementation 'org.bitcoinj:bitcoinj-core:0.14.7'
 }
 
 android {
-    compileSdkVersion 'android-15'
-    buildToolsVersion '28.0.3'
-
-    lintOptions { abortOnError false }
+    compileSdkVersion 'android-19'
+    buildToolsVersion '29.0.3'
 
     defaultConfig {
         dexOptions {
@@ -30,11 +30,22 @@ android {
         }
     }
 
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_1_8
+        targetCompatibility JavaVersion.VERSION_1_8
+    }
+
+    lintOptions {
+        checkReleaseBuilds false
+        abortOnError false
+    }
+
     packagingOptions {
         exclude 'lib/x86_64/darwin/libscrypt.dylib'
-        exclude 'com/google/thirdparty/publicsuffix/PublicSuffixPatterns.gwt.xml'
-        exclude 'com/google/thirdparty/publicsuffix/PublicSuffixType.gwt.xml'
         exclude 'org/bitcoinj/crypto/mnemonic/wordlist/english.txt'
         exclude 'org/bitcoinj/crypto/cacerts'
+        exclude 'org.bitcoin.production.checkpoints.txt'
+        exclude 'org.bitcoin.test.checkpoints.txt'
+        exclude '**/*.java'
     }
 }

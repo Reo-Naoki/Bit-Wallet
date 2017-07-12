@@ -17,8 +17,22 @@
 
 package de.schildbach.wallet.ui;
 
+import android.app.Application;
+import android.graphics.Bitmap;
+import android.net.Uri;
+import android.os.AsyncTask;
+import androidx.annotation.Nullable;
+import androidx.lifecycle.AndroidViewModel;
+import androidx.lifecycle.MediatorLiveData;
+import androidx.lifecycle.MutableLiveData;
+import de.schildbach.wallet.Constants;
+import de.schildbach.wallet.WalletApplication;
+import de.schildbach.wallet.data.AbstractWalletLiveData;
+import de.schildbach.wallet.data.ConfigOwnNameLiveData;
+import de.schildbach.wallet.util.Qr;
 import org.bitcoinj.core.Address;
 import org.bitcoinj.core.Coin;
+import org.bitcoinj.core.LegacyAddress;
 import org.bitcoinj.core.Transaction;
 import org.bitcoinj.uri.BitcoinURI;
 import org.bitcoinj.utils.Threading;
@@ -28,20 +42,7 @@ import org.bitcoinj.wallet.listeners.WalletCoinsReceivedEventListener;
 import org.bitcoinj.wallet.listeners.WalletCoinsSentEventListener;
 import org.bitcoinj.wallet.listeners.WalletReorganizeEventListener;
 
-import de.schildbach.wallet.Constants;
-import de.schildbach.wallet.WalletApplication;
-import de.schildbach.wallet.data.AbstractWalletLiveData;
-import de.schildbach.wallet.data.ConfigOwnNameLiveData;
-import de.schildbach.wallet.util.Qr;
-
-import android.app.Application;
-import android.graphics.Bitmap;
-import android.net.Uri;
-import android.os.AsyncTask;
-import androidx.lifecycle.AndroidViewModel;
-import androidx.lifecycle.MediatorLiveData;
-import androidx.lifecycle.MutableLiveData;
-import androidx.lifecycle.Observer;
+import java.util.Locale;
 
 /**
  * @author Andreas Schildbach
@@ -59,41 +60,16 @@ public class WalletAddressViewModel extends AndroidViewModel {
         this.application = (WalletApplication) application;
         this.currentAddress = new CurrentAddressLiveData(this.application);
         this.ownName = new ConfigOwnNameLiveData(this.application);
-        this.qrCode.addSource(currentAddress, new Observer<Address>() {
-            @Override
-            public void onChanged(final Address currentAddress) {
-                maybeGenerateQrCode();
-            }
-        });
-        this.qrCode.addSource(ownName, new Observer<String>() {
-            @Override
-            public void onChanged(final String label) {
-                maybeGenerateQrCode();
-            }
-        });
-        this.bitcoinUri.addSource(currentAddress, new Observer<Address>() {
-            @Override
-            public void onChanged(final Address currentAddress) {
-                maybeGenerateBitcoinUri();
-            }
-        });
-        this.bitcoinUri.addSource(ownName, new Observer<String>() {
-            @Override
-            public void onChanged(final String label) {
-                maybeGenerateBitcoinUri();
-            }
-        });
+        this.qrCode.addSource(currentAddress, currentAddress -> maybeGenerateQrCode());
+        this.qrCode.addSource(ownName, label -> maybeGenerateQrCode());
+        this.bitcoinUri.addSource(currentAddress, currentAddress -> maybeGenerateBitcoinUri());
+        this.bitcoinUri.addSource(ownName, label -> maybeGenerateBitcoinUri());
     }
 
     private void maybeGenerateQrCode() {
         final Address address = currentAddress.getValue();
         if (address != null) {
-            AsyncTask.execute(new Runnable() {
-                @Override
-                public void run() {
-                    qrCode.postValue(Qr.bitmap(uri(address, ownName.getValue())));
-                }
-            });
+            AsyncTask.execute(() -> qrCode.postValue(Qr.bitmap(uri(address, ownName.getValue()))));
         }
     }
 
@@ -104,8 +80,12 @@ public class WalletAddressViewModel extends AndroidViewModel {
         }
     }
 
-    private String uri(final Address address, final String label) {
-        return BitcoinURI.convertToBitcoinURI(address, null, label, null);
+    private String uri(final Address address, @Nullable final String label) {
+        final String addressUri;
+        if (address instanceof LegacyAddress || label != null)
+            return BitcoinURI.convertToBitcoinURI(address, null, label, null);
+        else
+            return address.toString().toUpperCase(Locale.US);
     }
 
     public static class CurrentAddressLiveData extends AbstractWalletLiveData<Address> {
@@ -141,12 +121,9 @@ public class WalletAddressViewModel extends AndroidViewModel {
         @Override
         protected void load() {
             final Wallet wallet = getWallet();
-            AsyncTask.execute(new Runnable() {
-                @Override
-                public void run() {
-                    org.bitcoinj.core.Context.propagate(Constants.CONTEXT);
-                    postValue(wallet.currentReceiveAddress());
-                }
+            AsyncTask.execute(() -> {
+                org.bitcoinj.core.Context.propagate(Constants.CONTEXT);
+                postValue(wallet.currentReceiveAddress());
             });
         }
 

@@ -17,13 +17,11 @@
 
 package de.schildbach.wallet.ui;
 
-import de.schildbach.wallet.ui.send.MaintenanceDialogFragment;
-
 import android.os.Bundle;
 import androidx.fragment.app.Fragment;
 import androidx.fragment.app.FragmentManager;
-import androidx.lifecycle.Observer;
-import androidx.lifecycle.ViewModelProviders;
+import androidx.lifecycle.ViewModelProvider;
+import de.schildbach.wallet.ui.send.MaintenanceDialogFragment;
 
 /**
  * @author Andreas Schildbach
@@ -44,14 +42,11 @@ public class MaybeMaintenanceFragment extends Fragment {
     @Override
     public void onCreate(final Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        viewModel = ViewModelProviders.of(this).get(MaybeMaintenanceViewModel.class);
-        viewModel.showDialog.observe(this, new Observer<Void>() {
-            @Override
-            public void onChanged(final Void v) {
-                if (!viewModel.getDialogWasShown()) {
-                    MaintenanceDialogFragment.show(getFragmentManager());
-                    viewModel.setDialogWasShown();
-                }
+        viewModel = new ViewModelProvider(this).get(MaybeMaintenanceViewModel.class);
+        viewModel.showDialog.observe(this, v -> {
+            if (!viewModel.getDialogWasShown()) {
+                MaintenanceDialogFragment.show(getParentFragmentManager());
+                viewModel.setDialogWasShown();
             }
         });
     }

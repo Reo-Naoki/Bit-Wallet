@@ -1,5 +1,5 @@
-/**
- * Copyright 2012-2015 the original author or authors.
+/*
+ * Copyright the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,12 +16,6 @@
 
 package de.schildbach.wallet.integration.sample;
 
-import org.bitcoin.protocols.payments.Protos;
-import org.bitcoinj.core.Address;
-import org.bitcoinj.core.AddressFormatException;
-import org.bitcoinj.core.NetworkParameters;
-import org.bitcoinj.script.ScriptBuilder;
-
 import android.app.Activity;
 import android.content.Intent;
 import android.os.Bundle;
@@ -29,15 +23,17 @@ import android.text.Spannable;
 import android.text.SpannableStringBuilder;
 import android.text.style.TypefaceSpan;
 import android.view.View;
-import android.view.View.OnClickListener;
 import android.widget.Button;
 import android.widget.RadioButton;
 import android.widget.TextView;
 import android.widget.Toast;
-
 import com.google.protobuf.ByteString;
-
 import de.schildbach.wallet.integration.android.BitcoinIntegration;
+import org.bitcoin.protocols.payments.Protos;
+import org.bitcoinj.core.Address;
+import org.bitcoinj.core.AddressFormatException;
+import org.bitcoinj.core.NetworkParameters;
+import org.bitcoinj.script.ScriptBuilder;
 
 /**
  * @author Andreas Schildbach
@@ -61,18 +57,10 @@ public class SampleActivity extends Activity {
         setContentView(R.layout.sample_activity);
 
         donateButton = (Button) findViewById(R.id.sample_donate_button);
-        donateButton.setOnClickListener(new OnClickListener() {
-            public void onClick(final View v) {
-                handleDonate();
-            }
-        });
+        donateButton.setOnClickListener(v -> handleDonate());
 
         requestButton = (Button) findViewById(R.id.sample_request_button);
-        requestButton.setOnClickListener(new OnClickListener() {
-            public void onClick(final View v) {
-                handleRequest();
-            }
-        });
+        requestButton.setOnClickListener(v -> handleRequest());
 
         donateMessage = (TextView) findViewById(R.id.sample_donate_message);
     }

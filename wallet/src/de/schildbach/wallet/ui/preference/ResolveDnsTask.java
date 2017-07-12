@@ -1,5 +1,5 @@
 /*
- * Copyright 2016 the original author or authors.
+ * Copyright the original author or authors.
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -17,11 +17,14 @@
 
 package de.schildbach.wallet.ui.preference;
 
-import java.net.InetAddress;
-import java.net.UnknownHostException;
-
 import android.os.Handler;
 import android.os.Looper;
+import com.google.common.net.HostAndPort;
+import de.schildbach.wallet.Constants;
+
+import java.net.InetAddress;
+import java.net.InetSocketAddress;
+import java.net.UnknownHostException;
 
 /**
  * @author Andreas Schildbach
@@ -35,32 +38,20 @@ public abstract class ResolveDnsTask {
         this.callbackHandler = new Handler(Looper.myLooper());
     }
 
-    public final void resolve(final String hostname) {
-        backgroundHandler.post(new Runnable() {
-            @Override
-            public void run() {
-                try {
-                    final InetAddress address = InetAddress.getByName(hostname); // blocks on network
-
-                    callbackHandler.post(new Runnable() {
-                        @Override
-                        public void run() {
-                            onSuccess(address);
-                        }
-                    });
-                } catch (final UnknownHostException x) {
-                    callbackHandler.post(new Runnable() {
-                        @Override
-                        public void run() {
-                            onUnknownHost();
-                        }
-                    });
-                }
+    public final void resolve(final HostAndPort hostAndPort) {
+        backgroundHandler.post(() -> {
+            try {
+                final InetAddress address = InetAddress.getByName(hostAndPort.getHost()); // blocks on network
+                final int port = hostAndPort.getPortOrDefault(Constants.NETWORK_PARAMETERS.getPort());
+                final InetSocketAddress socketAddress = new InetSocketAddress(address, port);
+                callbackHandler.post(() -> onSuccess(socketAddress));
+            } catch (final UnknownHostException x) {
+                callbackHandler.post(() -> onUnknownHost(hostAndPort));
             }
         });
     }
 
-    protected abstract void onSuccess(InetAddress address);
+    protected abstract void onSuccess(InetSocketAddress socketAddress);
 
-    protected abstract void onUnknownHost();
+    protected abstract void onUnknownHost(HostAndPort hostAndPort);
 }

@@ -1,5 +1,5 @@
 <?xml version='1.0' encoding='UTF-8'?>
-<resources xmlns:android="http://schemas.android.com/apk/res/android">
+<resources>
   <string name="toast_wallet_reset">La teva cartera s\'ha reiniciat, trigarà uns instants en tornar a recuperar-se</string>
   <string name="wallet_disclaimer_fragment_remind_safety">Utilitzar sota la teva responsabilitat. Llegeix les &lt;u&gt;advertències de seguretat&lt;/u&gt;.</string>
   <string name="wallet_disclaimer_fragment_remind_backup">Necessites &lt;u&gt;fer una còpia de seguretat de la cartera&lt;/u&gt;!</string>
@@ -17,7 +17,6 @@
   <string name="wallet_balance_fragment_too_much">Aquesta quantitat de diners és molt elevada per portar-la a la butxaca, mou una part a un lloc segur.</string>
   <string name="wallet_balance_fragment_replaying">El saldo no està disponible durant la repetició.</string>
   <string name="exchange_rates_activity_title">Preus de canvi</string>
-  <string name="exchange_rates_fragment_empty_text">No es poden carregar el preus de canvi.</string>
   <string name="exchange_rates_fragment_empty_search">No es pot trobar el preu de canvi.</string>
   <string name="exchange_rates_fragment_default">(per defecte)</string>
   <string name="exchange_rates_fragment_rate">taxa</string>
@@ -148,10 +147,6 @@
   <string name="address_book_context_edit_title">Edita l\'adreça</string>
   <string name="address_book_context_remove_title">Esborra l\'adreça</string>
   <string name="address_book_context_copy_to_clipboard_title">Copia al porta-retalls</string>
-  <string name="address_book_options_paste_from_clipboard_title">Enganxa des del porta-retalls</string>
-  <string name="address_book_options_paste_from_clipboard_empty">El porta-retalls està buit</string>
-  <string name="address_book_options_paste_from_clipboard_invalid">No es reconeixen les dades del porta-retalls.</string>
-  <string name="address_book_options_paste_from_clipboard_own_address">La direcció del porta-retalls és la teva.</string>
   <string name="address_book_options_scan_title">Escaneja l\'adreça</string>
   <string name="address_book_options_scan_invalid">No es reconeixen les dades escanejades</string>
   <string name="address_book_options_scan_own_address">L\'adreça escanejada és la teva.</string>
@@ -184,19 +179,9 @@
   <string name="block_row_now">ara mateix</string>
   <string name="peer_list_fragment_empty">Cap parell connectat</string>
   <string name="peer_list_row_ping_time">⇆ %d&#x2009;ms</string>
-  <string name="restore_wallet_permission_dialog_title">Falta el permís de lectura</string>
-  <string name="restore_wallet_permission_dialog_message">Per tal de cercar còpies de seguretat de la seva cartera en l\'emmagatzematge extern, cal concedir el permís de lectura.</string>
   <string name="import_keys_dialog_title">Recuperar cartera</string>
-  <string name="import_keys_dialog_message">Carrega un arxiu de còpia de seguretat des d\'un emmagatzematge extern o d\'una aplicació privada.</string>
-  <string name="restore_wallet_dialog_message_empty">No s\'ha trobat cap còpia de seguretat de cap cartera. Assegureu-vos que estigui a l\'emmagatzematge extern (%s).</string>
   <string name="restore_wallet_dialog_replace_warning">Estàs a punt de reemplaçar la teva cartera actual. Qualsevol saldo a l\'actual cartera es perdrà a no ser que en tinguis una còpia de seguretat a part. </string>
   <string name="import_keys_dialog_warning">Important: No carreguis claus privades de fonts desconegudes! Si ho fas, et poden prendre el control dels teus fons.</string>
-  <string name="import_keys_dialog_file_security_encrypted">Clau de pas encriptada</string>
-  <string name="import_keys_dialog_file_security_unencrypted">desencriptat</string>
-  <string name="import_keys_dialog_file_security_external">emmagatzematge extern</string>
-  <string name="import_keys_dialog_file_security_internal">emmagatzematge d\'aplicació privada</string>
-  <string name="import_keys_dialog_file_created_automatic">còpia de seguretat automàtica %s</string>
-  <string name="import_keys_dialog_file_created_manual">bloqueig manual %s</string>
   <string name="import_keys_dialog_button_import">Restaura</string>
   <string name="restore_wallet_dialog_success">La cartera s\'ha restaurat.</string>
   <string name="restore_wallet_dialog_success_replay">La teva cartera s\'ha restaurat correctament. El balanç es determinara seguidament. Pot trigar una estona.</string>
@@ -251,8 +236,6 @@
   <string name="preferences_own_name_summary">El teu propi nom, que s\'afegeix a les sol·licituds de pagament. Intenta que sigui breu.</string>
   <string name="preferences_send_coins_autoclose_title">Tancar de manera automàtica el diàleg d\'enviament de monedes</string>
   <string name="preferences_send_coins_autoclose_summary">Quan s\'efectuï el pagament, el diàleg d\'enviament es tancarà automàticament.</string>
-  <string name="preferences_connectivity_notification_title">Indicador de connectivitat.</string>
-  <string name="preferences_connectivity_notification_summary">Mostra el nombre actual de parells connectats a l\'àrea de notificació.</string>
   <string name="preferences_trusted_peer_title">Parell de confiança</string>
   <string name="preferences_trusted_peer_summary">IP o nom de host del parell per connectar-hi</string>
   <string name="preferences_trusted_peer_resolve_progress">Resolent…</string>
@@ -285,7 +268,6 @@
   <string name="report_issue_dialog_description">descripció del problema</string>
   <string name="report_issue_dialog_report">Reportar</string>
   <string name="report_issue_dialog_collect_device_info">Adjuntar informació de dispositiu</string>
-  <string name="report_issue_dialog_collect_installed_packages">Adjuntar llistat de paquets instal·lats</string>
   <string name="report_issue_dialog_collect_application_log">Adjuntar registre d\'aplicació</string>
   <string name="report_issue_dialog_collect_wallet_dump">Adjuntar buidat de dades de cartera.</string>
   <string name="report_issue_dialog_mail_intent_chooser">Enviant report utilitzant…</string>

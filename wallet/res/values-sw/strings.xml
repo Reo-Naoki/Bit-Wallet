@@ -1,5 +1,5 @@
 <?xml version='1.0' encoding='UTF-8'?>
-<resources xmlns:android="http://schemas.android.com/apk/res/android">
+<resources>
   <string name="toast_wallet_reset">Pochi yako mara kwa upya. Sasa, itakuwa upya.</string>
   <string name="wallet_disclaimer_fragment_remind_safety">Wacha tu! Matumizi kwa wajibu wako mwenyewe. Upechop maelezo usalama.</string>
   <string name="wallet_disclaimer_fragment_remind_backup">Lazima kubamba backup!</string>
@@ -15,7 +15,6 @@
   <string name="wallet_balance_fragment_too_much">Ume Sonko na pochi yako! Tafadhali hoja pesa mahala pa usalama.</string>
   <string name="wallet_balance_fragment_replaying">Mizani ni haipatikani kwa sasa</string>
   <string name="exchange_rates_activity_title">Viwango vya soko</string>
-  <string name="exchange_rates_fragment_empty_text">Haikuweza kupata viwango vya soko</string>
   <string name="exchange_rates_fragment_empty_search">Hakuweza kupata viwango vya soko</string>
   <string name="exchange_rates_fragment_default">(kawaida)</string>
   <string name="exchange_rates_fragment_rate">viwango</string>
@@ -120,9 +119,6 @@
   <string name="address_book_context_edit_title">Mabadiliko ya anwani</string>
   <string name="address_book_context_remove_title">Kuondoa anwani</string>
   <string name="address_book_context_copy_to_clipboard_title">Nakala ya clipbard</string>
-  <string name="address_book_options_paste_from_clipboard_title">Kuweka kutoka clipboard</string>
-  <string name="address_book_options_paste_from_clipboard_empty">Cliboard ni tupu</string>
-  <string name="address_book_options_paste_from_clipboard_invalid">Habari kutoka clipboard ni haitambuliwi</string>
   <string name="address_book_options_scan_title">Bamba anwani</string>
   <string name="address_book_options_scan_invalid">Habari kutoka kubamba ni haitambuliwi</string>
   <string name="address_book_row_message_compromised_key">Anwani hii inweza kuwa uhaba. Tafadhali usitumie anwani hii tena.</string>
@@ -146,15 +142,8 @@
   <string name="peer_list_fragment_empty">Hakuna rika kushikamana</string>
   <string name="peer_list_row_ping_time">⇆ %d&#x2009;ms</string>
   <string name="import_keys_dialog_title">Kurejesha pochi</string>
-  <string name="import_keys_dialog_message">Bamba pochi backup faili kutoka disc nje au ndani:</string>
   <string name="restore_wallet_dialog_replace_warning">Utakuwa kuchukua pochi yako ya sasa. Pesa yako yote yatapolea isipokuwa kama una backup.</string>
   <string name="import_keys_dialog_warning">Muhimu! Je, si nakala funguo kutoka vyanzo haijulikani. Si kila mtu ni waaminifu.</string>
-  <string name="import_keys_dialog_file_security_encrypted">Siri ni halali.</string>
-  <string name="import_keys_dialog_file_security_unencrypted">Siri ni haramu</string>
-  <string name="import_keys_dialog_file_security_external">Disc nje</string>
-  <string name="import_keys_dialog_file_security_internal">Disc ndani</string>
-  <string name="import_keys_dialog_file_created_automatic">Moja kwa moja backup %s</string>
-  <string name="import_keys_dialog_file_created_manual">Backup vitendo %s</string>
   <string name="import_keys_dialog_button_import">Kurejesha</string>
   <string name="restore_wallet_dialog_success">Pochi yako ni kurejeshwa.</string>
   <string name="restore_wallet_dialog_success_replay">Pochi yako ni kurejeshwa kwa mafanikio. Pochi yako sasa bamba mizani. hii inachukua muda mfupi.</string>
@@ -194,8 +183,6 @@
   <string name="preferences_category_labs">Maabara</string>
   <string name="preferences_precision_title">Dhebebu na usahihi</string>
   <string name="preferences_precision_summary">Vipimo kitengo. Hii haina kuathiri hesabu.</string>
-  <string name="preferences_connectivity_notification_title">Uhusiano wa mtandao</string>
-  <string name="preferences_connectivity_notification_summary">Kusema idadi ya wenzao kushikamana katika mtandao.</string>
   <string name="preferences_trusted_peer_title">Rika nzuri</string>
   <string name="preferences_trusted_peer_summary">IP au jina la mpangishaji wa rika moja kuunganisha.</string>
   <string name="preferences_trusted_peer_only_title">Ruka utafiti wa kawaida wa rika</string>
@@ -203,9 +190,9 @@
   <string name="preferences_data_usage_title">Matumizi ya habari</string>
   <string name="preferences_data_usage_summary">Onyesha chaguo kuzuia matumizi ya data juu ya mitandao ya simu.</string>
   <string name="preferences_report_issue_title">Ripoti tatizo</string>
-  <string name="preferences_initiate_reset_title">Upya Blockchain</string>
-  <string name="preferences_initiate_reset_summary">Upya Blockchain, shughuli, na usalama ya pochi. Bambika itachukua muda mfupi.</string>
-  <string name="preferences_initiate_reset_dialog_message">Je, ungependa upya na bambika na Blockchain?\n\nHii muda kujificha pochi mizani yako na kuondoa shughuli. Wote itarejea kama Blockchain kubamba ikiendelea.</string>
+  <string name="preferences_initiate_reset_title">Upya block chain</string>
+  <string name="preferences_initiate_reset_summary">Upya block chain, shughuli, na usalama ya pochi. Bambika itachukua muda mfupi.</string>
+  <string name="preferences_initiate_reset_dialog_message">Je, ungependa upya na bambika na block chain?\n\nHii muda kujificha pochi mizani yako na kuondoa shughuli. Wote itarejea kama block chain kubamba ikiendelea.</string>
   <string name="preferences_initiate_reset_dialog_positive">Upya</string>
   <string name="preferences_extended_public_key_title">Soma extended public key</string>
   <string name="preferences_extended_public_key_summary">Mwambie kupanuliwa umma muhimu ya pochi yako, hivyo inaweza kuwa nje katika programu na huduma nyingine. Kuwa makini: kufanya hivyo itakuwa wazi siri yako ya fedha kwa programu hiyo.</string>
@@ -218,7 +205,6 @@
   <string name="report_issue_dialog_description">Kuelezea tatizo lako, tafadhali</string>
   <string name="report_issue_dialog_report">Ripoti</string>
   <string name="report_issue_dialog_collect_device_info">Habari ya simu</string>
-  <string name="report_issue_dialog_collect_installed_packages">Taarifa ya mipango imewekwa</string>
   <string name="report_issue_dialog_collect_application_log">Taarifa ya logi mpango</string>
   <string name="report_issue_dialog_collect_wallet_dump">Taarifa ya pochi ajali</string>
   <string name="report_issue_dialog_mail_intent_chooser">Soma ripoti kutumia…</string>

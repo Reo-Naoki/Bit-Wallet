@@ -1,5 +1,5 @@
 /*
- * Copyright 2015 the original author or authors.
+ * Copyright the original author or authors.
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -35,5 +35,5 @@ public enum FeeCategory {
     /**
      * Confirms within the next 15 minutes.
      */
-    PRIORITY;
+    PRIORITY
 }

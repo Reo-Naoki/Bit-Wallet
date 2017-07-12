@@ -1,5 +1,5 @@
 /*
- * Copyright 2014-2015 the original author or authors.
+ * Copyright the original author or authors.
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -17,11 +17,10 @@
 
 package de.schildbach.wallet.ui.send;
 
-import org.bitcoinj.core.ECKey;
-import org.bitcoinj.crypto.BIP38PrivateKey;
-
 import android.os.Handler;
 import android.os.Looper;
+import org.bitcoinj.core.ECKey;
+import org.bitcoinj.crypto.BIP38PrivateKey;
 
 /**
  * @author Andreas Schildbach
@@ -36,26 +35,13 @@ public abstract class DecodePrivateKeyTask {
     }
 
     public final void decodePrivateKey(final BIP38PrivateKey encryptedKey, final String passphrase) {
-        backgroundHandler.post(new Runnable() {
-            @Override
-            public void run() {
-                try {
-                    final ECKey decryptedKey = encryptedKey.decrypt(passphrase); // takes time
+        backgroundHandler.post(() -> {
+            try {
+                final ECKey decryptedKey = encryptedKey.decrypt(passphrase); // takes time
 
-                    callbackHandler.post(new Runnable() {
-                        @Override
-                        public void run() {
-                            onSuccess(decryptedKey);
-                        }
-                    });
-                } catch (final BIP38PrivateKey.BadPassphraseException x) {
-                    callbackHandler.post(new Runnable() {
-                        @Override
-                        public void run() {
-                            onBadPassphrase();
-                        }
-                    });
-                }
+                callbackHandler.post(() -> onSuccess(decryptedKey));
+            } catch (final BIP38PrivateKey.BadPassphraseException x) {
+                callbackHandler.post(() -> onBadPassphrase());
             }
         });
     }

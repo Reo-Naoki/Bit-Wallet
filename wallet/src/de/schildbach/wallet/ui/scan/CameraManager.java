@@ -17,18 +17,6 @@
 
 package de.schildbach.wallet.ui.scan;
 
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.Comparator;
-import java.util.List;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import com.google.zxing.PlanarYUVLuminanceSource;
-
 import android.annotation.SuppressLint;
 import android.graphics.Rect;
 import android.graphics.RectF;
@@ -36,6 +24,16 @@ import android.hardware.Camera;
 import android.hardware.Camera.CameraInfo;
 import android.hardware.Camera.PreviewCallback;
 import android.view.TextureView;
+import com.google.zxing.PlanarYUVLuminanceSource;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.List;
 
 /**
  * @author Andreas Schildbach
@@ -44,8 +42,8 @@ import android.view.TextureView;
 public final class CameraManager {
     private static final int MIN_FRAME_SIZE = 240;
     private static final int MAX_FRAME_SIZE = 600;
-    private static final int MIN_PREVIEW_PIXELS = 470 * 320; // normal screen
-    private static final int MAX_PREVIEW_PIXELS = 1280 * 720;
+    private static final int MIN_PREVIEW_PIXELS = 640 * 480; // normal screen
+    private static final int MAX_PREVIEW_PIXELS = 1920 * 1080;
 
     private Camera camera;
     private CameraInfo cameraInfo = new CameraInfo();
@@ -91,10 +89,11 @@ public final class CameraManager {
 
         final Camera.Parameters parameters = camera.getParameters();
 
-        cameraResolution = findBestPreviewSizeValue(parameters, textureView.getWidth(), textureView.getHeight());
-
         final int width = textureView.getWidth();
         final int height = textureView.getHeight();
+        cameraResolution = findBestPreviewSizeValue(parameters, width, height);
+        log.info("texture size is {}/{}, picked preview size is {}/{}", width, height, cameraResolution.width,
+                cameraResolution.height);
 
         final int rawSize = Math.min(width * 2 / 3, height * 2 / 3);
         final int frameSize = Math.max(MIN_FRAME_SIZE, Math.min(MAX_FRAME_SIZE, rawSize));
@@ -103,13 +102,15 @@ public final class CameraManager {
         final int topOffset = (height - frameSize) / 2;
         frame = new Rect(leftOffset, topOffset, leftOffset + frameSize, topOffset + frameSize);
         if (width > height) { // landscape
-            framePreview = new RectF(frame.left * cameraResolution.width / width,
-                    frame.top * cameraResolution.height / height, frame.right * cameraResolution.width / width,
-                    frame.bottom * cameraResolution.height / height);
+            framePreview = new RectF((float) (frame.left * cameraResolution.width) / width,
+                    (float) (frame.top * cameraResolution.height) / height,
+                    (float) (frame.right * cameraResolution.width) / width,
+                    (float) (frame.bottom * cameraResolution.height) / height);
         } else { // portrait
-            framePreview = new RectF(frame.top * cameraResolution.width / height,
-                    frame.left * cameraResolution.height / width, frame.bottom * cameraResolution.width / height,
-                    frame.right * cameraResolution.height / width);
+            framePreview = new RectF((float) (frame.top * cameraResolution.width) / height,
+                    (float) (frame.left * cameraResolution.height) / width,
+                    (float) (frame.bottom * cameraResolution.width) / height,
+                    (float) (frame.right * cameraResolution.height) / width);
         }
 
         final String savedParameters = parameters == null ? null : parameters.flatten();
@@ -172,19 +173,10 @@ public final class CameraManager {
         }
     }
 
-    private static final Comparator<Camera.Size> numPixelComparator = new Comparator<Camera.Size>() {
-        @Override
-        public int compare(final Camera.Size size1, final Camera.Size size2) {
-            final int pixels1 = size1.height * size1.width;
-            final int pixels2 = size2.height * size2.width;
-
-            if (pixels1 < pixels2)
-                return 1;
-            else if (pixels1 > pixels2)
-                return -1;
-            else
-                return 0;
-        }
+    private static final Comparator<Camera.Size> NUM_PIXEL_COMPARATOR = (size1, size2) -> {
+        final int pixels1 = size1.height * size1.width;
+        final int pixels2 = size2.height * size2.width;
+        return -Integer.compare(pixels1, pixels2);
     };
 
     private static Camera.Size findBestPreviewSizeValue(final Camera.Parameters parameters, int width, int height) {
@@ -201,8 +193,8 @@ public final class CameraManager {
             return parameters.getPreviewSize();
 
         // sort by size, descending
-        final List<Camera.Size> supportedPreviewSizes = new ArrayList<Camera.Size>(rawSupportedSizes);
-        Collections.sort(supportedPreviewSizes, numPixelComparator);
+        final List<Camera.Size> supportedPreviewSizes = new ArrayList<>(rawSupportedSizes);
+        Collections.sort(supportedPreviewSizes, NUM_PIXEL_COMPARATOR);
 
         Camera.Size bestSize = null;
         float diff = Float.POSITIVE_INFINITY;

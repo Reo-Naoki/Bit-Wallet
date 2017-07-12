@@ -17,21 +17,20 @@
 
 package de.schildbach.wallet.util;
 
-import static androidx.core.util.Preconditions.checkNotNull;
-
-import java.util.concurrent.atomic.AtomicBoolean;
-
+import android.view.View;
+import android.view.ViewTreeObserver;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import android.view.View;
-import android.view.ViewTreeObserver;
+import java.util.concurrent.atomic.AtomicBoolean;
+
+import static androidx.core.util.Preconditions.checkNotNull;
 
 /**
  * @author Andreas Schildbach
  */
 public class OnFirstPreDraw implements ViewTreeObserver.OnPreDrawListener {
-    public static interface Callback {
+    public interface Callback {
         boolean onFirstPreDraw();
     }
 

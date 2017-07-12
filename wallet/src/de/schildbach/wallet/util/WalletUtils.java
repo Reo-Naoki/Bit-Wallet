@@ -1,5 +1,5 @@
 /*
- * Copyright 2011-2015 the original author or authors.
+ * Copyright the original author or authors.
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -17,13 +17,17 @@
 
 package de.schildbach.wallet.util;
 
-import java.io.File;
-import java.io.FileFilter;
-import java.io.FileInputStream;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
-
+import android.content.Context;
+import android.net.Uri;
+import android.text.Spannable;
+import android.text.SpannableStringBuilder;
+import android.text.Spanned;
+import android.text.SpannedString;
+import android.text.style.TypefaceSpan;
+import androidx.annotation.Nullable;
+import com.google.common.base.Stopwatch;
+import de.schildbach.wallet.Constants;
+import de.schildbach.wallet.service.BlockchainService;
 import org.bitcoinj.core.Address;
 import org.bitcoinj.core.NetworkParameters;
 import org.bitcoinj.core.Sha256Hash;
@@ -39,18 +43,9 @@ import org.bitcoinj.wallet.WalletProtobufSerializer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.google.common.base.Stopwatch;
-
-import de.schildbach.wallet.Constants;
-import de.schildbach.wallet.service.BlockchainService;
-
-import android.content.Context;
-import android.text.Spannable;
-import android.text.SpannableStringBuilder;
-import android.text.Spanned;
-import android.text.SpannedString;
-import android.text.style.TypefaceSpan;
-import androidx.annotation.Nullable;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
 
 /**
  * @author Andreas Schildbach
@@ -67,8 +62,8 @@ public class WalletUtils {
         return formatHash(prefix, address.toString(), groupSize, lineSize, Constants.CHAR_THIN_SPACE);
     }
 
-    public static Spanned formatHash(final String address, final int groupSize, final int lineSize) {
-        return formatHash(null, address, groupSize, lineSize, Constants.CHAR_THIN_SPACE);
+    public static Spanned formatHash(final String hash, final int groupSize, final int lineSize) {
+        return formatHash(null, hash, groupSize, lineSize, Constants.CHAR_THIN_SPACE);
     }
 
     public static long longHash(final Sha256Hash hash) {
@@ -100,15 +95,15 @@ public class WalletUtils {
         }
     }
 
-    public static Spanned formatHash(@Nullable final String prefix, final String address, final int groupSize,
+    public static Spanned formatHash(@Nullable final String prefix, final String hash, final int groupSize,
             final int lineSize, final char groupSeparator) {
         final SpannableStringBuilder builder = prefix != null ? new SpannableStringBuilder(prefix)
                 : new SpannableStringBuilder();
 
-        final int len = address.length();
+        final int len = hash.length();
         for (int i = 0; i < len; i += groupSize) {
             final int end = i + groupSize;
-            final String part = address.substring(i, end < len ? end : len);
+            final String part = hash.substring(i, end < len ? end : len);
 
             builder.append(part);
             builder.setSpan(new MonospaceSpan(), builder.length() - part.length(), builder.length(),
@@ -220,18 +215,22 @@ public class WalletUtils {
         }
     }
 
-    public static final FileFilter BACKUP_FILE_FILTER = new FileFilter() {
-        @Override
-        public boolean accept(final File file) {
-            try (final InputStream is = new FileInputStream(file)) {
-                return WalletProtobufSerializer.isWallet(is);
-            } catch (final IOException x) {
-                return false;
-            }
-        }
-    };
-
     public static boolean isPayToManyTransaction(final Transaction transaction) {
         return transaction.getOutputs().size() > 20;
+    }
+
+    public static @Nullable String uriToProvider(final Uri uri) {
+        if (uri == null || !uri.getScheme().equals("content"))
+            return null;
+        final String host = uri.getHost();
+        if ("com.google.android.apps.docs.storage".equals(host) || "com.google.android.apps.docs.storage.legacy".equals(host))
+            return "Google Drive";
+        if ("org.nextcloud.documents".equals(host))
+            return "Nextcloud";
+        if ("com.box.android.documents".equals(host))
+            return "Box";
+        if ("com.android.providers.downloads.documents".equals(host))
+            return "internal storage";
+        return null;
     }
 }

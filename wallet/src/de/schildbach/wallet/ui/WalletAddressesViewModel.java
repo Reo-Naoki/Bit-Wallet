@@ -17,11 +17,18 @@
 
 package de.schildbach.wallet.ui;
 
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.Comparator;
-import java.util.List;
-
+import android.app.Application;
+import android.graphics.Bitmap;
+import android.os.AsyncTask;
+import androidx.lifecycle.AndroidViewModel;
+import androidx.lifecycle.LiveData;
+import androidx.lifecycle.MutableLiveData;
+import de.schildbach.wallet.Constants;
+import de.schildbach.wallet.WalletApplication;
+import de.schildbach.wallet.addressbook.AddressBookDatabase;
+import de.schildbach.wallet.addressbook.AddressBookEntry;
+import de.schildbach.wallet.data.AbstractWalletLiveData;
+import de.schildbach.wallet.data.ConfigOwnNameLiveData;
 import org.bitcoinj.core.Address;
 import org.bitcoinj.core.ECKey;
 import org.bitcoinj.core.LegacyAddress;
@@ -29,20 +36,9 @@ import org.bitcoinj.utils.Threading;
 import org.bitcoinj.wallet.Wallet;
 import org.bitcoinj.wallet.listeners.KeyChainEventListener;
 
-import de.schildbach.wallet.Constants;
-import de.schildbach.wallet.WalletApplication;
-import de.schildbach.wallet.data.AbstractWalletLiveData;
-import de.schildbach.wallet.data.AddressBookEntry;
-import de.schildbach.wallet.data.AppDatabase;
-import de.schildbach.wallet.data.ConfigOwnNameLiveData;
-import de.schildbach.wallet.data.WalletLiveData;
-
-import android.app.Application;
-import android.graphics.Bitmap;
-import android.os.AsyncTask;
-import androidx.lifecycle.AndroidViewModel;
-import androidx.lifecycle.LiveData;
-import androidx.lifecycle.MutableLiveData;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 
 /**
  * @author Andreas Schildbach
@@ -52,7 +48,6 @@ public class WalletAddressesViewModel extends AndroidViewModel {
     public final IssuedReceiveAddressesLiveData issuedReceiveAddresses;
     public final ImportedAddressesLiveData importedAddresses;
     public final LiveData<List<AddressBookEntry>> addressBook;
-    public final WalletLiveData wallet;
     public final ConfigOwnNameLiveData ownName;
     public final MutableLiveData<Event<Bitmap>> showBitmapDialog = new MutableLiveData<>();
     public final MutableLiveData<Event<Address>> showEditAddressBookEntryDialog = new MutableLiveData<>();
@@ -62,8 +57,7 @@ public class WalletAddressesViewModel extends AndroidViewModel {
         this.application = (WalletApplication) application;
         this.issuedReceiveAddresses = new IssuedReceiveAddressesLiveData(this.application);
         this.importedAddresses = new ImportedAddressesLiveData(this.application);
-        this.addressBook = AppDatabase.getDatabase(this.application).addressBookDao().getAll();
-        this.wallet = new WalletLiveData(this.application);
+        this.addressBook = AddressBookDatabase.getDatabase(this.application).addressBookDao().getAll();
         this.ownName = new ConfigOwnNameLiveData(this.application);
     }
 
@@ -91,11 +85,10 @@ public class WalletAddressesViewModel extends AndroidViewModel {
 
         private void loadAddresses() {
             final Wallet wallet = getWallet();
-            AsyncTask.execute(new Runnable() {
-                @Override
-                public void run() {
-                    postValue(wallet.getIssuedReceiveAddresses());
-                }
+            AsyncTask.execute(() -> {
+                final List<Address> addresses = wallet.getIssuedReceiveAddresses();
+                Collections.reverse(addresses);
+                postValue(addresses);
             });
         }
     }
@@ -124,28 +117,13 @@ public class WalletAddressesViewModel extends AndroidViewModel {
 
         private void loadAddresses() {
             final Wallet wallet = getWallet();
-            AsyncTask.execute(new Runnable() {
-                @Override
-                public void run() {
-                    final List<ECKey> importedKeys = wallet.getImportedKeys();
-                    Collections.sort(importedKeys, new Comparator<ECKey>() {
-                        @Override
-                        public int compare(final ECKey lhs, final ECKey rhs) {
-                            final boolean lhsRotating = wallet.isKeyRotating(lhs);
-                            final boolean rhsRotating = wallet.isKeyRotating(rhs);
-
-                            if (lhsRotating != rhsRotating)
-                                return lhsRotating ? 1 : -1;
-                            if (lhs.getCreationTimeSeconds() != rhs.getCreationTimeSeconds())
-                                return lhs.getCreationTimeSeconds() > rhs.getCreationTimeSeconds() ? 1 : -1;
-                            return 0;
-                        }
-                    });
-                    final List<Address> importedAddresses = new ArrayList<>();
-                    for (final ECKey key : importedKeys)
-                        importedAddresses.add(LegacyAddress.fromKey(Constants.NETWORK_PARAMETERS, key));
-                    postValue(importedAddresses);
-                }
+            AsyncTask.execute(() -> {
+                final List<ECKey> importedKeys = wallet.getImportedKeys();
+                Collections.reverse(importedKeys);
+                final List<Address> importedAddresses = new ArrayList<>(importedKeys.size());
+                for (final ECKey key : importedKeys)
+                    importedAddresses.add(LegacyAddress.fromKey(Constants.NETWORK_PARAMETERS, key));
+                postValue(importedAddresses);
             });
         }
     }
